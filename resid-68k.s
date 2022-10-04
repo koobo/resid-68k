@@ -28,6 +28,62 @@ main
     lea     Sid,a0
     jsr	    sid_constructor
 
+    * filter lo
+    move.b  #0,d0
+    move.b  #$15,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * filter hi
+    move.b  #1,d0
+    move.b  #$16,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * filter resonance
+    move.b  #5+3<<4,d0
+    move.b  #$17,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * Poke full volume; filter mode: lp
+    move.b  #15+1<<4,d0
+    move.b  #24,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * voice 1: freq lo
+    move.b  #0,d0
+    move.b  #0,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * voice 1: freq hi
+    move.b  #1,d0
+    move.b  #0,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * voice 1: attack
+    move.b  #13*16+5,d0
+    move.b  #5,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * voice 1: sustain
+    move.b  #12*16+0,d0
+    move.b  #6,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * voice 1: Set triangle waveform, set gate bit
+    move.b  #16+1,d0
+    move.b  #4,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+
+
     * Request bytes, convert to cycles
     lea     Sid,a0
     move.l  #100,d0
@@ -525,7 +581,7 @@ voice_writeCONTROL_REG:
     bsr     wave_writeCONTROL_REG
     popm    d0/a0
     move.l  voice_envelope(a0),a0
-    bsr     voice_writeCONTROL_REG
+    bsr     envelope_writeCONTROL_REG
     rts
 
 
@@ -1875,11 +1931,11 @@ sid_clock_fast:
     cmp.l   d1,d3
     bge     .x     
 
-    pushm   d0-d5/a5
+    pushm   d0-d5/a1/a5
     move.l  d2,d0
     move.l  a5,a0
     bsr     sid_clock
-    popm    d0-d5/a5
+    popm    d0-d5/a1/a5
 
     sub.l   d2,d0
     move.l  d5,d6
