@@ -28,14 +28,23 @@ main
     lea     Sid,a0
     jsr	    sid_constructor
 
+    * Request bytes, convert to cycles
+    lea     Sid,a0
+    move.l  #100,d0
+    mulu.l  sid_cycles_per_sample(a0),d0
+    bvs     .overflow
+    swap    d0
+    ext.l   d0
+
     lea     Sid,a0
     lea     output,a1
-    move.l  #1000,d0  * cycles
+ ;   move.l  #20,d0  * cycles
     move.l  #1000,d1 * buffer limit
     jsr     sid_clock_fast
+.overflow
     rts
 
-output	ds.b	10000
+output	ds.b	1000
 
     section code,code
 
@@ -186,7 +195,7 @@ wave_reset
 *   d0-d6,a0
 wave_clock:
     tst.b   wave_test(a0)
-    bne     .go
+    beq     .go
     rts
 .go
 
@@ -196,7 +205,7 @@ wave_clock:
 
     * d3 = delta_accumulator
     move    wave_freq(a0),d3
-    mulu    d0,d3
+    mulu.w  d0,d3
   
     * d2 = accumulator
     add.l   d3,d2
@@ -285,7 +294,6 @@ wave_synchronize:
     tst.b   wave_msb_rising(a0)
     beq.b   .x
     move.l  wave_sync_dest(a0),a1
-    printt "check this enforcer hits at a1"
     tst.b   wave_sync(a1)
     beq.b   .x
 
@@ -358,9 +366,8 @@ wave_output__S_:
     rts
 wave_output__ST:
     bsr     wave_output__S_
-    move.l  wave_wave__ST(a0),a1
     moveq   #0,d1
-    move.b  (a1,d0.w),d1
+    move.b  ([(wave_wave__ST).w,a0],d0.w),d1
     lsl.w   #4,d1
     move.w  d1,d0
     rts
@@ -381,26 +388,22 @@ wave_output_P_T:
     bsr     wave_output___T
     move    d0,d1
     lsr.w   #1,d1
-    move.l  wave_wave_P_T(a0),a1
     moveq   #0,d2
-    move.b  (a1,d1.w),d2
+    move.b  ([(wave_wave_P_T).w,a0],d1.w),d2
     bsr     wave_output_P__
     and     d2,d0
     rts
 wave_output_PS_:
     bsr     wave_output__S_
-    move.l  wave_wave_PS_(a0),a1
     moveq   #0,d1
-    move.b  (a1,d0.w),d1
+    move.b  ([(wave_wave_PS_).w,a0],d0.w),d1
     lsl.w   #4,d1
     bsr     wave_output_P__
     and     d1,d0
     rts
 wave_output_PST:
     bsr     wave_output__S_
-    ;move.l  wave_wave_PST(a0),a1
-    ;moveq   #0,d1
-    ;move.b  (a1,d0.w),d1
+    moveq   #0,d1
     move.b  ([(wave_wave_PST).w,a0],d0.w),d1
     lsl.w   #4,d1
     bsr     wave_output_P__
@@ -740,14 +743,8 @@ envelope_clock:
     bne     .notDS
     moveq   #0,d2
     move.b  envelope_sustain(a0),d2
-
- ; ifd __VASM
- ;   move.b  envelope_sustain_level(pc,d2.w),d2     
- ; else
     lea     envelope_sustain_level(pc),a1
     move.b  (a1,d2.w),d2
- ; endif
-  
     cmp.b   envelope_counter(a0),d2
     beq     .break1
     subq.b  #1,envelope_counter(a0)
@@ -1241,7 +1238,7 @@ filter_output:
     move.b  filter_vol(a0),d1
     move.l  filter_Vnf(a0),d0
     add.l   filter_mixer_DC(a0),d0
-    mulu.l  d1,d0
+    muls.l  d1,d0
     rts
 .1  
     moveq   #0,d0
@@ -1294,7 +1291,7 @@ filter_output:
     add.l   filter_mixer_DC(a0),d0
     moveq   #0,d1
     move.b  filter_vol(a0),d1
-    mulu.l  d1,d0
+    muls.l  d1,d0
     rts
 
 
@@ -1535,7 +1532,8 @@ sid_output8
     move.l  sid_extfilt(a0),a0
     bsr     extfilter_output
     divs.w  #(((4095*255>>7)*3*15*2)/.range),d0
-    
+
+    * clamp to [-128..127]
     cmp     #.half,d0
     blt     .1
     moveq   #.half-1,d0
@@ -1719,7 +1717,7 @@ sid_set_sampling_parameters:
 *    d0-d7,a0,a1,a2,a5,a6
 sid_clock:
     tst.l   d0
-    bne     .1
+    bgt     .1
     rts
 .1
     move.l  a0,a5
@@ -1732,8 +1730,9 @@ sid_clock:
 ;.2
 
     move.l  d0,d7
+    push    d7      * save delta_t
+
     move.l  ([sid_voice1.w,a5],voice_envelope.w),a0
-    move.l  d7,d0
     bsr     envelope_clock    
  
     move.l  ([sid_voice2.w,a5],voice_envelope.w),a0
@@ -1743,7 +1742,6 @@ sid_clock:
     move.l  ([sid_voice3.w,a5],voice_envelope.w),a0
     move.l  d7,d0
     bsr     envelope_clock
-    push    d7      * save delta_t
 
     * d7 = delta_t_osc
 .loop
@@ -1754,16 +1752,15 @@ sid_clock:
     move.l  d7,a6
 
     * cycle checks
-    move.l  sid_voice1(a5),a0
+    move.l  ([sid_voice1.w,a5],voice_wave.w),a0
     bsr     .cycleCheck
-    move.l  sid_voice2(a5),a0
+    move.l  ([sid_voice2.w,a5],voice_wave.w),a0
     bsr     .cycleCheck
-    move.l  sid_voice3(a5),a0
+    move.l  ([sid_voice3.w,a5],voice_wave.w),a0
     bsr     .cycleCheck
     bra     .continue
 
 .cycleCheck
-    move.l  voice_wave(a0),a0
     tst.w   wave_freq(a0)
     beq     .cx
     move.l  wave_sync_dest(a0),a1
