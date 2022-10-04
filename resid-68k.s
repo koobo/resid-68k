@@ -1605,86 +1605,67 @@ sid_write
     rts
 
 .w00:
-    ;move.l  sid_voice1(a0),a0
-    ;move.l  voice_wave(a0),a0
     move.l  ([sid_voice1.w,a0],voice_wave.w),a0
     bra     wave_writeFREQ_LO
 .w01:
-    move.l  sid_voice1(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice1.w,a0],voice_wave.w),a0
     bra     wave_writeFREQ_HI
 .w02:
-    move.l  sid_voice1(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice1.w,a0],voice_wave.w),a0
     bra     wave_writePW_LO
 .w03:
-    move.l  sid_voice1(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice1.w,a0],voice_wave.w),a0
     bra     wave_writePW_HI
 .w04:
     move.l  sid_voice1(a0),a0
     bra     voice_writeCONTROL_REG
 .w05:
-    move.l  sid_voice1(a0),a0
-    move.l  voice_envelope(a0),a0
+    move.l  ([sid_voice1.w,a0],voice_envelope.w),a0
     bra     envelope_writeATTACK_DECAY
 .w06:
-    move.l  sid_voice1(a0),a0
-    move.l  voice_envelope(a0),a0
+    move.l  ([sid_voice1.w,a0],voice_envelope.w),a0
     bra     envelope_writeSUSTAIN_RELEASE
 .w07:
-    move.l  sid_voice2(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice2.w,a0],voice_wave.w),a0
     bra     wave_writeFREQ_LO
 .w08:
-    move.l  sid_voice2(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice2.w,a0],voice_wave.w),a0
     bra     wave_writeFREQ_HI
 .w09:
-    move.l  sid_voice2(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice2.w,a0],voice_wave.w),a0
     bra     wave_writePW_LO
 .w0a:
-    move.l  sid_voice2(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice2.w,a0],voice_wave.w),a0
     bra     wave_writePW_HI
 .w0b:
     move.l  sid_voice2(a0),a0
     bra     voice_writeCONTROL_REG
 .w0c:
-    move.l  sid_voice2(a0),a0
-    move.l  voice_envelope(a0),a0
+    move.l  ([sid_voice2.w,a0],voice_envelope.w),a0
     bra     envelope_writeATTACK_DECAY
 .w0d:
-    move.l  sid_voice2(a0),a0
-    move.l  voice_envelope(a0),a0
+    move.l  ([sid_voice2.w,a0],voice_envelope.w),a0
     bra     envelope_writeSUSTAIN_RELEASE
 .w0e:
-    move.l  sid_voice3(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice3.w,a0],voice_wave.w),a0
     bra     wave_writeFREQ_LO
 .w0f:
-    move.l  sid_voice3(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice3.w,a0],voice_wave.w),a0
     bra     wave_writeFREQ_HI
 .w10:
-    move.l  sid_voice3(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice3.w,a0],voice_wave.w),a0
     bra     wave_writePW_LO
 .w11:
-    move.l  sid_voice3(a0),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice3.w,a0],voice_wave.w),a0
     bra     wave_writePW_LO
 .w12:
     move.l  sid_voice3(a0),a0
     bra     voice_writeCONTROL_REG
 .w13:
-    move.l  sid_voice3(a0),a0
-    move.l  voice_envelope(a0),a0
+    move.l  ([sid_voice3.w,a0],voice_envelope.w),a0
     bra     envelope_writeATTACK_DECAY
 .w14:
-    move.l  sid_voice3(a0),a0
-    move.l  voice_envelope(a0),a0
+    move.l  ([sid_voice3.w,a0],voice_envelope.w),a0
     bra     envelope_writeSUSTAIN_RELEASE
 .w15:
     move.l  sid_filter(a0),a0
@@ -1751,16 +1732,15 @@ sid_clock:
 ;.2
 
     move.l  d0,d7
-    move.l  sid_voice1(a5),a0
-    move.l  voice_envelope(a0),a0
+    move.l  ([sid_voice1.w,a5],voice_envelope.w),a0
     move.l  d7,d0
     bsr     envelope_clock    
-    move.l  sid_voice2(a5),a0
-    move.l  voice_envelope(a0),a0
+ 
+    move.l  ([sid_voice2.w,a5],voice_envelope.w),a0
     move.l  d7,d0
     bsr     envelope_clock
-    move.l  sid_voice3(a5),a0
-    move.l  voice_envelope(a0),a0
+ 
+    move.l  ([sid_voice3.w,a5],voice_envelope.w),a0
     move.l  d7,d0
     bsr     envelope_clock
     push    d7      * save delta_t
@@ -1815,32 +1795,26 @@ sid_clock:
 .continue
 
     ; clock oscillators
-    move.l  sid_voice1(a5),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice1.w,a5],voice_wave.w),a0
     move.l  a6,d0
     bsr     wave_clock
   
-    move.l  sid_voice2(a5),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice2.w,a5],voice_wave.w),a0
     move.l  a6,d0
     bsr     wave_clock
   
-    move.l  sid_voice3(a5),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice3.w,a5],voice_wave.w),a0
     move.l  a6,d0
     bsr     wave_clock
 
     ; synchronize oscillators
-    move.l  sid_voice1(a5),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice1.w,a5],voice_wave.w),a0
     bsr     wave_synchronize
 
-    move.l  sid_voice2(a5),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice2.w,a5],voice_wave.w),a0
     bsr     wave_synchronize
     
-    move.l  sid_voice3(a5),a0
-    move.l  voice_wave(a0),a0
+    move.l  ([sid_voice3.w,a5],voice_wave.w),a0
     bsr     wave_synchronize
 
     sub.l   a6,d7
