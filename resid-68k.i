@@ -45,24 +45,24 @@ FIXP_MASK = $ffff
     STRUCTURE   voice,0
         APTR    voice_wave
         APTR    voice_envelope
-        ULONG   voice_wave_zero
+        UWORD   voice_wave_zero
         ULONG   voice_voice_DC
     LABEL voice_SIZEOF   
 
     STRUCTURE   wave,0
         APTR    wave_sync_source
         APTR    wave_sync_dest
-        UBYTE   wave_msb_rising
+        UBYTE   wave_msb_rising     * Tells whether the accumulator MSB was set high on this cycle.
         UBYTE   wave_pad
-        ULONG   wave_accumulator
-        ULONG   wave_shift_register
+        ULONG   wave_accumulator    * 24-bit
+        ULONG   wave_shift_register * 24-bit
         UWORD   wave_freq
         UWORD   wave_pw
-        UBYTE   wave_waveform
-        UBYTE   wave_test
+        UBYTE   wave_waveform       * Control register right-shifted 4 bits for table lookup
+        UBYTE   wave_test           * the remaining control register bits
         UBYTE   wave_ring_mod
         UBYTE   wave_sync
-        APTR    wave_wave__ST
+        APTR    wave_wave__ST       * Pointers to sample data for waveform combinations
         APTR    wave_wave_P_T
         APTR    wave_wave_PS_
         APTR    wave_wave_PST
@@ -124,11 +124,9 @@ FIXP_MASK = $ffff
         UBYTE   sid_sampling_method
         ULONG   sid_bus_value_ttl
         ULONG   sid_clock_frequency
-        ULONG   sid_cycles_per_sample
-        ULONG   sid_samples_per_cycle * FPU single precision
+        ULONG   sid_cycles_per_sample   * fixed point
         ULONG   sid_sample_offset
         ULONG   sid_sample_index
-        UWORD   sid_sample_prev
     LABEL sid_SIZEOF  
 
 pushm  macro

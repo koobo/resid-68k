@@ -30,7 +30,7 @@ main
 
     lea     Sid,a0
     lea     output,a1
-    move.l  #100,d0  * cycles
+    move.l  #1000,d0  * cycles
     move.l  #1000,d1 * buffer limit
     jsr     sid_clock_fast
     rts
@@ -59,7 +59,7 @@ wave_constructor:
 *   a1 = wave pointer
 wave_set_sync_source
     move.l  a1,wave_sync_source(a0)
-    move.l  a0,wave_sync_dest(a0)
+    move.l  a0,wave_sync_dest(a1)
     rts
 
 * in:
@@ -133,15 +133,14 @@ wave_writePW_HI:
 wave_writeCONTROL_REG:
     move.b  d0,d1
     lsr.b   #4,d1
-    and.b   #$0f,d1
     move.b  d1,wave_waveform(a0)
 
-    move.b  d0,d1
-    and.b   #$04,d1
+    moveq   #$04,d1
+    and.b  d0,d1
     move.b  d1,wave_ring_mod(a0)
 
-    move.b  d0,d1
-    and.b   #$02,d1
+    moveq   #$02,d1
+    and.b  d0,d1
     move.b  d1,wave_sync(a0)
 
     and.b   #$08,d0
@@ -187,25 +186,31 @@ wave_reset
 *   d0-d6,a0
 wave_clock:
     tst.b   wave_test(a0)
-    bne     .x
+    bne     .go
+    rts
+.go
 
-    * accumulator_prev
+    * d1 = accumulator_prev
     move.l  wave_accumulator(a0),d1
     move.l  d1,d2
 
-    * delta_accumulator
+    * d3 = delta_accumulator
     move    wave_freq(a0),d3
     mulu    d0,d3
+  
+    * d2 = accumulator
     add.l   d3,d2
     and.l   #$ffffff,d2
-    add.l   d2,wave_accumulator(a0)
+    move.l  d2,wave_accumulator(a0)
 
-     and.l  #$800000,d1
-     move.l d2,d4
-     and.l  #$800000,d4
-     and.l  d4,d1
-     seq    wave_msb_rising(a0)
-     
+    clr.b   wave_msb_rising(a0)
+    btst    #23,d1      * previous MSB
+    bne     .noMsb
+    btst    #23,d2      * current MSB
+    beq     .noMsb
+    st      wave_msb_rising(a0)
+.noMsb
+
     move.l  #$100000,d1
 
     * d0 = delta_t
@@ -215,11 +220,12 @@ wave_clock:
 
 .loop
     tst.l   d3
-    beq.b   .x
+    beq.b   .break
 
     cmp.l   d1,d3
     bhs.b   .continue
 
+    * shift_period = delta_accumulator
     move.l  d3,d1
 
     cmp.l   #$80000,d1 
@@ -227,22 +233,24 @@ wave_clock:
     move.l  d2,d4
     sub.l   d1,d4
     and.l   #$80000,d4
-    bne     .x
-    move.l  d2,d4
-    and.l   #$80000,d4
-    beq     .x
+    bne     .break
+    ;move.l  d2,d4
+    ;and.l   #$80000,d4
+    btst    #19,d2
+    beq     .break
     bra     .continue
 .else
     move.l  d2,d4
     sub.l   d1,d4
     and.l   #$80000,d4
-    move.l  d2,d5
-    not.l   d5
-    and.l   #$80000,d5
-    and.l   d5,d4
-    bne     .x
+    beq     .continue
+    ;move.l  d2,d4
+    ;and.l   #$80000,d4
+    btst    #19,d2
+    beq     .break
 
 .continue
+    * Shift the noise/random register.  
     * bit0
     move.l  wave_shift_register(a0),d4
     move.l  d4,d6
@@ -263,7 +271,7 @@ wave_clock:
     sub.l   d1,d3
     bra     .loop
 
-.x
+.break
     rts
 
 
@@ -272,9 +280,12 @@ wave_clock:
 * uses:
 *   d0,d1,a0,a1,a2
 wave_synchronize:
+    ; this bugs! commenting out will remove enf hits
+
     tst.b   wave_msb_rising(a0)
     beq.b   .x
     move.l  wave_sync_dest(a0),a1
+    printt "check this enforcer hits at a1"
     tst.b   wave_sync(a1)
     beq.b   .x
 
@@ -291,6 +302,8 @@ wave_synchronize:
 
 * in:
 *   a0 = object
+* out:
+*   d0 = Waveform output 12 bits
 * uses: 
 *   d0,d1,d2,a0,a1
 wave_output:
@@ -385,9 +398,10 @@ wave_output_PS_:
     rts
 wave_output_PST:
     bsr     wave_output__S_
-    move.l  wave_wave_PST(a0),a1
-    moveq   #0,d1
-    move.b  (a1,d0.w),d1
+    ;move.l  wave_wave_PST(a0),a1
+    ;moveq   #0,d1
+    ;move.b  (a1,d0.w),d1
+    move.b  ([(wave_wave_PST).w,a0],d0.w),d1
     lsl.w   #4,d1
     bsr     wave_output_P__
     and     d1,d0
@@ -439,23 +453,11 @@ wave_outputN___:
     rts
 
 wave_outputN__T:
-    moveq   #0,d0
-    rts
 wave_outputN_S_:
-    moveq   #0,d0
-    rts
 wave_outputN_ST:
-    moveq   #0,d0
-    rts
 wave_outputNP__:
-    moveq   #0,d0
-    rts
 wave_outputNP_T:
-    moveq   #0,d0
-    rts
 wave_outputNPS_:
-    moveq   #0,d0
-    rts
 wave_outputNPST:
     moveq   #0,d0
     rts
@@ -493,11 +495,11 @@ voice_set_chip_model:
 
     cmp.b    #CHIP_MODEL_MOS6581,d0
     bne.b    .1
-    move.l   #$380,voice_wave_zero(a0)
+    move.w   #$380,voice_wave_zero(a0)
     move.l   #$800*$ff,voice_voice_DC(a0)
     bra      .2
 .1
-    move.l   #$800,voice_wave_zero(a0)
+    move.w   #$800,voice_wave_zero(a0)
     move.l   #0,voice_voice_DC(a0)
 .2
     rts
@@ -505,7 +507,7 @@ voice_set_chip_model:
 * in:
 *    a0 = object
 *    a1 = voice pointer
-voice_set_sync_source
+voice_set_sync_source:
     move.l  voice_wave(a0),a0
     move.l  voice_wave(a1),a1
     bsr     wave_set_sync_source
@@ -514,11 +516,11 @@ voice_set_sync_source
 * in:
 *    a0 = object
 *    d0 = reg8 control
-voice_writeCONTROL_REG
-    push    a0
+voice_writeCONTROL_REG:
+    pushm   d0/a0
     move.l  voice_wave(a0),a0
     bsr     wave_writeCONTROL_REG
-    pop     a0
+    popm    d0/a0
     move.l  voice_envelope(a0),a0
     bsr     voice_writeCONTROL_REG
     rts
@@ -526,7 +528,7 @@ voice_writeCONTROL_REG
 
 * in:
 *    a0 = object
-voice_reset
+voice_reset:
     push    a0
     move.l  voice_wave(a0),a0
     bsr     voice_reset
@@ -538,7 +540,8 @@ voice_reset
 * in:
 *    a0 = object
 * out:
-*    d0 = output
+*    d0 = Amplitude modulated waveform output.
+*         Ideal range [-2048*255, 2047*255].
 * uses:
 *    d0-d3,a0,a1,(a5)
 voice_output:
@@ -546,11 +549,14 @@ voice_output:
     move.l  a0,a5
     move.l  voice_envelope(a5),a0
     bsr     envelope_output
-    move.l  d0,d3
+    * d0 = 8-bit
+    move.w  d0,d3
     move.l  voice_wave(a5),a0
     bsr     wave_output
-    sub.l   voice_wave_zero(a5),d0
-    muls.l  d3,d0
+    * d0 = 12-bit
+    sub.w   voice_wave_zero(a5),d0
+    muls.w  d3,d0
+    * d0 = 20-bit
     add.l   voice_voice_DC(a5),d0
     pop     a5
     rts
@@ -663,10 +669,13 @@ envelope_readENV:
 
 * in:
 *    a0 = object
+* out:
+*    d0 = 8-bit envelope output
 * uses:
 *    d0, a0
 envelope_output:
-    move.w  envelope_counter(a0),d0
+    moveq   #0,d0
+    move.b  envelope_counter(a0),d0
     rts
 
 
@@ -687,8 +696,6 @@ envelope_clock:
     tst.w   d0
     beq     .x
 
-    ; if  delta_t < rate_step  then..
-    ; if       d0 < d1         then..
     cmp.w   d1,d0
     bhs     .2
     move.w  envelope_rate_counter(a0),d2
@@ -700,6 +707,7 @@ envelope_clock:
     move.w  d2,envelope_rate_counter(a0)  
     rts
 .2
+
     clr.w   envelope_rate_counter(a0)
     sub.w   d1,d0
 
@@ -732,18 +740,23 @@ envelope_clock:
     bne     .notDS
     moveq   #0,d2
     move.b  envelope_sustain(a0),d2
+
+ ; ifd __VASM
+ ;   move.b  envelope_sustain_level(pc,d2.w),d2     
+ ; else
     lea     envelope_sustain_level(pc),a1
     move.b  (a1,d2.w),d2
+ ; endif
+  
     cmp.b   envelope_counter(a0),d2
     beq     .break1
     subq.b  #1,envelope_counter(a0)
     bra     .break1
 .notDS
-    cmp.b   #envelope_state_RELEASE,envelope_state(a0)
-    bne     .notRelease
+    ; No need to check envelope_state(a0), 
+    ; the remaining one is RELEASE.
     subq.b  #1,envelope_counter(a0)
     and.b   #$ff,envelope_counter(a0)
-.notRelease
 .break1
 
     ; switch #2
@@ -903,6 +916,8 @@ filter_reset:
 * in:
 *    a0 = object
 *    d0 = fc_lo
+* uses:
+*    d0,d1,d2,a0,a1
 filter_writeFC_LO:
     move    filter_fc(a0),d1
     and     #$7f8,d1
@@ -916,6 +931,7 @@ filter_writeFC_LO:
 * in:
 *    a0 = object
 *    d0 = fc_hi
+*    d0,d1,d2,a0,a1
 filter_writeFC_HI:
     lsl.w   #3,d0
     and     #$7f8,d0
@@ -930,6 +946,8 @@ filter_writeFC_HI:
 * in:
 *    a0 = object
 *    d0 = res_filt
+* uses:
+*    d0,d1,a0,fp0
 filter_writeRES_FILT:
     move.b  d0,d1
     lsr.b   #4,d1
@@ -958,6 +976,8 @@ filter_writeMODE_VOL:
     
 * in:
 *    a0 = object
+* uses:
+*    d0,d1,d2,a0,a1,fp0,fp1
 filter_set_w0:
     fmove.s #2*3.1415926535897932385,fp1
  
@@ -1210,6 +1230,8 @@ filter_clock:
 
 * in:
 *    a0 = object
+* out:
+*    d0 = filter output 20 bits
 * uses:
 *    d0,d1,a0
 filter_output:
@@ -1378,6 +1400,8 @@ extfilter_clock:
 
 * in:
 *   a0 = object
+* out:
+*   d0 = audio output 20 bits
 * uses:
 *   d0, a0
 extfilter_output:
@@ -1526,17 +1550,16 @@ sid_output8
 * in:
 *   a0 = object
 * out:
-*   d0 = offset
-*   d1 = value
+*   d0 = value
+*   d1 = SID register offset
+* uses:
+*   d0,d1,d2,a0,a1
 sid_write
-    move.b  d1,sid_bus_value(a0)
-    move.l  #$2000,sid_bus_value_ttl(a0)
-    cmp.b   #$18,d0
-    bhi.b   .x
-    and     #$1f,d0
-    move.w  .tab(pc,d0.w*2),d0
-    jmp     .tab(pc,d0)
-.x  rts
+    ;move.b  d1,sid_bus_value(a0)
+    ;move.l  #$2000,sid_bus_value_ttl(a0)
+    and     #$1f,d1
+    move.w  .tab(pc,d1.w*2),d1
+    jmp     .tab(pc,d1)
 
 .tab    
     dc.w    .w00-.tab
@@ -1564,10 +1587,27 @@ sid_write
     dc.w    .w16-.tab
     dc.w    .w17-.tab
     dc.w    .w18-.tab
+    dc.w    .w19-.tab
+    dc.w    .w1a-.tab
+    dc.w    .w1b-.tab
+    dc.w    .w1c-.tab
+    dc.w    .w1d-.tab
+    dc.w    .w1e-.tab
+    dc.w    .w1f-.tab
+
+.w19
+.w1a
+.w1b
+.w1c
+.w1d
+.w1e
+.w1f
+    rts
 
 .w00:
-    move.l  sid_voice1(a0),a0
-    move.l  voice_wave(a0),a0
+    ;move.l  sid_voice1(a0),a0
+    ;move.l  voice_wave(a0),a0
+    move.l  ([sid_voice1.w,a0],voice_wave.w),a0
     bra     wave_writeFREQ_LO
 .w01:
     move.l  sid_voice1(a0),a0
@@ -1682,16 +1722,11 @@ sid_set_sampling_parameters:
     fadd.s  #0.5,fp0
     fmove.l fp0,sid_cycles_per_sample(a0)
 
-    fmove.l d2,fp0
-    fdiv.l  d0,fp0
-    fmove.s fp0,sid_samples_per_cycle(a0)
-    
     clr.l   sid_sample_offset(a0)
-    clr.w   sid_sample_prev(a0)
+    ;clr.w   sid_sample_prev(a0)
 
-    moveq   #0,d0
+    moveq   #1,d0
     rts
-
 .fail
     moveq   #0,d0
     rts
@@ -1784,10 +1819,12 @@ sid_clock:
     move.l  voice_wave(a0),a0
     move.l  a6,d0
     bsr     wave_clock
+  
     move.l  sid_voice2(a5),a0
     move.l  voice_wave(a0),a0
     move.l  a6,d0
     bsr     wave_clock
+  
     move.l  sid_voice3(a5),a0
     move.l  voice_wave(a0),a0
     move.l  a6,d0
@@ -1797,10 +1834,11 @@ sid_clock:
     move.l  sid_voice1(a5),a0
     move.l  voice_wave(a0),a0
     bsr     wave_synchronize
+
     move.l  sid_voice2(a5),a0
     move.l  voice_wave(a0),a0
     bsr     wave_synchronize
-    move.l  voice_wave(a0),a0
+    
     move.l  sid_voice3(a5),a0
     move.l  voice_wave(a0),a0
     bsr     wave_synchronize
@@ -1895,7 +1933,7 @@ sid_clock_fast:
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
-    sub.l   d0,sid_sample_offset(a0)
+    sub.l   d0,sid_sample_offset(a5)
 .x
     * bytes written
     move.l  d3,d0
