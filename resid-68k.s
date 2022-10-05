@@ -1592,7 +1592,7 @@ sid_set_chip_model:
 
 * in:
 *   a0 = object
-sid_reset
+sid_reset:
     move.l  a0,a5
     clr.b   sid_bus_value(a5)
     clr.l   sid_bus_value_ttl(a5)
@@ -1615,7 +1615,7 @@ sid_reset
 *   d0 = 8-bit output
 * uses: 
 *   d0,a0
-sid_output8
+sid_output8:
 .range = 1<<8
 .half  = .range>>1
     move.l  sid_extfilt(a0),a0
@@ -1772,10 +1772,8 @@ sid_write
 *   d0 = clock_frequency
 *   d1 = sampling method
 *   d2 = sample freq
-*   d3 = pass freq = -1
-*   d4 = filter_scale = 0.97
 * out:
-*   d0 = true if ok, false with bad param combo
+*   d0 = true if ok, false with a bad param combo
 sid_set_sampling_parameters:
     cmp.b   #SAMPLING_METHOD_SAMPLE_FAST,d1
     bne     .fail
@@ -1791,8 +1789,7 @@ sid_set_sampling_parameters:
     fmove.l fp0,sid_cycles_per_sample(a0)
 
     clr.l   sid_sample_offset(a0)
-    ;clr.w   sid_sample_prev(a0)
-
+  
     moveq   #1,d0
     rts
 .fail

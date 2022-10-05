@@ -131,18 +131,9 @@ workerEntry
     lea     buffer2,a3
     move.l  a2,$a0+$dff000 
 
-    lea     Sid,a0
-    move.l  a2,a1
-    move.l  #100000,d0         * cycle limit
-    * bytes to get
-    move.l  #SAMPLES_PER_HALF_FRAME,d1
-    movem.l a2/a3,-(sp)
-    jsr     sid_clock_fast
-    movem.l (sp)+,a2/a3
-    * d0 = bytes received, what if not even?
-    lsr     #1,d0
-
+    bsr     fillBufferA2
     move    d0,$a4+$dff000   * words
+
     bsr     dmawait
     move    #DMAF_SETCLR!DMAF_AUD0,dmacon+$dff000
 
@@ -159,25 +150,17 @@ workerEntry
     move.w  intreqr+$dff000,d0
     btst    #INTB_AUD0,d0
     beq.b   .1
-    move.w  #INTF_AUD0,intreq+$dff000
-
-    * Switch buffers
-    exg     a2,a3
-
-    lea     Sid,a0
-    move.l  a2,a1
-    move.l  #100000,d0         * cycle limit
-    * bytes to get
-    move.l  #SAMPLES_PER_HALF_FRAME,d1
-    movem.l a2/a3,-(sp)
-    jsr     sid_clock_fast
-    movem.l (sp)+,a2/a3
-    * d0 = bytes received, what if not even?
-    lsr     #1,d0
-    move    d0,$a4+$dff000   * words
 
     move    bob,$dff180
     not	    bob
+
+    * Switch buffers and fill
+    exg     a2,a3
+    move.l  a2,$a0+$dff000 
+    bsr     fillBufferA2
+    move    d0,$a4+$dff000   * words
+    
+    move.w  #INTF_AUD0,intreq+$dff000
 .1
     tst.b   workerStatus
     bpl     .loop
@@ -263,6 +246,19 @@ pokeRelease
     move.b  #4,d1
     lea     Sid,a0
     jsr     sid_write
+    rts
+
+fillBufferA2:
+    lea     Sid,a0
+    move.l  a2,a1           * target buffer
+    move.l  #100000,d0      * cycle limit, set high enough
+    * bytes to get
+    move.l  #SAMPLES_PER_HALF_FRAME,d1
+    movem.l a2/a3,-(sp)
+    jsr     sid_clock_fast
+    movem.l (sp)+,a2/a3
+    * d0 = bytes received, make words
+    lsr     #1,d0
     rts
 
 dmawait
