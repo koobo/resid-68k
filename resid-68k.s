@@ -726,8 +726,7 @@ envelope_reset:
 *    d0 = control
 envelope_writeCONTROL_REG:
     * gate_next
-    moveq   #$01,d1
-    and.b   d0,d1
+    and.b   #$01,d0
     beq.b   .1
     tst.b   envelope_gate(a0)
     bne.b   .1
@@ -739,8 +738,8 @@ envelope_writeCONTROL_REG:
     clr.b   envelope_hold_zero(a0)
     bra     .2
 .1
-    tst.b   d1
-    bne     .2
+    ;tst.b   d0
+    ;bne     .2
     tst.b   envelope_gate(a0)
     beq.b   .2
     move.b  #envelope_state_RELEASE,envelope_state(a0)
@@ -749,7 +748,7 @@ envelope_writeCONTROL_REG:
     lea     envelope_rate_counter_period(pc),a1
     move.w  (a1,d1.w*2),envelope_rate_period(a0)
 .2
-    move.b  d1,envelope_gate(a0)
+    move.b  d0,envelope_gate(a0)
     rts
 
 
