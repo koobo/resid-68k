@@ -55,31 +55,35 @@ sid_main:
 
 
 .pokeSound
-    * filter lo
- REM
+    * filter cutoff low
     move.b  #0,d0
     move.b  #$15,d1
     lea     Sid,a0
     jsr     sid_write
 
-    * filter hi
+    * filter cutoff hi
     move.b  #1,d0
     move.b  #$16,d1
     lea     Sid,a0
     jsr     sid_write
 
-    * filter resonance
-    move.b  #5+3<<4,d0
+    * filter resonance and routing
+    * 0..3: enable filter for voice 1,2,3
+    * 4..7: resonance
+    move.b  #%111+%111<<4,d0
     move.b  #$17,d1
     lea     Sid,a0
     jsr     sid_write
 
-    * Poke full volume; filter mode: lp
-    move.b  #15,d0
+    * filter mode and main volume control
+    * 0..3: main volume
+    * 4: low pass
+    * 5: band pass
+    * 6: high pass
+    move.b  #$f+%001<<4,d0
     move.b  #24,d1
     lea     Sid,a0
     jsr     sid_write
- EREM
 
 ;A = 2^(1/12)
 ;F0 = 7454 note A4

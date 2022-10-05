@@ -38,7 +38,7 @@ main:
     lea     Sid,a0
     jsr     sid_set_sampling_parameters
 
-    moveq   #0,d0
+    moveq   #1,d0
     lea     Sid,a0
     jsr     sid_enable_filter
 
@@ -171,14 +171,14 @@ bob	dc	$0f0
 
 pokeSound
     * filter lo
- REM
+; REM
     move.b  #0,d0
     move.b  #$15,d1
     lea     Sid,a0
     jsr     sid_write
 
     * filter hi
-    move.b  #1,d0
+    move.b  #4,d0
     move.b  #$16,d1
     lea     Sid,a0
     jsr     sid_write
@@ -190,11 +190,11 @@ pokeSound
     jsr     sid_write
 
     * Poke full volume; filter mode: lp
-    move.b  #15,d0
+    move.b  #15+(1)<<4,d0
     move.b  #24,d1
     lea     Sid,a0
     jsr     sid_write
- EREM
+; EREM
 
 ;A = 2^(1/12)
 ;F0 = 7454 note A4
@@ -231,7 +231,7 @@ pokeSound
     move.b  #15,d0
     move.b  #24,d1
     lea     Sid,a0
-    jsr     sid_write
+ ;   jsr     sid_write
 
     * voice 1: Set triangle waveform, set gate bit
     move.b  #16+1,d0
