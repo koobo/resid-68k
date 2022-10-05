@@ -24,11 +24,39 @@
     include resid-68k.i
 
     * Launch and run a few cycles
-main     
+sid_main:     
     lea     Sid,a0
     jsr	    sid_constructor
+    moveq   #0,d0
+    lea     Sid,a0
+    jsr     sid_enable_filter
+    moveq   #0,d0
+    lea     Sid,a0
+    jsr     sid_enable_external_filter
 
+    bsr     .pokeSound
+
+    * Request bytes, convert to cycles
+    lea     Sid,a0
+    ;move.l  #200,d0
+    ;mulu.l  sid_cycles_per_sample(a0),d0
+    ;bvs     .overflow
+    ;swap    d0
+    ;ext.l   d0
+
+    lea     Sid,a0
+    lea     output,a1
+    move.l  #100000,d0  * cycles (upper limit)
+ ;   move.l  #1000,d1 * buffer limit
+    move.l  #2,d1   * get this many bytes
+    jsr     sid_clock_fast
+.overflow
+    rts
+
+
+.pokeSound
     * filter lo
+ REM
     move.b  #0,d0
     move.b  #$15,d1
     lea     Sid,a0
@@ -47,32 +75,46 @@ main
     jsr     sid_write
 
     * Poke full volume; filter mode: lp
-    move.b  #15+1<<4,d0
+    move.b  #15,d0
     move.b  #24,d1
     lea     Sid,a0
     jsr     sid_write
+ EREM
 
+;A = 2^(1/12)
+;F0 = 7454 note A4
+;N = -9
+;NF = F0*A^N
+;FH = NF/256
+;FL = NF-256*FH
+.F = 4432
     * voice 1: freq lo
-    move.b  #0,d0
+    move.b  #.F&$ff,d0
     move.b  #0,d1
     lea     Sid,a0
     jsr     sid_write
 
     * voice 1: freq hi
-    move.b  #1,d0
-    move.b  #0,d1
+    move.b  #.F>>8,d0
+    move.b  #1,d1
     lea     Sid,a0
     jsr     sid_write
 
-    * voice 1: attack
+    * voice 1: attack=5, decay=3
     move.b  #13*16+5,d0
     move.b  #5,d1
     lea     Sid,a0
     jsr     sid_write
 
-    * voice 1: sustain
-    move.b  #12*16+0,d0
+    * voice 1: sustain=15, release=10
+    move.b  #12*16+10,d0
     move.b  #6,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * global volume full
+    move.b  #15,d0
+    move.b  #24,d1
     lea     Sid,a0
     jsr     sid_write
 
@@ -81,23 +123,14 @@ main
     move.b  #4,d1
     lea     Sid,a0
     jsr     sid_write
+    rts
 
-
-
-    * Request bytes, convert to cycles
+.pokeRelease
+    * voice 1: Set triangle waveform, clear gate bit
+    move.b  #16+0,d0
+    move.b  #4,d1
     lea     Sid,a0
-    move.l  #100,d0
-    mulu.l  sid_cycles_per_sample(a0),d0
-    bvs     .overflow
-    swap    d0
-    ext.l   d0
-
-    lea     Sid,a0
-    lea     output,a1
- ;   move.l  #20,d0  * cycles
-    move.l  #1000,d1 * buffer limit
-    jsr     sid_clock_fast
-.overflow
+    jsr     sid_write
     rts
 
 output	ds.b	1000
@@ -1908,8 +1941,8 @@ sid_clock:
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer
-*   d0 = cycle_count delta_t
-*   d1 = n
+*   d0 = cycle_count delta_t, max cycles
+*   d1 = bytes to get
 sid_clock_fast:
     move.l  a0,a5
     * d3 = s
@@ -1918,18 +1951,20 @@ sid_clock_fast:
     * d5 = next_sample_offset
     move.l  sid_sample_offset(a5),d5
     add.l   sid_cycles_per_sample(a5),d5
-    add.l   #(1<<FIXP_SHIFT-1),d5
+    add.l   #1<<(FIXP_SHIFT-1),d5
 
     * d2 = delta_t_sample
     move.l  d5,d2
     swap    d2
     ext.l   d2      * >>FIXP_SHIFT
    
+    * if (delta_t_sample > delta_t)
     cmp.l   d0,d2
     bgt     .break
     * buffer overflow check
-    cmp.l   d1,d3
-    bge     .x     
+    * if (s >= n) 
+    ;cmp.l   d1,d3
+    ;bge     .x     
 
     pushm   d0-d5/a1/a5
     move.l  d2,d0
@@ -1950,7 +1985,11 @@ sid_clock_fast:
     move.b  d0,(a1,d3.l)
     addq.l  #1,d3
     pop     d0
+    * All bytes generated?
+    cmp.l   d3,d1
+    beq     .x
     bra     .loop
+
 .break
 
     move.l  a5,a0

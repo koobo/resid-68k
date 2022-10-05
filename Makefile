@@ -2,7 +2,7 @@ INCLUDE = -I$(HOME)/A/Asm/Include
 VASM ?= vasmm68k_mot
 VASM_FLAGS := -Fhunkexe -kick1hunks -quiet -m68030 -m68881 -nosym $(INCLUDE)
 
-SOURCE   := resid-68k.s
+SOURCE   := resid-test.s resid-68k.s
 INCLUDES := resid-68k.i
 TARGET   := main
 
