@@ -623,7 +623,7 @@ voice_writeCONTROL_REG:
 voice_reset:
     push    a0
     move.l  voice_wave(a0),a0
-    bsr     voice_reset
+    bsr     wave_reset
     pop     a0
     move.l  voice_envelope(a0),a0
     bsr     envelope_reset
