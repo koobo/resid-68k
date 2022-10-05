@@ -30,7 +30,7 @@ sid_main:
     moveq   #0,d0
     lea     Sid,a0
     jsr     sid_enable_filter
-    moveq   #0,d0
+    moveq   #1,d0
     lea     Sid,a0
     jsr     sid_enable_external_filter
 
@@ -1446,6 +1446,8 @@ extfilter_clock:
 .1
     * d2 = delta_t_flt
     moveq   #8,d2
+    * d6 = Vi
+    move.l  d1,d6
 .loop
     tst.l   d0
     beq     .x
@@ -1453,6 +1455,7 @@ extfilter_clock:
     bhs.b   .2
     move.l  d0,d2
 .2
+    move.l  d6,d1
     sub.l   extfilter_Vlp(a0),d1 * Vi-Vlp
     move.l  extfilter_w0lp(a0),d3
     muls.l  d2,d3

@@ -42,7 +42,7 @@ main:
     lea     Sid,a0
     jsr     sid_enable_filter
 
-    moveq   #0,d0
+    moveq   #1,d0
     lea     Sid,a0
     jsr     sid_enable_external_filter
 
