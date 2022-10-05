@@ -516,6 +516,7 @@ wave_output_P_T:
     lsr.w   #1,d1
     moveq   #0,d2
     move.b  ([(wave_wave_P_T).w,a0],d1.w),d2
+    lsl     #4,d2
     bsr     wave_output_P__
     and     d2,d0
     rts
