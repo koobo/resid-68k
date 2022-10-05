@@ -1751,7 +1751,7 @@ sid_write
     bra     wave_writePW_LO
 .w11:
     move.l  ([sid_voice3.w,a0],voice_wave.w),a0
-    bra     wave_writePW_LO
+    bra     wave_writePW_HI
 .w12:
     move.l  sid_voice3(a0),a0
     bra     voice_writeCONTROL_REG
