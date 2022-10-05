@@ -38,11 +38,11 @@ main:
     lea     Sid,a0
     jsr     sid_set_sampling_parameters
 
-    moveq   #1,d0
+    moveq   #0,d0
     lea     Sid,a0
     jsr     sid_enable_filter
 
-    moveq   #1,d0
+    moveq   #0,d0
     lea     Sid,a0
     jsr     sid_enable_external_filter
 
@@ -50,9 +50,13 @@ main:
     bsr     createWorkerTask
 ;    bsr     workerEntry
 
+    moveq   #7*2,d7
     bsr     pokeSound
-    move    #2*50,d7
+
+    move    #1*50,d7
     bsr     wait
+
+    moveq   #7*2,d7
     bsr     pokeRelease
 .loop
     bsr     delay
@@ -169,32 +173,54 @@ workerEntry
 
 bob	dc	$0f0
 
+* in:
+*    d7 = offset: 0 = voice 1
+*                 7 = voice 2
+*                14 = voice 3
 pokeSound
-    * filter lo
-; REM
+    * filter mode and main volume control
+    * 0..3: main volume
+    * 4: low pass
+    * 5: band pass
+    * 6: high pass
+    * 7: mute voice 3
+    move.b  #$1f,d0
+    move.b  #24,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+ REM
+  * filter cutoff low
     move.b  #0,d0
     move.b  #$15,d1
     lea     Sid,a0
     jsr     sid_write
 
-    * filter hi
-    move.b  #4,d0
+    * filter cutoff hi
+    move.b  #1,d0
     move.b  #$16,d1
     lea     Sid,a0
     jsr     sid_write
 
-    * filter resonance
-    move.b  #5+3<<4,d0
+    * filter resonance and routing
+    * 0..3: enable filter for voice 1,2,3
+    * 4..7: resonance
+    move.b  #%111+%111<<4,d0
     move.b  #$17,d1
     lea     Sid,a0
     jsr     sid_write
 
-    * Poke full volume; filter mode: lp
-    move.b  #15+(1)<<4,d0
+    * filter mode and main volume control
+    * 0..3: main volume
+    * 4: low pass
+    * 5: band pass
+    * 6: high pass
+    * 7: mute voice 3
+    move.b  #$f+%001<<4,d0
     move.b  #24,d1
     lea     Sid,a0
     jsr     sid_write
-; EREM
+ EREM
 
 ;A = 2^(1/12)
 ;F0 = 7454 note A4
@@ -206,45 +232,70 @@ pokeSound
     * voice 1: freq lo
     move.b  #.F&$ff,d0
     move.b  #0,d1
+    add.b   d7,d1
     lea     Sid,a0
     jsr     sid_write
 
     * voice 1: freq hi
     move.b  #.F>>8,d0
     move.b  #1,d1
+    add.b   d7,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * voice 1: pw lo
+    move.b  #0,d0
+    move.b  #2,d1
+    add.b   d7,d1
+    lea     Sid,a0
+    jsr     sid_write
+
+    * voice 1: pw hi
+    move.b  #1,d0
+    move.b  #3,d1
+    add.b   d7,d1
     lea     Sid,a0
     jsr     sid_write
 
     * voice 1: attack=5, decay=3
     move.b  #13*16+5,d0
     move.b  #5,d1
+    add.b   d7,d1
     lea     Sid,a0
     jsr     sid_write
 
     * voice 1: sustain=15, release=10
     move.b  #12*16+10,d0
     move.b  #6,d1
+    add.b   d7,d1
     lea     Sid,a0
     jsr     sid_write
 
-    * global volume full
-    move.b  #15,d0
-    move.b  #24,d1
-    lea     Sid,a0
- ;   jsr     sid_write
 
-    * voice 1: Set triangle waveform, set gate bit
-    move.b  #16+1,d0
+    * voice 1 control
+    * Set triangle waveform, set gate bit
+    * 0 gate
+    * 1: sync with voice 3
+    * 2: ring with voice 3
+    * 3: test
+    * 4: triangle
+    * 5: sawtooth
+    * 6: pulse
+    * 7: noise
+    move.b  #1<<6+1,d0
     move.b  #4,d1
     lea     Sid,a0
+    add.b   d7,d1
     jsr     sid_write
     rts
 
 pokeRelease
-    * voice 1: Set triangle waveform, clear gate bit
+    * voice 1 control
+    * Set triangle waveform, clear gate bit
     move.b  #16+0,d0
     move.b  #4,d1
     lea     Sid,a0
+    add.b   d7,d1
     jsr     sid_write
     rts
 
