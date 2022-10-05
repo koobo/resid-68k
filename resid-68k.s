@@ -34,6 +34,8 @@ sid_main:
     lea     Sid,a0
     jsr     sid_enable_external_filter
 
+    bra     .pokeOceanLoaderV3
+
     * select voice
     move    #0*7,d7
     bsr     .pokeSound
@@ -168,6 +170,72 @@ sid_main:
     lea     Sid,a0
     add.b   d7,d1
     jsr     sid_write
+    rts
+
+.pokeOceanLoaderV3
+;          0000 0008 0000 0000 0000 181f 0000 17f2  ................
+;000000c0: 0000 1208 0000 0e16 0000 0f0d 0000 1000  ................
+;000000d0: 0000 1108 0000 1301 0000 14a9 0000 1221  ...............!
+;000000e0: 0002 1220 0006 1208 0006 0e16 0006 0f0d  ... ............
+;000000f0: 0006 1000 0006 1108 0006 1301 0006 14a9  ................
+;00000100: 0006 1221 0008 1220 000c 1208 000c 0e16  ...!... ........
+;00000110: 000c 0f0d 000c 1000 000c 1108 000c 1301  
+
+    move.b  #$1f,d0
+    move.b  #$18,d1
+    bsr     .poke
+    move.b  #$f2,d0
+    move.b  #$17,d1
+    bsr     .poke
+    move.b  #$08,d0
+    move.b  #$12,d1
+    bsr     .poke
+    move.b  #$16,d0
+    move.b  #$0e,d1
+    bsr     .poke
+    move.b  #$0d,d0
+    move.b  #$0f,d1
+    bsr     .poke
+    move.b  #$00,d0
+    move.b  #$10,d1
+    bsr     .poke
+    move.b  #$08,d0
+    move.b  #$11,d1
+    bsr     .poke
+    move.b  #$01,d0
+    move.b  #$13,d1
+    bsr     .poke
+    move.b  #$a9,d0
+    move.b  #$14,d1
+    bsr     .poke
+    move.b  #$21,d0     * gate on
+    move.b  #$12,d1
+    bsr     .poke
+
+    move.l  #500,d1
+    bsr     .getD1Bytes
+
+    move.b  #$20,d0     * gate off
+    move.b  #$12,d1
+    bsr     .poke
+
+    move.l  #500,d1
+    bsr     .getD1Bytes
+    rts
+
+.poke
+    lea     Sid,a0
+    add.b   d7,d1
+    jsr     sid_write
+    rts
+
+.getD1Bytes
+    lea     Sid,a0
+    lea     output,a1
+    move.l  #100000,d0  * cycles (upper limit)
+ ;   move.l  #1000,d1 * buffer limit
+;    move.l  #1000,d1   * get this many bytes
+    jsr     sid_clock_fast
     rts
 
 output	ds.b	1000
