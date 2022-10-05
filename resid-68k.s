@@ -785,13 +785,15 @@ envelope_reset:
     move.b  #1,envelope_exponential_counter_period(a0)
     move.b  #envelope_state_RELEASE,envelope_state(a0)
     lea     envelope_rate_counter_period(pc),a1
-    move    (a1),envelope_rate_period(a0) * offset at "release"
+    move    (a1),envelope_rate_period(a0) * offset at "release", ie. zero here
     st      envelope_hold_zero(a0)
     rts
 
 * in:
 *    a0 = object
 *    d0 = control
+* uses:
+*    d0,d1,d2,a0,a1
 envelope_writeCONTROL_REG:
     * gate_next
     and.b   #$01,d0
@@ -806,8 +808,8 @@ envelope_writeCONTROL_REG:
     clr.b   envelope_hold_zero(a0)
     bra     .2
 .1
-    ;tst.b   d0
-    ;bne     .2
+    tst.b   d0
+    bne     .2
     tst.b   envelope_gate(a0)
     beq.b   .2
     move.b  #envelope_state_RELEASE,envelope_state(a0)
@@ -831,13 +833,15 @@ envelope_writeATTACK_DECAY:
     and     #$f,d0
     move.b  d0,envelope_decay(a0)
 
-    lea     envelope_rate_counter_period(pc),a1
     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
     bne.b   .1
+    lea     envelope_rate_counter_period(pc),a1
     move    (a1,d1.w*2),envelope_rate_period(a0)
     rts
-.1  cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
+.1  
+    cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     bne.b   .2
+    lea     envelope_rate_counter_period(pc),a1
     move    (a1,d0.w*2),envelope_rate_period(a0)
 .2
     rts
