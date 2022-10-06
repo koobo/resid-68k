@@ -1721,9 +1721,12 @@ sid_reset:
 sid_output8:
 .range = 1<<8
 .half  = .range>>1
+.divisor = (((4095*255>>7)*3*15*2)/.range)
+; this is 1439.6484375, round up
+
     move.l  sid_extfilt(a0),a0
     bsr     extfilter_output
-    divs.w  #(((4095*255>>7)*3*15*2)/.range),d0
+    divs.w  #1440,d0
 
     * clamp to [-128..127]
     cmp     #.half,d0
@@ -1734,6 +1737,34 @@ sid_output8:
     cmp     #-.half,d0
     bge     .2
     moveq   #-.half,d0
+.2
+    rts
+
+
+* in:
+*   a0 = object
+* out:
+*   d0 = 16-bit output
+* uses: 
+*   d0,a0
+sid_output16:
+.range = 1<<16
+.half  = .range>>1
+    move.l  sid_extfilt(a0),a0
+    bsr     extfilter_output
+    fmove.l d0,fp0
+    fdiv.s  #368550/65536,fp0
+    ;fmul.s  #1/(368550/65536),fp0
+    fmove.l  fp0,d0
+   
+    cmp.l   #.half,d0
+    blt     .1
+    move    #.half-1,d0
+    rts
+.1
+    cmp.l   #-.half,d0
+    bge     .2
+    move    #-.half,d0
 .2
     rts
 
@@ -2040,7 +2071,7 @@ sid_clock:
 
 * in:
 *   a0 = object
-*   a1 = output byte buffer pointer
+*   a1 = output byte buffer pointer: high byte
 *   d0 = cycle_count delta_t, max cycles
 *   d1 = bytes to get
 sid_clock_fast:
@@ -2082,7 +2113,7 @@ sid_clock_fast:
     move.l  a5,a0
     bsr     sid_output8
     * store one byte at d3
-    move.b  d0,(a1,d3.l)
+    move.b  d0,(a1,d3.l) * high byte
     addq.l  #1,d3
     pop     d0
     * All bytes generated?
@@ -2105,6 +2136,76 @@ sid_clock_fast:
     move.l  d3,d0
     rts
 
+
+* in:
+*   a0 = object
+*   a1 = output byte buffer pointer: high byte
+*   a2 = low byte
+*   d0 = cycle_count delta_t, max cycles
+*   d1 = bytes to get
+sid_clock_fast16:
+    move.l  a0,a5
+    * d3 = s
+    moveq   #0,d3
+.loop
+    * d5 = next_sample_offset
+    move.l  sid_sample_offset(a5),d5
+    add.l   sid_cycles_per_sample(a5),d5
+    add.l   #1<<(FIXP_SHIFT-1),d5
+
+    * d2 = delta_t_sample
+    move.l  d5,d2
+    swap    d2
+    ext.l   d2      * >>FIXP_SHIFT
+   
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
+    * buffer overflow check
+    * if (s >= n) 
+    ;cmp.l   d1,d3
+    ;bge     .x     
+
+    pushm   d0-d5/a1/a5
+    move.l  d2,d0
+    move.l  a5,a0
+    bsr     sid_clock
+    popm    d0-d5/a1/a5
+
+    sub.l   d2,d0
+    move.l  d5,d6
+    and.l   #FIXP_MASK,d6
+    sub.l   #1<<(FIXP_SHIFT-1),d6
+    move.l  d6,sid_sample_offset(a5)
+
+    push    d0      * stash delta_t
+    move.l  a5,a0
+    bsr     sid_output16
+    * store one byte at d3
+    move.b  d0,(a2,d3.l) * low byte
+    ror.w   #8,d0
+    move.b  d0,(a1,d3.l) * high byte
+    addq.l  #1,d3
+    pop     d0
+    * All bytes generated?
+    cmp.l   d3,d1
+    beq     .x
+    bra     .loop
+
+.break
+
+    move.l  a5,a0
+    pushm   d0/d3/a5
+    bsr     sid_clock
+    popm    d0/d3/a5
+
+    swap    d0
+    clr.w   d0      * delta_t<<FIXP_SHIFT
+    sub.l   d0,sid_sample_offset(a5)
+.x
+    * bytes written
+    move.l  d3,d0
+    rts
     section reSID_bss,bss_p
 
 Sid         ds.b sid_SIZEOF
