@@ -924,7 +924,7 @@ envelope_clock:
     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
     bne     .notAttack
     addq.b  #1,envelope_counter(a0)
-    and.b   #$ff,envelope_counter(a0)
+    ;and.b   #$ff,envelope_counter(a0) this is a no-op
     cmp.b   #$ff,envelope_counter(a0)
     bne     .break1
     move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
@@ -1180,7 +1180,7 @@ filter_writeMODE_VOL:
 *    d0,d1,a0,fp0
 filter_set_w0:
     move.w  filter_fc(a0),d0
-    fmove.w ([filter_f0.w,a0],d0.w*2),fp0
+    fmove.w ([(filter_f0).w,a0],d0.w*2),fp0
     fmul.s  #2*3.1415926535897932385*1.048576,fp0
     fmove.l fp0,d0
     move.l  d0,filter_w0(a0)
@@ -1903,7 +1903,7 @@ sid_set_sampling_parameters:
 *   a0 = object
 *   d0 = cycle_count delta_t
 * uses:
-*    d0-d7,a0,a1,a2,a5,a6
+*    d0-d7,a0,a1,a2,a3,a5
 sid_clock:
     tst.l   d0
     bgt     .1
@@ -1937,8 +1937,8 @@ sid_clock:
     tst.l   d7
     beq     .loopExit
     
-    * a6 = delta_t_min
-    move.l  d7,a6
+    * a3 = delta_t_min
+    move.l  d7,a3
 
     * cycle checks
     move.l  ([sid_voice1.w,a5],voice_wave.w),a0
@@ -1972,9 +1972,9 @@ sid_clock:
     beq.b   .b
     addq.l  #1,d2
 .b
-    cmp.l   d2,a6
+    cmp.l   d2,a3
     bge     .cx
-    move.l  d2,a6
+    move.l  d2,a3
 .cx    
     rts
 
@@ -1982,15 +1982,15 @@ sid_clock:
 
     ; clock oscillators
     move.l  ([sid_voice1.w,a5],voice_wave.w),a0
-    move.l  a6,d0
+    move.l  a3,d0
     bsr     wave_clock
   
     move.l  ([sid_voice2.w,a5],voice_wave.w),a0
-    move.l  a6,d0
+    move.l  a3,d0
     bsr     wave_clock
   
     move.l  ([sid_voice3.w,a5],voice_wave.w),a0
-    move.l  a6,d0
+    move.l  a3,d0
     bsr     wave_clock
 
     ; synchronize oscillators
@@ -2003,7 +2003,7 @@ sid_clock:
     move.l  ([sid_voice3.w,a5],voice_wave.w),a0
     bsr     wave_synchronize
 
-    sub.l   a6,d7
+    sub.l   a3,d7
     bra     .loop
 
 .loopExit
@@ -2105,7 +2105,7 @@ sid_clock_fast:
     move.l  d3,d0
     rts
 
-    section bss,bss_p
+    section reSID_bss,bss_p
 
 Sid         ds.b sid_SIZEOF
 Voice1      ds.b voice_SIZEOF
@@ -2120,7 +2120,7 @@ Envelope3   ds.b envelope_SIZEOF
 Filter      ds.b filter_SIZEOF
 ExtFilter   ds.b extfilter_SIZEOF
 
-	section	data,data
+	section	reSID_data,data
 
     ; Precalculated filter tables from resid.
     ; labels: filter_f0_6581, filter_f0_8580
