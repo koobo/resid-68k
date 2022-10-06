@@ -483,8 +483,6 @@ wave_clock:
 * uses:
 *   d0,d1,a0,a1,a2
 wave_synchronize:
-    ; this bugs! commenting out will remove enf hits
-
     tst.b   wave_msb_rising(a0)
     beq.b   .x
     move.l  wave_sync_dest(a0),a1
@@ -492,12 +490,11 @@ wave_synchronize:
     beq.b   .x
 
     tst.b   wave_sync(a0)
-    sne     d0
+    beq     .y
     move.l  wave_sync_source(a0),a2
     tst.b   wave_msb_rising(a2)
-    sne     d1
-    and.b   d0,d1
     bne     .x
+.y
     clr.l   wave_accumulator(a1)
 .x
     rts
