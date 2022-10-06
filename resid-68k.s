@@ -1055,6 +1055,14 @@ filter_constructor:
     clr.l   filter_Vlp(a0)
     clr.l   filter_Vnf(a0)
 
+    * Precalc constants for filter_set_w0
+    fmove.s #3.1415926535897932385,fp0  * pi
+    fmove   fp0,fp1
+    fmul.s  #2*16000*1.048576,fp0
+    fmul.s  #2*4000*1.048576,fp1
+    fmove.l fp0,filter_w0_max_1(a0)
+    fmove.l fp1,filter_w0_max_dt(a0)
+
     moveq   #1,d0
     bsr     filter_enable_filter
 
@@ -1169,40 +1177,26 @@ filter_writeMODE_VOL:
 * in:
 *    a0 = object
 * uses:
-*    d0,d1,d2,a0,a1,fp0,fp1
+*    d0,d1,a0,fp0
 filter_set_w0:
-    fmove.s #2*3.1415926535897932385,fp1
- 
-    move.l  filter_f0(a0),a1
     move.w  filter_fc(a0),d0
-    fmove.w (a1,d0.w*2),fp0
-    fmul.s  #1.048576,fp0
-    fmul    fp1,fp0
+    fmove.w ([filter_f0.w,a0],d0.w*2),fp0
+    fmul.s  #2*3.1415926535897932385*1.048576,fp0
     fmove.l fp0,d0
     move.l  d0,filter_w0(a0)
     * d0 = w0
 
-    fmove   fp1,fp0
-    fmul.s  #2*16000*1.048576,fp0
-    fmove.l fp0,d1
-    * d1 = w0_max_1
-
-    ; if w0 <= w0_max_1
     move.l  d0,filter_w0_ceil_1(a0)
-    move.l  d0,filter_w0_ceil_dt(a0)
-
+    move.l  filter_w0_max_1(a0),d1
     cmp.l   d1,d0
     bls.b   .1
     move.l  d1,filter_w0_ceil_1(a0)
 .1
-
-    fmul.s  #2*4000*1.048576,fp1
-    fmove.l fp1,d2
-    * d2 = w0_max_dt
-
-    cmp.l   d2,d0
+    move.l  d0,filter_w0_ceil_dt(a0)
+    move.l  filter_w0_max_dt(a0),d1
+    cmp.l   d1,d0
     bls.b   .2
-    move.l  d2,filter_w0_ceil_dt(a0)
+    move.l  d1,filter_w0_ceil_dt(a0)
 .2
     rts
 

@@ -101,6 +101,8 @@ FIXP_MASK = $ffff
         ULONG   filter_w0_ceil_dt
         ULONG   filter_1024_div_Q
         APTR    filter_f0
+        ULONG   filter_w0_max_1
+        ULONG   filter_w0_max_dt
     LABEL filter_SIZEOF  
 
     STRUCTURE   extfilter,0
