@@ -1570,7 +1570,6 @@ extfilter_clock:
     * a1 = Vi
     move.l  d1,a1
 
-
     move.l  extfilter_w0lp(a0),d3
     asr.l   #5,d3 * mul 8, asr 8
     move.l  extfilter_w0hp(a0),d4
@@ -1590,33 +1589,28 @@ extfilter_clock:
     move.l  extfilter_w0hp(a0),d4
     muls.l  d2,d4
 .2
-    ;move.l  extfilter_Vlp(a0),d7
-    ;sub.l   extfilter_Vhp(a0),d7
+    ; d7 = Vi - Vlp
     move.l  d6,d7
     sub.l   d5,d7
 
-    * Vo = Vlp - Vhp
-    ;move.l  d7,exfilter_Vo(a0)
-    move.l  d5,a2
+    * a2 = Vo = Vlp - Vhp
+    move.l  d7,a2
 
-    * dVhp
+    * d7 = dVhp
     muls.l  d4,d7
     swap    d7
     asr.w   #4,d7
     ext.l   d7
     * Vhp += dVhp
-    ;add.l   d7,extfilter_Vhp(a0)
     add.l   d7,d5
 
     * dVlp
     move.l  a1,d7
-    ;sub.l   extfilter_Vlp(a0),d7
     sub.l   d6,d7
     muls.l  d3,d7
     asr.l   #8,d7
     asr.l   #4,d7
     * Vlp += dVlp
-    ;add.l   d7,extfilter_Vlp(a0)
     add.l   d7,d6
 
     sub.l   d2,d0
