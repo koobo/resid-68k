@@ -53,7 +53,7 @@ sid_main:
     move.l  #100000,d0  * cycles (upper limit)
  ;   move.l  #1000,d1 * buffer limit
     move.l  #1000,d1   * get this many bytes
-    jsr     sid_clock_fast
+    jsr     sid_clock_fast8
 .overflow
     rts
 
@@ -235,7 +235,7 @@ sid_main:
     move.l  #100000,d0  * cycles (upper limit)
  ;   move.l  #1000,d1 * buffer limit
 ;    move.l  #1000,d1   * get this many bytes
-    jsr     sid_clock_fast
+    jsr     sid_clock_fast8
     rts
 
 output	ds.b	1000
