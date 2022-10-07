@@ -2208,11 +2208,11 @@ sid_clock_fast14:
     ;cmp.l   d1,d3
     ;bge     .x     
 
-    pushm   d0-d5/a1/a5
+    pushm   d0-d5/a1/a2/a5
     move.l  d2,d0
     move.l  a5,a0
     bsr     sid_clock
-    popm    d0-d5/a1/a5
+    popm    d0-d5/a1/a2/a5
 
     sub.l   d2,d0
     move.l  d5,d6
