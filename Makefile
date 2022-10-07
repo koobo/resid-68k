@@ -2,16 +2,12 @@ INCLUDE = -I$(HOME)/A/Asm/Include
 VASM ?= vasmm68k_mot
 VASM_FLAGS := -Fhunkexe -kick1hunks -quiet -m68030 -m68881 -nosym $(INCLUDE)
 
-SOURCE   := resid-test.s resid-68k.s
-INCLUDES := resid-68k.i
-TARGET   := main
+RESID    := resid-68k.i resid-68k.s
 
-.PHONY: all clean
+all: testAudio testCycles
 
-all: $(TARGET)
+testAudio: testAudio.s $(RESID)
+	$(VASM) $< -o $@  $(VASM_FLAGS)
 
-clean:
-	rm $(TARGET)
-
-$(TARGET) : $(SOURCE) $(INCLUDES) Makefile
+testCycles: testCycles.s $(RESID)
 	$(VASM) $< -o $@  $(VASM_FLAGS)

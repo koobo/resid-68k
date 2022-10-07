@@ -17,8 +17,6 @@
 ;  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 ;  ---------------------------------------------------------------------------
 
-
-
            IFND       RESID68K_I
 RESID68K_I  SET        1
 
@@ -130,30 +128,6 @@ FIXP_MASK = $ffff
         ULONG   sid_sample_offset
         ULONG   sid_sample_index
     LABEL sid_SIZEOF  
-
-pushm  macro
-       ifc        "\1","all"
-       movem.l    d0-a6,-(sp)
-       else
-       movem.l    \1,-(sp)
-       endc
-       endm
-
-popm   macro
-       ifc        "\1","all"
-       movem.l    (sp)+,d0-a6
-       else
-       movem.l    (sp)+,\1
-       endc
-       endm
-
-push   macro
-       move.l     \1,-(sp)
-       endm
-
-pop    macro
-       move.l     (sp)+,\1
-       endm
 
            ENDIF
 

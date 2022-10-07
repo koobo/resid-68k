@@ -48,18 +48,15 @@ main:
 
 
     bsr     createReSIDWorkerTask
- 
-  ;  move    #1*50,d7
-  ;  bsr     wait
-    
- ;    bra      .skip
- ;   bra     workerEntry
 
-  ;  bsr     playDump  
-  ;  move    #1*50,d7
-  ;  bsr     wait
-  ;  bra     .skip
+;;;;;;; DUMP TEST
 
+;    bsr     playDump  
+;    move    #1*50,d7
+;    bsr     wait
+;    bra     .skip
+
+;;;;;;;; POKE TEST
     moveq   #7*2,d7
     bsr     pokeSound
 
@@ -189,25 +186,40 @@ workerEntry
 
     move.w  #INTF_AUD0,intena+$dff000
     move.w  #INTF_AUD0,intreq+$dff000
-    move.w  #DMAF_AUD0!DMAF_AUD1,dmacon+$dff000
+    move.w  #DMAF_AUD0!DMAF_AUD1!DMAF_AUD2!DMAF_AUD3,dmacon+$dff000
 
+    * CH0 = high 8 bits - full volume
+    * CH3 = low 6 bits  - volume 1
+    * CH1 = high 8 bits - full volume
+    * CH2 = low 6 bits  - volume 1
     move    #PAULA_PERIOD,$a6+$dff000
     move    #PAULA_PERIOD,$b6+$dff000
+    move    #PAULA_PERIOD,$c6+$dff000
+    move    #PAULA_PERIOD,$d6+$dff000
     ; TODO: hook up vol control
     move    #64,$a8+$dff000
+    move    #1,$d8+$dff000
     move    #64,$b8+$dff000
+    move    #1,$c8+$dff000
 
-    lea     buffer1,a2
-    lea     buffer2,a3
-    move.l  a2,$a0+$dff000 
-    move.l  a2,$b0+$dff000 
+
+;    lea     buffer1,a2
+;    lea     buffer2,a3
+    movem.l outBuffer1(pc),d0/d1
+    move.l  d0,$a0+$dff000 
+    move.l  d1,$d0+$dff000 
+    move.l  d0,$b0+$dff000 
+    move.l  d1,$c0+$dff000 
 
     bsr     fillBufferA2
     move    d0,$a4+$dff000   * words
+    move    d0,$d4+$dff000   * words
     move    d0,$b4+$dff000   * words
+    move    d0,$c4+$dff000   * words
 
     bsr     dmawait
-    move    #DMAF_SETCLR!DMAF_AUD0!DMAF_AUD1,dmacon+$dff000
+;    move    #DMAF_SETCLR!DMAF_AUD0!DMAF_AUD1!DMAF_AUD2!DMAF_AUD3,dmacon+$dff000
+    move    #DMAF_SETCLR!DMAF_AUD0,dmacon+$dff000
     move.w  #INTF_SETCLR!INTF_AUD0,intena+$dff000
 
     ; buffer A now plays
@@ -232,22 +244,16 @@ workerEntry
     tst.b   workerStatus
     bmi.b   .x
 
-    move    .bob,$dff180
-    not	    .bob
-
-    * Switch buffers and fill
-    exg     a2,a3
-    move.l  a2,$a0+$dff000 
-    move.l  a2,$b0+$dff000 
-    bsr     fillBufferA2
-    move    d0,$a4+$dff000   * words
-    move    d0,$b4+$dff000   * words
+    bsr     reSIDLevel1Handler
 
     bra     .loop
 .x
+
+    move.w  #DMAF_AUD0!DMAF_AUD1!DMAF_AUD2!DMAF_AUD3,dmacon+$dff000
     move.w  #INTF_AUD0,intena+$dff000
-    move.w  #INTF_AUD0,intena+$dff000
-    moveq	#INTB_AUD0,d0
+    move.w  #INTF_AUD0,intreq+$dff000
+
+    moveq   #INTB_AUD0,d0
     move.l  .oldVecAud0(pc),a1
     move.l  4.w,a6
     jsr     _LVOSetIntVector(a6)
@@ -264,23 +270,32 @@ workerEntry
 
 .oldVecAud0     dc.l    0
 
-.bob dc.w   $f0f
-
     ;0  = not running
     ;1  = running
     ;-1 = exiting
 workerStatus        dc.b    0
     even
 
+outBuffer1   dc.l    buffer1
+outBuffer1b  dc.l    buffer1b
+outBuffer2   dc.l    buffer2
+outBuffer2b  dc.l    buffer2b
+
+switchBuffers:
+    movem.l outBuffer1(pc),d0/d1
+    movem.l outBuffer2(pc),d2/d3
+    movem.l d0/d1,outBuffer2
+    movem.l d2/d3,outBuffer1
+    rts
+
 fillBufferA2:
     lea     Sid,a0
-    move.l  a2,a1           * target buffer
+    ;move.l  a2,a1           * target buffer
+    movem.l outBuffer1(pc),a1/a2
     move.l  #100000,d0      * cycle limit, set high enough
     * bytes to get
     move.l  #SAMPLES_PER_HALF_FRAME,d1
-    movem.l a2/a3,-(sp)
-    jsr     sid_clock_fast
-    movem.l (sp)+,a2/a3
+    jsr     sid_clock_fast8
     * d0 = bytes received, make words
     lsr     #1,d0
     rts
@@ -310,6 +325,17 @@ reSIDLevel4Name1
     dc.b    "reSID Audio",0
     even
 
+reSIDLevel1Intr
+      	dc.l	0		; Player (Software)
+		dc.l	0
+		dc.b	2
+		dc.b	0
+		dc.l    reSIDLevel4Name1
+PlayIntrPSB	dc.l	0
+		dc.l	reSIDLevel1Handler
+
+
+
 * a0 = custom base
 * a1 = is_data = task
 * a6 = execbase
@@ -319,6 +345,35 @@ reSIDLevel4Handler1
     moveq   #0,d0
     bset    d1,d0
     jmp     _LVOSignal(a6)
+    ;lea     reSIDLevel1Intr(pc),a1
+    ;jmp     _LVOCause(a6)
+
+reSIDLevel1Handler
+    movem.l d2-d7/a2-a4,-(sp)
+    move    .bob,$dff180
+    not	    .bob
+
+    * Switch buffers and fill
+    bsr     switchBuffers
+    movem.l outBuffer1(pc),d0/d1
+    move.l  d0,$a0+$dff000 
+    move.l  d1,$d0+$dff000 
+    move.l  d0,$b0+$dff000 
+    move.l  d1,$c0+$dff000 
+
+    bsr     fillBufferA2
+    move    d0,$a4+$dff000   * words
+    move    d0,$d4+$dff000   * words
+    move    d0,$b4+$dff000   * words
+    move    d0,$c4+$dff000   * words
+
+    movem.l (sp)+,d2-d7/a2-a4
+    moveq   #0,d0
+    rts
+
+
+.bob dc.w   $f0f
+
     
 reSIDAudioSignal    dc.b    0
 reSIDExitSignal    dc.b    0
@@ -433,7 +488,7 @@ pokeSound
     * 5: sawtooth
     * 6: pulse
     * 7: noise
-    move.b  #1<<6+1,d0
+    move.b  #1<<6+1<<4+1,d0
     move.b  #4,d1
     lea     Sid,a0
     add.b   d7,d1
@@ -452,10 +507,14 @@ pokeRelease
 
 
 playDump
-    lea     regDump+$b0,a5
+    lea     regDump+$000,a5
     lea     regDumpEnd,a6
+
+    * vblank timer
     moveq   #0,d7
+
 .loop
+    move    #$f00,$dff180
     bsr     delay
     btst    #6,$bfe001
     beq     .x
@@ -475,6 +534,16 @@ playDump
     bra     .a
 
 .s
+;    movem.l d0-a6,-(sp)
+;    lea     Sid,a0
+;    movem.l outBuffer1(pc),a1/a2
+;    move.l  #100000,d0      * cycle limit, set high enough
+;    * bytes to get
+;    move.l  #10,d1
+;    jsr     sid_clock_fast8
+;    * d0 = bytes received, make words
+;    movem.l (sp)+,d0-a6
+
     addq.l  #1,d7
     cmp.l   a6,a5
     blo     .loop
@@ -487,8 +556,7 @@ DOSName     dc.b    "dos.library",0
     even
 
 regDump
-    * Actual start at $b0
-    incbin  oceanloader3.dump
+    incbin  clubstyle.regdump2
 regDumpEnd
 
     include "resid-68k.s"
@@ -503,4 +571,6 @@ workerTaskStruct    ds.b    TC_SIZE
 
 buffer1  ds.b	10000
 buffer2  ds.b	10000
+buffer1b  ds.b	10000
+buffer2b  ds.b	10000
 
