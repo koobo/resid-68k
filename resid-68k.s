@@ -1221,7 +1221,7 @@ filter_set_Q:
 *    d3 = voice3 sample
 *    d4 = ext_in sample
 * uses:
-*    d0-d5,a0
+*    d0-d7,a0
 filter_clock:
     lsr.l   #7,d1
     lsr.l   #7,d2
@@ -1251,9 +1251,13 @@ filter_clock:
 .3
     moveq   #0,d5
     move.b  filter_filt(a0),d5
-    move.w  .tab(pc,d5.w*2),d5
-    jmp     .tab(pc,d5)
-    
+    ;move.w  .tab(pc,d5.w*2),d5
+    ;jmp     .tab(pc,d5)
+    ; AsmOne for some reason bugs with the above code, use below instead
+    lea     .tab(pc),a1
+    add.w   (a1,d5.w*2),a1
+    jmp     (a1)
+
 .tab    
     dc.w    .f0-.tab
     dc.w    .f1-.tab
@@ -1377,41 +1381,58 @@ filter_clock:
     * d0 = delta_t
     * d1 = delta_t_flt
 
+    * w0_delta_t is dependent on delta_t_flt
+    * calc initial value with delta_t_flt=8
+    move.l  filter_w0_ceil_dt(a0),d2
+    asr.l   #3,d2 ; mul #8, asr #6
+
+    move.l  filter_Vhp(a0),d3
+    move.l  filter_Vbp(a0),d4
+    move.l  filter_Vlp(a0),d6
+    move.l  filter_1024_div_Q(a0),a1
+
 .loop
-    tst.l   d0
-    beq     .x
     cmp.l   d1,d0
     bhs.b   .4
     move.l  d0,d1
-.4
-    * d2,d3 = w0_delta_t
+    * delta_t_flt changed, update w0_delta_t
     move.l  filter_w0_ceil_dt(a0),d2
     muls.l  d1,d2
     asr.l   #6,d2
-    move.l  d2,d3
+.4  
+    * dVlp
+    move.l  d4,d7
+    muls.l  d2,d7
+    asr.l   #8,d7
+    asr.l   #6,d7
+    * Vlp -= dVlp
+    sub.l   d7,d6
+ 
+    * dVbp
+    move.l  d3,d7
+    muls.l  d2,d7
+    asr.l   #8,d7
+    asr.l   #6,d7
+    * Vbp -= dVbp
+    sub.l   d7,d4
 
-    muls.l  filter_Vhp(a0),d2
-    asr.l   #8,d2
-    asr.l   #6,d2
-    sub.l   d2,filter_Vbp(a0)
-
-    muls.l  filter_Vbp(a0),d3
+    * Vhp  
+    move.l  a1,d3
+    muls.l  d4,d3
     asr.l   #8,d3
-    asr.l   #6,d3
-    sub.l   d3,filter_Vlp(a0)
+    asr.l   #2,d3
 
-    move.l  filter_Vbp(a0),d2
-    muls.l  filter_1024_div_Q(a0),d2
-    asr.l   #8,d2
-    asr.l   #2,d2
-
-    sub.l   filter_Vlp(a0),d2
-    sub.l   d5,d2
-    move.l  d2,filter_Vhp(a0)
-
+    sub.l   d6,d3
+    sub.l   d5,d3
+   
+    * delta_t -= delta_t_flt
     sub.l   d1,d0
-    bra     .loop
+    bne     .loop
 .x
+    move.l  d3,filter_Vhp(a0)
+    move.l  d4,filter_Vbp(a0)
+    move.l  d6,filter_Vlp(a0)
+
     rts
 
 * in:
