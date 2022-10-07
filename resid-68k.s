@@ -1555,7 +1555,7 @@ extfilter_set_chip_model
 *   d0 = cycle_count delta_t
 *   d1 = sample Vi
 * uses:
-*   d0-d5,a0
+*   d0-d7,a0,a1,a2
 extfilter_clock:
     tst.b   extfilter_enabled(a0)
     bne     .1
@@ -1567,45 +1567,64 @@ extfilter_clock:
 .1
     * d2 = delta_t_flt
     moveq   #8,d2
-    * d6 = Vi
-    move.l  d1,d6
+    * a1 = Vi
+    move.l  d1,a1
+
+
+    move.l  extfilter_w0lp(a0),d3
+    asr.l   #5,d3 * mul 8, asr 8
+    move.l  extfilter_w0hp(a0),d4
+    asl.l   #3,d4 * mul 8
+
+    move.l  extfilter_Vlp(a0),d6
+    move.l  extfilter_Vhp(a0),d5
+    
 .loop
-    tst.l   d0
-    beq     .x
     cmp.l   d2,d0
     bhs.b   .2
     move.l  d0,d2
-.2
-    move.l  d6,d1
-    sub.l   extfilter_Vlp(a0),d1 * Vi-Vlp
+    * delta_t_flt changed
     move.l  extfilter_w0lp(a0),d3
     muls.l  d2,d3
     asr.l   #8,d3
-    muls.l  d1,d3
-    asr.l   #8,d3
-    asr.l   #4,d3
-    * d3 = dVlp
-
     move.l  extfilter_w0hp(a0),d4
     muls.l  d2,d4
-    move.l  extfilter_Vlp(a0),d5
-    sub.l   extfilter_Vhp(a0),d5
-    muls.l  d5,d4
-    swap    d4
-    asr.w   #4,d4
-    ext.l   d4
-    * d4 = dVhp
+.2
+    ;move.l  extfilter_Vlp(a0),d7
+    ;sub.l   extfilter_Vhp(a0),d7
+    move.l  d6,d7
+    sub.l   d5,d7
 
-    move.l  extfilter_Vlp(a0),d5
-    sub.l   extfilter_Vhp(a0),d5
-    move.l  d5,extfilter_Vo(a0)
+    * Vo = Vlp - Vhp
+    ;move.l  d7,exfilter_Vo(a0)
+    move.l  d5,a2
 
-    add.l   d3,extfilter_Vlp(a0)
-    add.l   d4,extfilter_Vhp(a0)
+    * dVhp
+    muls.l  d4,d7
+    swap    d7
+    asr.w   #4,d7
+    ext.l   d7
+    * Vhp += dVhp
+    ;add.l   d7,extfilter_Vhp(a0)
+    add.l   d7,d5
+
+    * dVlp
+    move.l  a1,d7
+    ;sub.l   extfilter_Vlp(a0),d7
+    sub.l   d6,d7
+    muls.l  d3,d7
+    asr.l   #8,d7
+    asr.l   #4,d7
+    * Vlp += dVlp
+    ;add.l   d7,extfilter_Vlp(a0)
+    add.l   d7,d6
 
     sub.l   d2,d0
-    bra     .loop
+    bne     .loop
 .x
+    move.l  a2,extfilter_Vo(a0)
+    move.l  d6,extfilter_Vlp(a0)
+    move.l  d5,extfilter_Vhp(a0)
     rts
 
 * in:
