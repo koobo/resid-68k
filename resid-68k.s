@@ -2007,7 +2007,9 @@ sid_clock:
     * a3 = delta_t_min
     move.l  d7,a3
 
-    * cycle checks
+    ; Find minimum number of cycles to an oscillator accumulator MSB toggle.
+    ; We have to clock on each MSB on / MSB off for hard sync to operate
+    ; correctly.
     move.l  ([sid_voice1.w,a5],voice_wave.w),a0
     bsr     .cycleCheck
     move.l  ([sid_voice2.w,a5],voice_wave.w),a0
@@ -2017,6 +2019,8 @@ sid_clock:
     bra     .continue
 
 .cycleCheck
+    ; It is only necessary to clock on the MSB of an oscillator that is
+    ; a sync source and has freq != 0.
     tst.w   wave_freq(a0)
     beq     .cx
     move.l  wave_sync_dest(a0),a1
@@ -2039,10 +2043,10 @@ sid_clock:
     beq.b   .b
     addq.l  #1,d2
 .b
-    cmp.l   d2,a3
+    cmp.l   a3,d2
     bge     .cx
     move.l  d2,a3
-.cx    
+.cx
     rts
 
 .continue
