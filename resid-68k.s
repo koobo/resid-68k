@@ -1750,13 +1750,15 @@ sid_output8:
 sid_output16:
 .range = 1<<16
 .half  = .range>>1
+; Divisor is 5.623626708984375
+; *64 = 360
+; do small fixed point calc
+
     move.l  sid_extfilt(a0),a0
     bsr     extfilter_output
-    fmove.l d0,fp0
-    fdiv.s  #368550/65536,fp0
-    ;fmul.s  #1/(368550/65536),fp0
-    fmove.l  fp0,d0
-   
+    asl.l   #6,d0
+    divs.l  #360,d0
+
     cmp.l   #.half,d0
     blt     .1
     move    #.half-1,d0
@@ -2052,29 +2054,30 @@ sid_clock:
     popm    d2/d3
     moveq   #0,d4   * ext_in
 
-    pop     d7      * restore delta_t
+    move.l  (sp),d7      * restore delta_t
     move.l  d7,d0
     move.l  sid_filter(a5),a0
-    bsr     filter_clock
+    bsr     filter_clock * destroys d7
 
     move.l  sid_filter(a5),a0
     bsr     filter_output
 
     ; Clock external filter
     move.l  d0,d1
-    move.l  d7,d0
+    pop     d0          * restore delta_t
     move.l  sid_extfilt(a5),a0
     bsr     extfilter_clock
 
     rts
 
 
+* Clock and get 8-bit output
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer: high byte
 *   d0 = cycle_count delta_t, max cycles
 *   d1 = bytes to get
-sid_clock_fast:
+sid_clock_fast8:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
@@ -2137,13 +2140,14 @@ sid_clock_fast:
     rts
 
 
+* Clock and get 14-bit output
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer: high byte
 *   a2 = low byte
 *   d0 = cycle_count delta_t, max cycles
 *   d1 = bytes to get
-sid_clock_fast16:
+sid_clock_fast14:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
@@ -2181,11 +2185,15 @@ sid_clock_fast16:
     push    d0      * stash delta_t
     move.l  a5,a0
     bsr     sid_output16
-    * store one byte at d3
-    move.b  d0,(a2,d3.l) * low byte
+  
+    * store low 6 bits
+    lsr.b   #2,d0
+    move.b  d0,(a2,d3.l) 
     ror.w   #8,d0
-    move.b  d0,(a1,d3.l) * high byte
+    * store high 8 bits
+    move.b  d0,(a1,d3.l)
     addq.l  #1,d3
+  
     pop     d0
     * All bytes generated?
     cmp.l   d3,d1
