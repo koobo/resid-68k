@@ -1073,7 +1073,7 @@ filter_set_Q:
 *    d3 = voice3 sample
 *    d4 = ext_in sample
 * uses:
-*    d0-d7,a0
+*    d0-d7,a0,a1,a2
 filter_clock:
     lsr.l   #7,d1
     lsr.l   #7,d2
@@ -1238,6 +1238,8 @@ filter_clock:
     move.l  filter_Vbp(a0),d4
     move.l  filter_Vlp(a0),d6
     move.l  filter_1024_div_Q(a0),a1
+    move.l  d5,a2
+    moveq   #14,d5 * shift
 
 .loop
     cmp.l   d1,d0
@@ -1251,16 +1253,18 @@ filter_clock:
     * dVlp
     move.l  d4,d7
     muls.l  d2,d7
-    asr.l   #8,d7
-    asr.l   #6,d7
+    ;asr.l   #8,d7
+    ;asr.l   #6,d7
+    asr.l   d5,d7
     * Vlp -= dVlp
     sub.l   d7,d6
  
     * dVbp
     move.l  d3,d7
     muls.l  d2,d7
-    asr.l   #8,d7
-    asr.l   #6,d7
+    ;asr.l   #8,d7
+    ;asr.l   #6,d7
+    asr.l   d5,d7
     * Vbp -= dVbp
     sub.l   d7,d4
 
@@ -1271,8 +1275,9 @@ filter_clock:
     asr.l   #2,d3
 
     sub.l   d6,d3
-    sub.l   d5,d3
-   
+    ;sub.l   d5,d3
+    sub.l    a2,d3
+
     * delta_t -= delta_t_flt
     sub.l   d1,d0
     bne     .loop
