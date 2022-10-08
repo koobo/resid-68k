@@ -958,7 +958,7 @@ filter_writeFC_HI:
 *    a0 = object
 *    d0 = res_filt
 * uses:
-*    d0,d1,a0,fp0
+*    d0,d1,a0
 filter_writeRES_FILT:
     move.b  d0,d1
     lsr.b   #4,d1
@@ -988,12 +988,27 @@ filter_writeMODE_VOL:
 * in:
 *    a0 = object
 * uses:
-*    d0,d1,a0,fp0
+*    d0,d1,a0
 filter_set_w0:
+
+    * constant: #2*3.1415926535897932385*1.048576 
+    *           = 6.58839731666114206971
+    * f0 table max value is 18000
+    * constant << 15: 215889
+
+    ;move.w  filter_fc(a0),d0
+    ;fmove.w ([(filter_f0).w,a0],d0.w*2),fp0
+    ;fmul.s  #2*3.1415926535897932385*1.048576,fp0
+    ;fmove.l fp0,d0
+
+    ; Use fixed point 
+    moveq   #0,d0
     move.w  filter_fc(a0),d0
-    fmove.w ([(filter_f0).w,a0],d0.w*2),fp0
-    fmul.s  #2*3.1415926535897932385*1.048576,fp0
-    fmove.l fp0,d0
+    move.w  ([(filter_f0).w,a0],d0.w*2),d0
+    mulu.l  #215889,d0
+    lsr.l   #8,d0
+    lsr.l   #7,d0
+      
     move.l  d0,filter_w0(a0)
     * d0 = w0
 
@@ -1011,17 +1026,43 @@ filter_set_w0:
 .2
     rts
 
-    
 * in:
 *    a0 = object
+* uses:
+*    a0,d0
 filter_set_Q:
-    fmove.b filter_res(a0),fp0
-    fdiv.w  #$f,fp0
-    fadd.s  #0.707,fp0
-    fmove.s #1024,fp1
-    fdiv    fp0,fp1
-    fmove.l fp1,filter_1024_div_Q(a0)
+;    fmove.b filter_res(a0),fp0
+;    fdiv.w  #$f,fp0
+;    fadd.s  #0.707,fp0
+;    fmove.s #1024,fp1
+;    fdiv    fp0,fp1
+;    fmove.l fp1,filter_1024_div_Q(a0)
+
+    ; Use a lookup table instead
+    moveq   #0,d0
+    move.b  filter_res(a0),d0
+    move.l  .tab(pc,d0.w*4),filter_1024_div_Q(a0)
     rts
+
+    ; Precalculated values for each resonance parameter
+.tab
+    dc.l    $5a8
+    dc.l    $52c
+    dc.l    $4c3
+    dc.l    $469
+    dc.l    $41c
+    dc.l    $3d8
+    dc.l    $39d
+    dc.l    $368
+    dc.l    $33a
+    dc.l    $30f
+    dc.l    $2e9
+    dc.l    $2c7
+    dc.l    $2a7
+    dc.l    $28b
+    dc.l    $270
+    dc.l    $258
+
 
 
 * in:
@@ -1763,16 +1804,24 @@ sid_set_sampling_parameters:
 
     move.l  d0,sid_clock_frequency(a0)
     move.b  d1,sid_sampling_method(a0)
-
-    fmove.l d0,fp0
-    fdiv.l  d2,fp0      
-    move.l  #1<<FIXP_SHIFT,d3
-    fmul.l  d3,fp0
-    fadd.s  #0.5,fp0
-    fmove.l fp0,sid_cycles_per_sample(a0)
-
     clr.l   sid_sample_offset(a0)
-  
+    
+    ; Calculate cycles per sample as a fixed point value
+
+    ;cycles_per_sample = clock_freq / sample_freq * (1 << FIXP_SHIFT) + 0.5);
+    ;fmove.l d0,fp0
+    ;fdiv.l  d2,fp0      
+    ;move.l  #1<<FIXP_SHIFT,d3
+    ;fmul.l  d3,fp0
+    ;fadd.s  #0.5,fp0
+    ;fmove.l fp0,sid_cycles_per_sample(a0)
+   
+    mulu.l  #(1<<FIXP_SHIFT)*10,d1:d0    
+    divu.l  d2,d1:d0
+    addq.l  #5,d0
+    divu.l  #10,d0
+    move.l  d0,sid_cycles_per_sample(a0)
+
     moveq   #1,d0
     rts
 .fail
