@@ -1041,7 +1041,7 @@ filter_set_Q:
     ; Use a lookup table instead
     moveq   #0,d0
     move.b  filter_res(a0),d0
-    move.l  .tab(pc,d0.w*4),filter_1024_div_Q(a0)
+    move.l  (.tab,pc,d0.w*4),filter_1024_div_Q(a0)
     rts
 
     ; Precalculated values for each resonance parameter
@@ -1103,12 +1103,8 @@ filter_clock:
 .3
     moveq   #0,d5
     move.b  filter_filt(a0),d5
-    ;move.w  .tab(pc,d5.w*2),d5
-    ;jmp     .tab(pc,d5)
-    ; AsmOne for some reason bugs with the above code, use below instead
-    lea     .tab(pc),a1
-    add.w   (a1,d5.w*2),a1
-    jmp     (a1)
+    move.w  (.tab,pc,d5.w*2),d5
+    jmp     .tab(pc,d5)
 
 .tab    
     dc.w    .f0-.tab
