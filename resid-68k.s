@@ -863,13 +863,17 @@ filter_constructor:
     clr.l   filter_Vnf(a0)
 
     * Precalc constants for filter_set_w0
-    fmove.s #3.1415926535897932385,fp0  * pi
-    fmove   fp0,fp1
-    fmul.s  #2*16000*1.048576,fp0
-    fmul.s  #2*4000*1.048576,fp1
-    fmove.l fp0,filter_w0_max_1(a0)
-    fmove.l fp1,filter_w0_max_dt(a0)
-
+    ;fmove.s #3.1415926535897932385,fp0  * pi
+    ;fmove   fp0,fp1
+    ;fmul.s  #2*16000*1.048576,fp0
+    ;fmul.s  #2*4000*1.048576,fp1
+    ;fmove.l fp0,filter_w0_max_1(a0)
+    ;fmove.l fp1,filter_w0_max_dt(a0)
+    ; w0_max_1:  105414.35706657827311530803
+    ; w0_max_dt:  26353.58926664456827882701
+    move.l  #105414,filter_w0_max_1(a0)
+    move.l  #26354,filter_w0_max_dt(a0)
+  
     moveq   #1,d0
     bsr     filter_enable_filter
 
