@@ -1633,16 +1633,15 @@ sid_output16:
 .range = 1<<16
 .half  = .range>>1
 ; Divisor is 5.623626708984375
-; *64 = 360
-; do small fixed point calc
+; Inverse with shift (1/5.623626708984375)*512 = 91.04
 
     move.l  sid_extfilt(a0),a0
     ;extfilter_output inlined
     move.l  extfilter_Vo(a0),d0
-
-    asl.l   #6,d0
-    divs.l  #360,d0
-
+    muls.l  #91,d0
+    asr.l   #8,d0
+    asr.l   #1,d0
+    
     cmp.l   #.half,d0
     blt     .1
     move    #.half-1,d0
