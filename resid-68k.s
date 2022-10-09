@@ -1075,20 +1075,18 @@ filter_set_Q:
 * uses:
 *    d0-d7,a0,a1,a2
 filter_clock:
-    lsr.l   #7,d1
-    lsr.l   #7,d2
-    lsr.l   #7,d4
+    asr.l   #7,d1
+    asr.l   #7,d2
+    asr.l   #7,d3
+    asr.l   #7,d4
 
     tst.b   filter_voice3off(a0)
     beq.b   .1
-    moveq   #4,d5
+    moveq   #$4,d5
     and.b   filter_filt(a0),d5
     bne.b   .1
     clr.l   d3
-    bra     .2
 .1
-    lsr.l   #7,d3
-.2
 
     tst.b   filter_enabled(a0)
     bne.b   .3
@@ -1573,10 +1571,10 @@ sid_set_chip_model:
     bsr     voice_set_chip_model
     move.l  sid_voice3(a5),a0
     bsr     voice_set_chip_model
-    move.l  sid_filter(a5),a0
-    bsr     filter_set_chip_model
     move.l  sid_extfilt(a5),a0
     bsr     extfilter_set_chip_model
+    move.l  sid_filter(a5),a0
+    bsr     filter_set_chip_model   * destroys d0
     rts
 
 * in:
