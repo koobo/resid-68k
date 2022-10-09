@@ -232,8 +232,8 @@ workerEntry
     ; fill A
     ; ... etc
 
-    move.l  4.w,a6
 .loop
+    move.l  4.w,a6
     moveq   #0,d0
     move.b  reSIDAudioSignal(pc),d1
     bset    d1,d0
