@@ -2134,6 +2134,134 @@ sid_clock_fast14:
     rts
 
 
+
+
+sid_clock_fast8_oversample:
+    move.l  a0,a5
+    * d3 = s
+    moveq   #0,d3
+    move.l  sid_sample_offset(a5),d5
+    
+    move.l  sid_sample_offset(a5),a4
+    move.l  sid_cycles_per_sample(a5),a6
+.loop
+ 
+    * d5 = next_sample_offset
+    ;move.l  sid_sample_offset(a5),d5
+    ;add.l   sid_cycles_per_sample(a5),d5
+    move.l  a4,d5
+    add.l   a6,d5
+    add.l   #1<<(FIXP_SHIFT-1),d5
+
+    * d2 = delta_t_sample
+    move.l  d5,d2
+    swap    d2
+    ext.l   d2      * >>FIXP_SHIFT
+   
+    pushm   d0-d5/a1/a5
+    move.l  d2,d0
+    move.l  a5,a0
+    bsr     sid_clock
+    popm    d0-d5/a1/a5
+
+    sub.l   d2,d0
+    move.l  d5,d6
+    and.l   #FIXP_MASK,d6
+    sub.l   #1<<(FIXP_SHIFT-1),d6
+    move.l  d6,a4
+
+    ;move.l  a5,a0
+    ;bsr     sid_output16
+    move.l  sid_extfilt(a5),a0
+    move.l  extfilter_Vo(a0),d4  * 1st subsample
+
+
+
+
+
+
+ 
+    * d5 = next_sample_offset
+    ;move.l  sid_sample_offset(a5),d5
+    ;add.l   sid_cycles_per_sample(a5),d5
+    move.l  a4,d5
+    add.l   a6,d5
+    add.l   #1<<(FIXP_SHIFT-1),d5
+
+    * d2 = delta_t_sample
+    move.l  d5,d2
+    swap    d2
+    ext.l   d2      * >>FIXP_SHIFT
+   
+    pushm   d0-d5/a1/a5
+    move.l  d2,d0
+    move.l  a5,a0
+    bsr     sid_clock
+    popm    d0-d5/a1/a5
+
+    sub.l   d2,d0
+    move.l  d5,d6
+    and.l   #FIXP_MASK,d6
+    sub.l   #1<<(FIXP_SHIFT-1),d6
+    move.l  d6,a4
+
+    move.l  a5,a0
+    
+.range = 1<<16
+.half  = .range>>1
+    move.l  sid_extfilt(a5),a0
+    add.l   extfilter_Vo(a0),d4     * Add 2nd subsample
+    asr.l   #1,d4       * average
+    
+    muls.l  #91,d4
+    ; fp shift
+    asr.l   #8,d4
+    asr.l   #1,d4
+    
+    cmp.w   #.half,d0
+    blt     .1
+    move    #.half-1,d0
+    bra     .2
+.1
+    cmp.w   #-.half,d0
+    bge     .2
+    move    #-.half,d0
+.2
+
+
+    ; 16->8 bit
+    asr.l   #8,d4
+
+    move.b  d4,(a1,d3.l)    * chip write
+    addq.l  #1,d3
+
+    * All bytes generated?
+    cmp.l   d3,d1
+    bne     .loop
+
+
+
+;    bra     .x
+;
+;.break
+;
+;    move.l  a5,a0
+;    pushm   d0/d3/a5
+;    bsr     sid_clock
+;    popm    d0/d3/a5
+;
+;    swap    d0
+;    clr.w   d0      * delta_t<<FIXP_SHIFT
+;    sub.l   d0,sid_sample_offset(a5)
+;.x
+
+    move.l  a4,sid_sample_offset(a5)
+  
+    * bytes written
+    move.l  d3,d0
+    rts
+
+
 * Clock and get 8-bit output
 * in:
 *   a0 = object
