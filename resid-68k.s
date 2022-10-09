@@ -1142,10 +1142,10 @@ filter_clock:
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f3
-    move.l  d2,d5
-    add.l   d4,d1
-    add.l   d3,d1
-    move.l  d1,filter_Vnf(a0)
+    move.l  d1,d5
+    add.l   d2,d5
+    add.l   d3,d4
+    move.l  d4,filter_Vnf(a0)
     bra     .break
 .f4
     move.l  d3,d5
