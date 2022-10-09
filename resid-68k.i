@@ -126,6 +126,7 @@ FIXP_MASK = $ffff
         ULONG   sid_clock_frequency
         ULONG   sid_cycles_per_sample   * fixed point
         ULONG   sid_sample_offset
+        UWORD   sid_sample_prev
     LABEL sid_SIZEOF  
 
            ENDIF

@@ -2134,6 +2134,93 @@ sid_clock_fast14:
     rts
 
 
+* Clock and get 8-bit output
+* in:
+*   a0 = object
+*   a1 = output byte buffer pointer: high byte
+*   d0 = cycle_count delta_t, max cycles
+*   d1 = bytes to get
+* out:
+*   d0 = bytes got
+* uses:
+*   d0-a6
+sid_clock_interpolate:
+    move.l  a0,a5
+    * d3 = s
+    moveq   #0,d3
+
+.loop
+    * d5 = next_sample_offset
+    move.l  sid_sample_offset(a5),d5
+    add.l   sid_cycles_per_sample(a5),d5
+    
+    * d2 = delta_t_sample
+    move.l  d5,d2
+    swap    d2
+    ext.l   d2
+
+    moveq   #0,d4
+    move.l  d2,d6
+    subq.l  #1,d6
+    pushm   d0-d6/a1/a5
+.cycle1
+    pushm   d4/d6
+    moveq   #1,d0   * run one cycle
+    move.l  a5,a0
+    bsr     sid_clock
+    popm    d4/d6
+
+    addq.l  #1,d4
+    cmp.l   d6,d4
+    bne.b   .cycle1
+    popm    d0-d6/a1/a5
+    
+    cmp.l   d4,d2
+    bls.b   .2
+
+    pushm   d0-d5/a1/a5
+    move.l  a5,a0
+    bsr     sid_output8
+    move.w  d0,sid_sample_prev(a5)
+    moveq   #1,d0   * run one cycle
+    move.l  a5,a0
+    bsr     sid_clock
+    popm    d0-d5/a1/a5
+.2
+    * delta_t -= delta_t_sample
+    sub.l   d2,d0
+    * sample_offset = next_sample_offset & FIXP_MASK
+    and.l   #FIXP_MASK,d5
+    move.l  d5,sid_sample_offset(a5)
+
+    push    d0
+    move.l  a5,a0
+    bsr     sid_output8
+    move    d0,d4
+    pop     d0
+    * d4 = sample_now
+
+    move    d4,d7
+    sub.w   sid_sample_prev(a5),d7
+    ext.l   d7
+    muls.l  d5,d7
+    swap    d7
+    add.w   sid_sample_prev(a5),d7
+    move.w  d4,sid_sample_prev(a5)
+
+    * store one byte at d3
+    move.b  d7,(a1,d3.l)    * chip write
+    addq.l  #1,d3
+
+    * All bytes generated?
+    cmp.l   d3,d1
+    bne     .loop
+  
+    * bytes written
+    move.l  d3,d0
+    rts
+
+
     section reSID_bss,bss_p
 
 Sid         ds.b sid_SIZEOF
