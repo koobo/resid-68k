@@ -2159,7 +2159,17 @@ sid_clock_fast14:
 
 
 
-
+* Clock and get 8-bit output
+* EXPERIMENTAL
+* in:
+*   a0 = object
+*   a1 = output byte buffer pointer: high byte
+*   d0 = cycle_count delta_t, max cycles
+*   d1 = bytes to get
+* out:
+*   d0 = bytes got
+* uses:
+*   d0-a6
 sid_clock_fast8_oversample:
     move.l  a0,a5
     * d3 = s
@@ -2287,6 +2297,7 @@ sid_clock_fast8_oversample:
 
 
 * Clock and get 8-bit output
+* EXPERIMENTAL
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer: high byte
