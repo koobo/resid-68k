@@ -1891,20 +1891,40 @@ sid_clock:
     move.l  #$800000,d2
 .a  sub.l   d1,d2
     * d2 = delta_accumulator
+
+    * The lowest note C-0 freq value is $115.
+    * Lowest divisor so the quotient fits into
+    * 16 bits is $101. We can likely use
+    * 16-bit division as it's <=22(1/0) where
+    * the 32-bit is 38(1/0) on 68060.
+
+    divu.w  wave_freq(a0),d2
+    bvs.b   .longDiv
+    * d2.w = delta_t_next = delta_accumulator / freq
+    move.l  d2,d1
+    swap    d1
+    * d1.w = remainder
+    ext.l   d2
+    tst.w   d1
+.c   
+    beq.b   .b
+    addq.l  #1,d2
+.b
+    cmp.l   a3,d2
+    bge.b   .cx
+    move.l  d2,a3
+.cx
+    rts
+
+    ; fallback just to be sure
+.longDiv
     moveq   #0,d3
     move    wave_freq(a0),d3
     divul.l d3,d3:d2
     * d2 = delta_t_next = delta_accumulator / freq
     * d3 = remainder (ie. modulo)
     tst.l   d3
-    beq.b   .b
-    addq.l  #1,d2
-.b
-    cmp.l   a3,d2
-    bge     .cx
-    move.l  d2,a3
-.cx
-    rts
+    bra.b   .c
 
 .continue
 
