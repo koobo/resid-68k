@@ -45,6 +45,10 @@ pop    macro
        move.l     (sp)+,\1
        endm
 
+  ifnd __VASM
+    incdir include:
+  endif
+
     include resid-68k.i
 
 ******************************************************************************
@@ -262,15 +266,13 @@ wave_clock:
     * bit0
     move.l  wave_shift_register(a0),d4
     move.l  d4,d6
-    clr.w   d4
     swap    d4
     move.w  d4,d5
     lsr.w   #6,d4
     lsr.w   #1,d5
     eor.w   d4,d5
-    and     #$1,d5
-
     add.l   d6,d6
+    and     #$1,d5
     and.l   #$7fffff,d6
     or.b    d5,d6
     move.l  d6,wave_shift_register(a0)
@@ -702,7 +704,7 @@ envelope_clock:
     beq     .x
 
     cmp.w   d1,d0
-    bhs     .2
+    bhs.b   .2
     move.w  envelope_rate_counter(a0),d2
     add.w   d0,d2
     bpl.b   .3
@@ -711,6 +713,26 @@ envelope_clock:
 .3
     move.w  d2,envelope_rate_counter(a0)  
     rts
+
+
+.envelope_sustain_level:
+  dc.b $00
+  dc.b $11
+  dc.b $22
+  dc.b $33
+  dc.b $44
+  dc.b $55
+  dc.b $66
+  dc.b $77
+  dc.b $88
+  dc.b $99
+  dc.b $aa
+  dc.b $bb
+  dc.b $cc
+  dc.b $dd
+  dc.b $ee
+  dc.b $ff
+
 .2
 
     clr.w   envelope_rate_counter(a0)
@@ -737,16 +759,14 @@ envelope_clock:
     move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     moveq   #0,d2
     move.b  envelope_decay(a0),d2
-    lea     envelope_rate_counter_period(pc),a1
-    move.w  (a1,d2.w*2),envelope_rate_period(a0)
+    move.w  envelope_rate_counter(pc,d2.w*2),envelope_rate_period(a0)
     bra     .break1
 .notAttack
     cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     bne     .notDS
     moveq   #0,d2
     move.b  envelope_sustain(a0),d2
-    lea     envelope_sustain_level(pc),a1
-    move.b  (a1,d2.w),d2
+    move.b  .envelope_sustain_level(pc,d2),d2
     cmp.b   envelope_counter(a0),d2
     beq     .break1
     subq.b  #1,envelope_counter(a0)
@@ -805,24 +825,6 @@ envelope_clock:
 
     rts
 
-envelope_sustain_level:
-  dc.b $00
-  dc.b $11
-  dc.b $22
-  dc.b $33
-  dc.b $44
-  dc.b $55
-  dc.b $66
-  dc.b $77
-  dc.b $88
-  dc.b $99
-  dc.b $aa
-  dc.b $bb
-  dc.b $cc
-  dc.b $dd
-  dc.b $ee
-  dc.b $ff
-
 envelope_rate_counter_period:
   dc.w      9
   dc.w     32
@@ -840,6 +842,7 @@ envelope_rate_counter_period:
   dc.w  11720
   dc.w  19532
   dc.w  31251
+
 
 
 ******************************************************************************
@@ -1222,29 +1225,29 @@ filter_clock:
 ;    bra     .break
 
 .break
-    moveq   #8,d1
-    * d5 = Vi
-    * d0 = delta_t
-    * d1 = delta_t_flt
-
     * w0_delta_t is dependent on delta_t_flt
     * calc initial value with delta_t_flt=8
     move.l  filter_w0_ceil_dt(a0),d2
     asr.l   #3,d2 ; mul #8, asr #6
 
     move.l  filter_Vhp(a0),d3
+    moveq   #8,d1
     move.l  filter_Vbp(a0),d4
-    move.l  filter_Vlp(a0),d6
-    move.l  filter_1024_div_Q(a0),a1
     move.l  d5,a2
+    move.l  filter_Vlp(a0),d6
     moveq   #14,d5 * shift
+    move.l  filter_1024_div_Q(a0),a1
+  
+    * d5 = Vi
+    * d0 = delta_t
+    * d1 = delta_t_flt
 
 .loop
     cmp.l   d1,d0
     bhs.b   .4
-    move.l  d0,d1
     * delta_t_flt changed, update w0_delta_t
     move.l  filter_w0_ceil_dt(a0),d2
+    move.l  d0,d1
     muls.l  d1,d2
     asr.l   #6,d2
 .4  
@@ -1416,9 +1419,6 @@ extfilter_clock:
     move.l  d1,extfilter_Vo(a0)
     rts
 .1
-    * d2 = delta_t_flt
-    moveq   #8,d2
-    * a1 = Vi
     move.l  d1,a1
 
     move.l  extfilter_w0lp(a0),d3
@@ -1427,8 +1427,12 @@ extfilter_clock:
     asl.l   #3,d4 * mul 8
 
     move.l  extfilter_Vlp(a0),d6
+    moveq   #8,d2
     move.l  extfilter_Vhp(a0),d5
     moveq   #20,d1  * shift
+  
+    * d2 = delta_t_flt
+    * a1 = Vi
     
 .loop
     cmp.l   d2,d0
@@ -1437,9 +1441,9 @@ extfilter_clock:
     * delta_t_flt changed
     move.l  extfilter_w0lp(a0),d3
     muls.l  d2,d3
-    asr.l   #8,d3
     move.l  extfilter_w0hp(a0),d4
     muls.l  d2,d4
+    asr.l   #8,d3
 .2
     ; d7 = Vi - Vlp
     move.l  d6,d7
