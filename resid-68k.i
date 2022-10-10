@@ -50,13 +50,12 @@ FIXP_MASK = $ffff
     STRUCTURE   wave,0
         APTR    wave_sync_source
         APTR    wave_sync_dest
-        UBYTE   wave_msb_rising     * Tells whether the accumulator MSB was set high on this cycle.
-        UBYTE   wave_pad
         ULONG   wave_accumulator    * 24-bit
         ULONG   wave_shift_register * 24-bit
         UWORD   wave_freq
         UWORD   wave_pw
-        UBYTE   wave_waveform       * Control register right-shifted 4 bits for table lookup
+        UWORD   wave_waveform       * Control register right-shifted 4 bits for table lookup
+        UBYTE   wave_msb_rising     * Tells whether the accumulator MSB was set high on this cycle.
         UBYTE   wave_test           * the remaining control register bits
         UBYTE   wave_ring_mod
         UBYTE   wave_sync
@@ -69,9 +68,11 @@ FIXP_MASK = $ffff
     STRUCTURE   envelope,0
         UWORD   envelope_rate_counter
         UWORD   envelope_rate_period
+        UBYTE   envelope_counterHi
+        UBYTE   envelope_counter
+        UBYTE   envelope_pad
         UBYTE   envelope_exponential_counter
         UBYTE   envelope_exponential_counter_period
-        UBYTE   envelope_counter
         UBYTE   envelope_hold_zero
         UBYTE   envelope_attack
         UBYTE   envelope_decay
@@ -86,8 +87,9 @@ FIXP_MASK = $ffff
         UBYTE   filter_res
         UBYTE   filter_filt
         UBYTE   filter_voice3off
-        UBYTE   filter_hp_bp_lp
         UBYTE   filter_vol
+        UBYTE   filter_pad
+        UWORD   filter_hp_bp_lp
         UWORD   filter_fc
         ULONG   filter_mixer_DC
         ULONG   filter_Vhp

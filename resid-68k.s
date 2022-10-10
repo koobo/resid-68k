@@ -143,9 +143,10 @@ wave_writePW_HI:
 *   a0 = object
 *   d0 = control
 wave_writeCONTROL_REG:
+    moveq   #0,d1
     move.b  d0,d1
     lsr.b   #4,d1
-    move.b  d1,wave_waveform(a0)
+    move.w  d1,wave_waveform(a0)
 
     moveq   #$04,d1
     and.b  d0,d1
@@ -313,8 +314,7 @@ wave_synchronize:
 * uses: 
 *   d0,d1,d2,a0,a1
 wave_output:
-    moveq   #0,d0
-    move.b  wave_waveform(a0),d0
+    move.w  wave_waveform(a0),d0
     move.w  .tab(pc,d0.w*2),d0
     jmp     .tab(pc,d0.w)
 
@@ -555,11 +555,7 @@ voice_output:
 
     * envelope_output inlined:
     move.l  voice_envelope(a2),a1
-    moveq   #0,d1
-    move.b  envelope_counter(a1),d1
-    * d1 = 8-bit
-
-    muls.w  d1,d0
+    muls.w  envelope_counterHi(a1),d0
     * d0 = 20-bit
     add.l   voice_voice_DC(a2),d0
     rts
@@ -680,8 +676,7 @@ envelope_readENV:
 * uses:
 *    d0, a0
 envelope_output:
-    moveq   #0,d0
-    move.b  envelope_counter(a0),d0
+    move.w  envelope_counterHi(a0),d0
     rts
 
 
@@ -857,7 +852,7 @@ filter_constructor:
     clr.b   filter_res(a0)
     clr.b   filter_filt(a0)
     clr.b   filter_voice3off(a0)
-    clr.b   filter_hp_bp_lp(a0)
+    clr.w   filter_hp_bp_lp(a0)
     clr.b   filter_vol(a0)
     clr.l   filter_Vhp(a0)
     clr.l   filter_Vbp(a0)
@@ -916,7 +911,7 @@ filter_reset:
     clr.b   filter_res(a0)
     clr.b   filter_filt(a0)
     clr.b   filter_voice3off(a0)
-    clr.b   filter_hp_bp_lp(a0)
+    clr.w   filter_hp_bp_lp(a0)
     clr.b   filter_vol(a0)
     clr.l   filter_Vhp(a0)
     clr.l   filter_Vbp(a0)
@@ -981,7 +976,7 @@ filter_writeMODE_VOL:
     move.b  d0,d1
     lsr.b   #4,d1
     and     #7,d1
-    move.b  d1,filter_hp_bp_lp(a0)
+    move.w  d1,filter_hp_bp_lp(a0)
 
     and     #$f,d0
     move.b  d0,filter_vol(a0)
@@ -1300,8 +1295,7 @@ filter_output:
     muls.l  d1,d0
     rts
 .1  
-    moveq   #0,d0
-    move.b  filter_hp_bp_lp(a0),d0
+    move.w  filter_hp_bp_lp(a0),d0
     move.w  .tab(pc,d0.w*2),d0
     jmp     .tab(pc,d0)
 
