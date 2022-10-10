@@ -2293,28 +2293,33 @@ sid_clock_interpolate:
 
     moveq   #0,d4
     move.l  d2,d6
-    subq.l  #1,d6
+    subq.l  #8,d6       * assume at least 8 cycles
     pushm   d0-d6/a1/a5
-.cycle1
-    pushm   d4/d6
-    moveq   #1,d0   * run one cycle
+;.cycle1
+;    pushm   d4/d6
+;    moveq   #1,d0   * run one cycle
+;    move.l  a5,a0
+;    bsr     sid_clock
+;    popm    d4/d6
+;
+;    addq.l  #1,d4
+;    cmp.l   d6,d4
+;    bne.b   .cycle1
+
+    move.l  d6,d0 * d6 cycles
     move.l  a5,a0
     bsr     sid_clock
-    popm    d4/d6
 
-    addq.l  #1,d4
-    cmp.l   d6,d4
-    bne.b   .cycle1
     popm    d0-d6/a1/a5
     
-    cmp.l   d4,d2
-    bls.b   .2
+    ;cmp.l   d4,d2
+    ;bls.b   .2
 
     pushm   d0-d5/a1/a5
     move.l  a5,a0
-    bsr     sid_output8
+    bsr     sid_output16
     move.w  d0,sid_sample_prev(a5)
-    moveq   #1,d0   * run one cycle
+    moveq   #8,d0   * run the rest of the cycles
     move.l  a5,a0
     bsr     sid_clock
     popm    d0-d5/a1/a5
@@ -2327,7 +2332,7 @@ sid_clock_interpolate:
 
     push    d0
     move.l  a5,a0
-    bsr     sid_output8
+    bsr     sid_output16
     move    d0,d4
     pop     d0
     * d4 = sample_now
@@ -2341,6 +2346,7 @@ sid_clock_interpolate:
     move.w  d4,sid_sample_prev(a5)
 
     * store one byte at d3
+    lsr.w   #8,d7           * 16->8
     move.b  d7,(a1,d3.l)    * chip write
     addq.l  #1,d3
 
