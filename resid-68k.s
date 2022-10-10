@@ -540,16 +540,15 @@ voice_reset:
     rts
 
 * in:
-*    a0 = object
+*    a2 = object
 * out:
 *    d0 = Amplitude modulated waveform output.
 *         Ideal range [-2048*255, 2047*255].
 * uses:
 *    d0-d2,a0,a1,a2
 voice_output:
-    move.l  a0,a2
-   
-    move.l  voice_wave(a0),a0
+
+    move.l  voice_wave(a2),a0
     bsr     wave_output
     * d0 = 12-bit
     sub.w   voice_wave_zero(a2),d0
@@ -1238,7 +1237,8 @@ filter_clock:
     moveq   #14,d5 * shift
     move.l  filter_1024_div_Q(a0),a1
   
-    * d5 = Vi
+    * d5 = shift
+    * a2 = Vi
     * d0 = delta_t
     * d1 = delta_t_flt
 
@@ -1254,8 +1254,6 @@ filter_clock:
     * dVlp
     move.l  d4,d7
     muls.l  d2,d7
-    ;asr.l   #8,d7
-    ;asr.l   #6,d7
     asr.l   d5,d7
     * Vlp -= dVlp
     sub.l   d7,d6
@@ -1263,8 +1261,6 @@ filter_clock:
     * dVbp
     move.l  d3,d7
     muls.l  d2,d7
-    ;asr.l   #8,d7
-    ;asr.l   #6,d7
     asr.l   d5,d7
     * Vbp -= dVbp
     sub.l   d7,d4
@@ -1276,8 +1272,7 @@ filter_clock:
     asr.l   #2,d3
 
     sub.l   d6,d3
-    ;sub.l   d5,d3
-    sub.l    a2,d3
+    sub.l   a2,d3
 
     * delta_t -= delta_t_flt
     sub.l   d1,d0
@@ -1844,15 +1839,17 @@ sid_clock:
 
     move.l  d0,d7
     push    d7      * save delta_t
-
-    move.l  ([sid_voice1.w,a5],voice_envelope.w),a0
+ 
+    move.l  sid_voice1(a5),a0
+    move.l  voice_envelope(a0),a0
     bsr     envelope_clock    
  
-    move.l  ([sid_voice2.w,a5],voice_envelope.w),a0
+    * assume envelope objects are stored one after another
+    lea     envelope_SIZEOF(a0),a0
     move.l  d7,d0
     bsr     envelope_clock
  
-    move.l  ([sid_voice3.w,a5],voice_envelope.w),a0
+    lea     envelope_SIZEOF(a0),a0
     move.l  d7,d0
     bsr     envelope_clock
 
@@ -1867,11 +1864,13 @@ sid_clock:
     ; Find minimum number of cycles to an oscillator accumulator MSB toggle.
     ; We have to clock on each MSB on / MSB off for hard sync to operate
     ; correctly.
-    move.l  ([sid_voice1.w,a5],voice_wave.w),a0
+    move.l  sid_voice1(a5),a0
+    * assume wave objects are stored one after another
+    move.l  voice_wave(a0),a0
     bsr     .cycleCheck
-    move.l  ([sid_voice2.w,a5],voice_wave.w),a0
+    lea     wave_SIZEOF(a0),a0 
     bsr     .cycleCheck
-    move.l  ([sid_voice3.w,a5],voice_wave.w),a0
+    lea     wave_SIZEOF(a0),a0
     bsr     .cycleCheck
     bra     .continue
 
@@ -1929,26 +1928,28 @@ sid_clock:
 .continue
 
     ; clock oscillators
-    move.l  ([sid_voice1.w,a5],voice_wave.w),a0
+    move.l  sid_voice1(a5),a0
+    move.l  voice_wave(a0),a0
     move.l  a3,d0
     bsr     wave_clock
   
-    move.l  ([sid_voice2.w,a5],voice_wave.w),a0
+    lea     wave_SIZEOF(a0),a0   
     move.l  a3,d0
     bsr     wave_clock
   
-    move.l  ([sid_voice3.w,a5],voice_wave.w),a0
+    lea     wave_SIZEOF(a0),a0   
     move.l  a3,d0
     bsr     wave_clock
 
     ; synchronize oscillators
-    move.l  ([sid_voice1.w,a5],voice_wave.w),a0
+    move.l  sid_voice1(a5),a0
+    move.l  voice_wave(a0),a0
     bsr     wave_synchronize
 
-    move.l  ([sid_voice2.w,a5],voice_wave.w),a0
+    lea     wave_SIZEOF(a0),a0   
     bsr     wave_synchronize
     
-    move.l  ([sid_voice3.w,a5],voice_wave.w),a0
+    lea     wave_SIZEOF(a0),a0   
     bsr     wave_synchronize
 
     sub.l   a3,d7
@@ -1956,14 +1957,15 @@ sid_clock:
 
 .loopExit
 
-    ; Clock filter
-    move.l  sid_voice3(a5),a0
+     ; Clock filter
+    move.l  sid_voice3(a5),a2
     bsr     voice_output
     move.l  d0,d5
-    move.l  sid_voice2(a5),a0
+    * Assume voice objects are stored one after another
+    lea     -voice_SIZEOF(a2),a2
     bsr     voice_output
     move.l  d0,d4
-    move.l  sid_voice1(a5),a0
+    lea     -voice_SIZEOF(a2),a2
     bsr     voice_output
     move.l  d0,d1
     move.l  d4,d2
@@ -1978,12 +1980,10 @@ sid_clock:
     bsr     filter_output
 
     ; Clock external filter
-    move.l  d0,d1
+    move.l  d0,d1       * input for the filter
     pop     d0          * restore delta_t
     move.l  sid_extfilt(a5),a0
-    bsr     extfilter_clock
-
-    rts
+    bra     extfilter_clock
 
 
 * Clock and get 8-bit output
@@ -2382,6 +2382,8 @@ sid_clock_interpolate:
     section reSID_bss,bss_p
 
 Sid         ds.b sid_SIZEOF
+* Voice, Wave and Envelope objects should be one after another,
+* the order is assumed in sid_clock.
 Voice1      ds.b voice_SIZEOF
 Voice2      ds.b voice_SIZEOF
 Voice3      ds.b voice_SIZEOF
