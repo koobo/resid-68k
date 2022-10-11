@@ -1297,7 +1297,7 @@ filter_clock:
 ;    sub.l   a3,d3
 ;    sub.l   a2,d3
 
-    * Above interleaved:
+    * The above interleaved:
     move.l  d4,d7 
     muls.l  d2,d7 * pOEP
     move.l  d3,d6 * sOEP
@@ -1466,7 +1466,7 @@ extfilter_clock:
 
     move.l  extfilter_Vlp(a0),d6
     moveq   #8,d2
-    move.l  extfilter_Vhp(a0),d5
+    move.l  extfilter_Vhp(a0),a3
     moveq   #20,d1  * shift
   
     * d2 = delta_t_flt
@@ -1485,34 +1485,49 @@ extfilter_clock:
     muls.l  d2,d4
     asr.l   #8,d3
 .2
-    ; d7 = Vi - Vlp
+;    ; d7 = Vi - Vlp
+;    move.l  d6,d7
+;    sub.l   a3,d7
+;
+;    * a2 = Vo = Vlp - Vhp
+;    move.l  d7,a2
+;
+;    * d7 = dVhp
+;    muls.l  d4,d7
+;    asr.l   d1,d7
+;    * Vhp += dVhp
+;    add.l   d7,a3
+;
+;    * dVlp
+;    move.l  a1,d5
+;    sub.l   d6,d5
+;    muls.l  d3,d5
+;    asr.l   #8,d5
+;    asr.l   #4,d5
+;    * Vlp += dVlp
+;    add.l   d5,d6
+
+    * The above interleaved:
+
     move.l  d6,d7
-    sub.l   d5,d7
-
-    * a2 = Vo = Vlp - Vhp
+    sub.l   a3,d7
     move.l  d7,a2
-
-    * d7 = dVhp
-    muls.l  d4,d7
-    asr.l   d1,d7
-    * Vhp += dVhp
-    add.l   d7,d5
-
-    * dVlp
-    move.l  a1,d7
-    sub.l   d6,d7
-    muls.l  d3,d7
-    asr.l   #8,d7
-    asr.l   #4,d7
-    * Vlp += dVlp
-    add.l   d7,d6
+    muls.l  d4,d7 * pOEP
+    move.l  a1,d5 * sOEP 
+    asr.l   d1,d7 * pOEP
+    sub.l   d6,d5 * sOEP
+    muls.l  d3,d5 * pOEP
+    add.l   d7,a3 * sOEP
+    asr.l   #8,d5 * pOEP
+    asr.l   #4,d5 * resource conflict
+    add.l   d5,d6
 
     sub.l   d2,d0
     bne     .loop
 .x
     move.l  a2,extfilter_Vo(a0)
     move.l  d6,extfilter_Vlp(a0)
-    move.l  d5,extfilter_Vhp(a0)
+    move.l  a3,extfilter_Vhp(a0)
     rts
 
 * in:
