@@ -777,7 +777,7 @@ envelope_clock:
     move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     moveq   #0,d2
     move.b  envelope_decay(a0),d2
-    move.w  envelope_rate_counter(pc,d2.w*2),envelope_rate_period(a0)
+    move.w  envelope_rate_counter_period(pc,d2.w*2),envelope_rate_period(a0)
     bra     .break1
 .notAttack
     cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
