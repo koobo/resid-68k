@@ -2103,10 +2103,35 @@ sid_clock_fast8:
     move.l  d6,a4
 
     ;move.l  d0,d2     * stash delta_t
-    move.l  a5,a0
-    bsr     sid_output8
+    
+    
+    ;move.l  a5,a0
+    ;bsr     sid_output8
+    ; Inline output generation
+
+.range = 1<<8
+.half  = .range>>1
+; Divisor is 5.623626708984375
+; Inverse with shift (1/5.623626708984375)*512 = 91.04
+    move.l  sid_extfilt(a5),a0
+    ;extfilter_output inlined
+    moveq   #91,d6
+    muls.l  extfilter_Vo(a0),d6
+    swap    d6
+    asr.w   #1,d6   * FP shift + 16->8 bit shift
+
+    cmp.w   #.half,d6
+    blt     .x1
+    moveq    #.half-1,d6
+    bra.b   .x2
+.x1
+    cmp.w   #-.half,d6
+    bge     .x2
+    moveq   #-.half,d6
+.x2
+    
     * store one byte at d3
-    move.b  d0,(a1,d3.l)    * chip write
+    move.b  d6,(a1,d3.l)    * chip write
     addq.l  #1,d3
 
     ;move.l  d2,d0
