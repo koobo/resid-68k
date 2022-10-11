@@ -314,7 +314,7 @@ wave_synchronize:
 * out:
 *   d0 = Waveform output 12 bits
 * uses: 
-*   d0,d1,d2,a0,a1
+*   d0-d7,a0,a1
 wave_output:
     * calls: 3x
 
@@ -367,12 +367,19 @@ wave_output__S_:
     lsr.w   #4,d0
     rts
 wave_output__ST:
-    bsr     wave_output__S_
-    moveq   #0,d1
-    move.b  ([(wave_wave__ST).w,a0],d0.w),d1
-    lsl.w   #4,d1
-    move.w  d1,d0
+    ;bsr     wave_output__S_
+    move.l  wave_accumulator(a0),d1
+    lsr.l   #8,d1
+    moveq   #0,d0
+    lsr.w   #4,d1
+
+    ;move.b  ([(wave_wave__ST).w,a0],d1.w),d0
+    move.l  wave_wave__ST(a0),a1
+    move.b  (a1,d1.w),d0
+    lsl.w   #4,d0
     rts
+* out:
+*   d0 = $000 or $fff
 wave_output_P__:
     tst.b   wave_test(a0)
     bne.b   .do
@@ -380,7 +387,7 @@ wave_output_P__:
     lsr.l   #8,d0
     lsr.w   #4,d0
     cmp     wave_pw(a0),d0
-    bhs     .do
+    bhs.b   .do
     moveq   #0,d0
     rts
 .do
@@ -388,74 +395,82 @@ wave_output_P__:
     rts
 wave_output_P_T:
     bsr     wave_output___T
-    move    d0,d1
-    lsr.w   #1,d1
-    moveq   #0,d2
-    move.b  ([(wave_wave_P_T).w,a0],d1.w),d2
-    lsl     #4,d2
+    lsr.w   #1,d0
+    ;move.b  ([(wave_wave_P_T).w,a0],d1.w),d2
+    move.l  wave_wave_P_T(a0),a1
+    move.b  (a1,d0.w),d1
+    lsl     #4,d1
     bsr     wave_output_P__
-    and     d2,d0
+    and     d1,d0
     rts
 wave_output_PS_:
-    bsr     wave_output__S_
-    moveq   #0,d1
-    move.b  ([(wave_wave_PS_).w,a0],d0.w),d1
+    ;bsr     wave_output__S_
+    move.l  wave_accumulator(a0),d0
+    lsr.l   #8,d0
+    lsr.w   #4,d0
+
+    ;move.b  ([(wave_wave_PS_).w,a0],d0.w),d1
+    move.l  wave_wave_PS_(a0),a1
+    move.b  (a1,d0.w),d1
+    
     lsl.w   #4,d1
     bsr     wave_output_P__
     and     d1,d0
     rts
 wave_output_PST:
-    bsr     wave_output__S_
-    moveq   #0,d1
-    move.b  ([(wave_wave_PST).w,a0],d0.w),d1
+;    bsr     wave_output__S_
+    move.l  wave_accumulator(a0),d0
+    lsr.l   #8,d0
+    lsr.w   #4,d0
+
+;    move.b  ([(wave_wave_PST).w,a0],d0.w),d1
+    move.l  wave_wave_PST(a0),a1
+    move.b  (a1,d0.w),d1
+
     lsl.w   #4,d1
     bsr     wave_output_P__
     and     d1,d0
     rts
+
 wave_outputN___:
     moveq   #0,d0
     move.l  wave_shift_register(a0),d1
 
     move.l  d1,d2
-    and.l   #$400000,d2
-    lsr.l   #8,d2
-    lsr.w   #3,d2
-    or.w    d2,d0
+    move.l  d1,d3
+    move.l  d1,d4
+    move.l  d1,d5
+    move.l  d1,d6
+    move.l  d1,d7
 
+    andi.l   #$400000,d2
+    andi.l   #$100000,d3
+    andi.l   #$010000,d4
+    andi.w   #$002000,d5
+    andi.w   #$000800,d6
+    andi.w   #$000080,d7
+
+    lsr.l   #8,d2 
+    lsr.l   #8,d3
+    lsr.w   #3,d2   
+    lsr.w   #2,d3
+    or      d2,d0 
+    lsr.l   #7,d4
+    or      d3,d0 
+    lsr.w   #5,d5
+    or      d4,d0 
+    lsr.w   #4,d6
+    or      d5,d0 
+    lsr.w   #1,d7
+    or      d6,d0 
     move.l  d1,d2
-    and.l   #$100000,d2
-    lsr.l   #8,d2
-    lsr.w   #2,d2
-    or.w    d2,d0
-
-    move.l  d1,d2
-    and.l   #$010000,d2
-    lsr.l   #7,d2
-    or.w    d2,d0
-
-    move.w  d1,d2
-    and.w   #$002000,d2
-    lsr.w   #5,d2
-    or.w    d2,d0
-
-    move.w  d1,d2
-    and.w   #$000800,d2
-    lsr.w   #4,d2
-    or.w    d2,d0
-
-    move.w  d1,d2
-    and.w   #$000080,d2
-    lsr.w   #1,d2
-    or.w    d2,d0
-
-    move.w  d1,d2
-    and.w   #$000010,d2
-    lsl.w   #1,d2
-    or.w    d2,d0
-
-    and.w   #$000004,d1
+    or      d7,d0 
+    and.w   #$000010,d1
+    and.w   #$000004,d2
     lsl.w   #1,d1
+    lsl.w   #2,d2
     or.w    d1,d0
+    or.w    d2,d0
     rts
 
 wave_outputN__T:
@@ -549,7 +564,7 @@ voice_reset:
 *    d0 = Amplitude modulated waveform output.
 *         Ideal range [-2048*255, 2047*255].
 * uses:
-*    d0-d2,a0,a1,a2
+*    d0-d7,a0,a1,a2
 voice_output:
 
     move.l  voice_wave(a2),a0
@@ -1840,7 +1855,7 @@ sid_set_sampling_parameters:
 *   a0 = object
 *   d0 = cycle_count delta_t
 * uses:
-*    d0-d7,a0,a1,a2,a3,a5
+*    d0-d7,a0-a5
 sid_clock:
     tst.l   d0
     bgt     .1
@@ -1975,16 +1990,16 @@ sid_clock:
      ; Clock filter
     move.l  sid_voice3(a5),a2
     bsr     voice_output
-    move.l  d0,d5
+    move.l  d0,a3
     * Assume voice objects are stored one after another
     lea     -voice_SIZEOF(a2),a2
     bsr     voice_output
-    move.l  d0,d4
+    move.l  d0,a4
     lea     -voice_SIZEOF(a2),a2
     bsr     voice_output
     move.l  d0,d1
-    move.l  d4,d2
-    move.l  d5,d3
+    move.l  a4,d2
+    move.l  a3,d3
     moveq   #0,d4   * ext_in
 
     move.l  (sp),d0      * restore delta_t
@@ -2040,11 +2055,11 @@ sid_clock_fast8:
     ;cmp.l   d1,d3
     ;bge     .x     
 
-    pushm   d0-d3/d5/a1/a5
+    pushm   d0-d3/d5/a1/a4/a5
     move.l  d2,d0
     move.l  a5,a0
     bsr     sid_clock
-    popm    d0-d3/d5/a1/a5
+    popm    d0-d3/d5/a1/a4/a5
 
     sub.l   d2,d0
     move.l  d5,d6
@@ -2124,11 +2139,11 @@ sid_clock_fast14:
     ;cmp.l   d1,d3
     ;bge     .x     
 
-    pushm   d0-d3/d5/a1/a2/a5
+    pushm   d0-d3/d5/a1/a2/a4/a5
     move.l  d2,d0  
     move.l  a5,a0
     bsr     sid_clock
-    popm    d0-d3/d5/a1/a2/a5
+    popm    d0-d3/d5/a1/a2/a4/a5
 
     sub.l   d2,d0
     move.l  d5,d6
