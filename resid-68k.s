@@ -956,8 +956,7 @@ filter_writeFC_LO:
     and     #7,d0
     or      d0,d1
     move    d1,filter_fc(a0)
-    bsr     filter_set_w0
-    rts
+    bra     filter_set_w0
 
 
 * in:
@@ -966,13 +965,12 @@ filter_writeFC_LO:
 *    d0,d1,d2,a0,a1
 filter_writeFC_HI:
     lsl.w   #3,d0
-    and     #$7f8,d0
     moveq   #7,d1
+    and     #$7f8,d0
     and     filter_fc(a0),d1
     or      d1,d0
     move    d0,filter_fc(a0)
-    bsr     filter_set_w0
-    rts
+    bra     filter_set_w0
     
     
 * in:
@@ -983,11 +981,10 @@ filter_writeFC_HI:
 filter_writeRES_FILT:
     move.b  d0,d1
     lsr.b   #4,d1
-    move.b  d1,filter_res(a0)
     and     #$f,d0
+    move.b  d1,filter_res(a0)
     move.b  d0,filter_filt(a0)
-    bsr     filter_set_Q
-    rts
+    bra     filter_set_Q
     
 
 * in:
@@ -1015,7 +1012,10 @@ filter_set_w0:
     * constant: #2*3.1415926535897932385*1.048576 
     *           = 6.58839731666114206971
     * f0 table max value is 18000
-    * constant << 15: 215889
+    * constant << 11: 13493.03770
+    * constant << 12: 26986.07540
+    * constant << 13: 53972.15081
+    * constant << 15: 215888.603
 
     ;move.w  filter_fc(a0),d0
     ;fmove.w ([(filter_f0).w,a0],d0.w*2),fp0
@@ -1023,12 +1023,12 @@ filter_set_w0:
     ;fmove.l fp0,d0
 
     ; Use fixed point 
-    moveq   #0,d0
-    move.w  filter_fc(a0),d0
-    move.w  ([(filter_f0).w,a0],d0.w*2),d0
-    mulu.l  #215889,d0
+    move.l  filter_f0(a0),a1
+    move.w  #26986,d0
+    move.w  filter_fc(a0),d1
+    mulu.w  (a1,d1.w*2),d0
     lsr.l   #8,d0
-    lsr.l   #7,d0
+    lsr.l   #4,d0
       
     move.l  d0,filter_w0(a0)
     * d0 = w0
