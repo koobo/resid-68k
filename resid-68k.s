@@ -1094,7 +1094,7 @@ filter_set_Q:
 *    d3 = voice3 sample
 *    d4 = ext_in sample
 * uses:
-*    d0-d7,a0,a1,a2
+*    d0-d7,a0-a3
 filter_clock:
     * calls: 1x
 
@@ -1253,7 +1253,7 @@ filter_clock:
     moveq   #8,d1
     move.l  filter_Vbp(a0),d4
     move.l  d5,a2
-    move.l  filter_Vlp(a0),d6
+    move.l  filter_Vlp(a0),a3
     moveq   #14,d5 * shift
     move.l  filter_1024_div_Q(a0),a1
     asr.l   #3,d2 ; mul #8, asr #6
@@ -1270,32 +1270,51 @@ filter_clock:
     bhs.b   .4
     * delta_t_flt changed, update w0_delta_t
     move.l  filter_w0_ceil_dt(a0),d2
-    move.l  d0,d1
     muls.l  d1,d2
+    move.l  d0,d1
     asr.l   #6,d2
 .4  
-    * dVlp
-    move.l  d4,d7
-    muls.l  d2,d7
-    asr.l   d5,d7
-    * Vlp -= dVlp
-    sub.l   d7,d6
- 
-    * dVbp
-    move.l  d3,d7
-    muls.l  d2,d7
-    asr.l   d5,d7
-    * Vbp -= dVbp
-    sub.l   d7,d4
+;    * dVlp
+;    move.l  d4,d7
+;    muls.l  d2,d7
+;    asr.l   d5,d7
+;    * Vlp -= dVlp
+;    sub.l   d7,a3
+; 
+;    * dVbp
+;    move.l  d3,d7
+;    muls.l  d2,d7
+;    asr.l   d5,d7
+;    * Vbp -= dVbp
+;    sub.l   d7,d4
+;
+;    * Vhp  
+;    move.l  a1,d3
+;    muls.l  d4,d3
+;    asr.l   #8,d3
+;    asr.l   #2,d3
+;
+;    sub.l   a3,d3
+;    sub.l   a2,d3
 
-    * Vhp  
-    move.l  a1,d3
-    muls.l  d4,d3
-    asr.l   #8,d3
-    asr.l   #2,d3
+    * Above interleaved:
+    move.l  d4,d7 
+    muls.l  d2,d7 * pOEP
+    move.l  d3,d6 * sOEP
+    asr.l   d5,d7 * pOEP
+    move.l  a1,d3 * sOEP
+    muls.l  d2,d6 * pOEP
+    sub.l   d7,a3 * sOEP
+    muls.l  d4,d3 * pOEP
+    asr.l   d5,d6 * sOEP
+    asr.l   #8,d3 * pOEP
+    sub.l   d6,d4 * sOEP
+    asr.l   #2,d3 * pOEP
 
-    sub.l   d6,d3
-    sub.l   a2,d3
+    * -Vlp
+    sub.l   a3,d3 * resource conflict
+    * -Vi
+    sub.l   a2,d3 * resource conflict
 
     * delta_t -= delta_t_flt
     sub.l   d1,d0
@@ -1303,7 +1322,7 @@ filter_clock:
 .x
     move.l  d3,filter_Vhp(a0)
     move.l  d4,filter_Vbp(a0)
-    move.l  d6,filter_Vlp(a0)
+    move.l  a3,filter_Vlp(a0)
 
     rts
 
@@ -1371,8 +1390,8 @@ filter_output:
     
 .break
     add.l   filter_Vnf(a0),d0
-    add.l   filter_mixer_DC(a0),d0
     moveq   #0,d1
+    add.l   filter_mixer_DC(a0),d0
     move.b  filter_vol(a0),d1
     muls.l  d1,d0
     rts
