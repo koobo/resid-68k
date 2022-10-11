@@ -129,6 +129,7 @@ FIXP_MASK = $ffff
         ULONG   sid_cycles_per_sample   * fixed point
         ULONG   sid_sample_offset
         UWORD   sid_sample_prev
+        UWORD   sid_volume
     LABEL sid_SIZEOF  
 
            ENDIF

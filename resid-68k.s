@@ -1583,6 +1583,7 @@ sid_constructor:
 
     clr.b   sid_bus_value(a0)
     clr.l   sid_bus_value_ttl(a0)
+    move    #$40,sid_volume(a0)
 
     move.l  #985248,d0
     moveq   #SAMPLING_METHOD_SAMPLE_FAST,d1
@@ -1642,6 +1643,7 @@ sid_reset:
     move.l  a0,a5
     clr.b   sid_bus_value(a5)
     clr.l   sid_bus_value_ttl(a5)
+    move    #$40,sid_volume(a5)
 
     move.l  sid_voice1(a5),a0
     bsr     voice_reset
@@ -2129,7 +2131,9 @@ sid_clock_fast8:
     bge     .x2
     moveq   #-.half,d6
 .x2
-    
+    mulu    sid_volume(a5),d6
+    lsr.w   #6,d6
+
     * store one byte at d3
     move.b  d6,(a1,d3.l)    * chip write
     addq.l  #1,d3
