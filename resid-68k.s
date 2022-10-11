@@ -1146,109 +1146,108 @@ filter_clock:
     dc.w    .ff-.tab
 
 .f0
-    clr.l   d5
     add.l   d4,d1
+    clr.l   d5
     add.l   d3,d1
     add.l   d2,d1
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f1
-    move.l  d1,d5
     add.l   d4,d2
+    move.l  d1,d5
     add.l   d3,d2
     move.l  d2,filter_Vnf(a0)
     bra     .break
 .f2
-    move.l  d2,d5
     add.l   d4,d1
+    move.l  d2,d5
     add.l   d3,d1
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f3
     move.l  d1,d5
-    add.l   d2,d5
     add.l   d3,d4
+    add.l   d2,d5
     move.l  d4,filter_Vnf(a0)
     bra     .break
 .f4
-    move.l  d3,d5
     add.l   d4,d1
+    move.l  d3,d5
     add.l   d2,d1
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f5
     move.l  d1,d5
-    add.l   d3,d5
     add.l   d4,d2
+    add.l   d3,d5
     move.l  d2,filter_Vnf(a0)
     bra     .break
 .f6
     move.l  d2,d5
-    add.l   d3,d5
     add.l   d4,d1
+    add.l   d3,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f7
     move.l  d1,d5
     add.l   d2,d5
-    add.l   d3,d5
     move.l  d4,filter_Vnf(a0)
+    add.l   d3,d5
     bra     .break
 .f8
-    move.l  d4,d5
     add.l   d3,d1
+    move.l  d4,d5
     add.l   d2,d1
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f9
     move.l  d4,d5
-    add.l   d1,d5
     add.l   d3,d2
+    add.l   d1,d5
     move.l  d2,filter_Vnf(a0)
     bra     .break
 .fa
     move.l  d4,d5
-    add.l   d2,d5
     add.l   d3,d1
+    add.l   d2,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .fb
     move.l  d4,d5
     add.l   d1,d5
-    add.l   d2,d5
     move.l  d3,filter_Vnf(a0)
+    add.l   d2,d5
     bra     .break
 .fc
     move.l  d4,d5
-    add.l   d3,d5
     add.l   d2,d1
+    add.l   d3,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .fd
     move.l  d4,d5
     add.l   d3,d5
-    add.l   d1,d5
     move.l  d2,filter_Vnf(a0)
+    add.l   d1,d5
     bra     .break
 .fe
     move.l  d4,d5
     add.l   d3,d5
-    add.l   d2,d5
     move.l  d1,filter_Vnf(a0)
+    add.l   d2,d5
     bra     .break
 .ff
     move.l  d4,d5
     add.l   d3,d5
     add.l   d2,d5
-    add.l   d1,d5
     clr.l   filter_Vnf(a0)
+    add.l   d1,d5
 ;    bra     .break
 
 .break
     * w0_delta_t is dependent on delta_t_flt
     * calc initial value with delta_t_flt=8
     move.l  filter_w0_ceil_dt(a0),d2
-    asr.l   #3,d2 ; mul #8, asr #6
 
     move.l  filter_Vhp(a0),d3
     moveq   #8,d1
@@ -1257,6 +1256,7 @@ filter_clock:
     move.l  filter_Vlp(a0),d6
     moveq   #14,d5 * shift
     move.l  filter_1024_div_Q(a0),a1
+    asr.l   #3,d2 ; mul #8, asr #6
   
     * d5 = shift
     * a2 = Vi
