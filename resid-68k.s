@@ -202,6 +202,7 @@ wave_clock:
     beq     .go
     rts
 .go
+    * calls: 3x
 
     * d1 = accumulator_prev
     move.l  wave_accumulator(a0),d1
@@ -238,6 +239,8 @@ wave_clock:
     cmp.l   d1,d3
     bhs.b   .continue
     
+    * calls: 3x
+
     * shift_period = delta_accumulator
     move.l  d3,d1
 
@@ -278,7 +281,6 @@ wave_clock:
     or.b    d5,d6
     move.l  d6,wave_shift_register(a0)
 
-
     sub.l   d1,d3
     bra     .loop
 
@@ -314,6 +316,8 @@ wave_synchronize:
 * uses: 
 *   d0,d1,d2,a0,a1
 wave_output:
+    * calls: 3x
+
     move.w  wave_waveform(a0),d0
     move.w  .tab(pc,d0.w*2),d0
     jmp     .tab(pc,d0.w)
@@ -697,6 +701,8 @@ envelope_clock:
     tst.w   d0
     beq     .x
 
+    * calls: 3x
+
     cmp.w   d1,d0
     bhs.b   .2
     move.w  envelope_rate_counter(a0),d2
@@ -705,6 +711,7 @@ envelope_clock:
     addq.w  #1,d2
     and.w   #$7fff,d2
 .3
+
     move.w  d2,envelope_rate_counter(a0)  
     rts
 
@@ -731,6 +738,8 @@ envelope_clock:
 
     clr.w   envelope_rate_counter(a0)
     sub.w   d1,d0
+
+    * calls: 1.5x
 
     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
     beq     .4
@@ -1072,6 +1081,8 @@ filter_set_Q:
 * uses:
 *    d0-d7,a0,a1,a2
 filter_clock:
+    * calls: 1x
+
     asr.l   #7,d1
     asr.l   #7,d2
     asr.l   #7,d3
@@ -1238,6 +1249,8 @@ filter_clock:
     * d1 = delta_t_flt
 
 .loop
+    * calls: 6x
+
     cmp.l   d1,d0
     bhs.b   .4
     * delta_t_flt changed, update w0_delta_t
@@ -1286,6 +1299,8 @@ filter_clock:
 * uses:
 *    d0,d1,a0
 filter_output:
+    * calls: 1x
+
     tst.b   filter_enabled(a0)
     bne.b   .1
     moveq   #0,d1
@@ -1424,6 +1439,8 @@ extfilter_clock:
     * a1 = Vi
     
 .loop
+    * calls: 6x
+
     cmp.l   d2,d0
     bhs.b   .2
     move.l  d0,d2
@@ -1829,6 +1846,8 @@ sid_clock:
     bgt     .1
     rts
 .1
+    * calls: 1x, once per output sample in fast
+
     move.l  a0,a5
 
     move.l  d0,d7
@@ -1869,6 +1888,8 @@ sid_clock:
     bra     .continue
 
 .cycleCheck
+    * calls: 3x
+
     ; It is only necessary to clock on the MSB of an oscillator that is
     ; a sync source and has freq != 0.
     tst.w   wave_freq(a0)
