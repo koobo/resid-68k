@@ -206,12 +206,12 @@ wave_clock:
 
     * d1 = accumulator_prev
     move.l  wave_accumulator(a0),d1
-    move.l  d1,d2
 
     * d3 = delta_accumulator
     move    wave_freq(a0),d3
     mulu.w  d0,d3
   
+    move.l  d1,d2
     * d2 = accumulator
     add.l   d3,d2
     and.l   #$ffffff,d2
@@ -341,9 +341,6 @@ wave_output:
     dc.w     wave_outputNPST-.tab
  
 
-wave_output____:
-    moveq   #0,d0
-    rts
 wave_output___T:
     move.l  wave_accumulator(a0),d0
     move.l  d0,d1
@@ -367,14 +364,12 @@ wave_output__S_:
     lsr.w   #4,d0
     rts
 wave_output__ST:
-    ;bsr     wave_output__S_
+    ; wave_output__S_ inlined
     move.l  wave_accumulator(a0),d1
+    move.l  wave_wave__ST(a0),a1
     lsr.l   #8,d1
     moveq   #0,d0
     lsr.w   #4,d1
-
-    ;move.b  ([(wave_wave__ST).w,a0],d1.w),d0
-    move.l  wave_wave__ST(a0),a1
     move.b  (a1,d1.w),d0
     lsl.w   #4,d0
     rts
@@ -395,22 +390,19 @@ wave_output_P__:
     rts
 wave_output_P_T:
     bsr     wave_output___T
-    lsr.w   #1,d0
-    ;move.b  ([(wave_wave_P_T).w,a0],d1.w),d2
     move.l  wave_wave_P_T(a0),a1
+    lsr.w   #1,d0
     move.b  (a1,d0.w),d1
     lsl     #4,d1
     bsr     wave_output_P__
     and     d1,d0
     rts
 wave_output_PS_:
-    ;bsr     wave_output__S_
+    ; wave_output__S_ inlined
     move.l  wave_accumulator(a0),d0
     lsr.l   #8,d0
-    lsr.w   #4,d0
-
-    ;move.b  ([(wave_wave_PS_).w,a0],d0.w),d1
     move.l  wave_wave_PS_(a0),a1
+    lsr.w   #4,d0
     move.b  (a1,d0.w),d1
     
     lsl.w   #4,d1
@@ -418,13 +410,11 @@ wave_output_PS_:
     and     d1,d0
     rts
 wave_output_PST:
-;    bsr     wave_output__S_
+    ; wave_output__S_ inlined
     move.l  wave_accumulator(a0),d0
     lsr.l   #8,d0
-    lsr.w   #4,d0
-
-;    move.b  ([(wave_wave_PST).w,a0],d0.w),d1
     move.l  wave_wave_PST(a0),a1
+    lsr.w   #4,d0
     move.b  (a1,d0.w),d1
 
     lsl.w   #4,d1
@@ -473,6 +463,7 @@ wave_outputN___:
     or.w    d2,d0
     rts
 
+wave_output____:
 wave_outputN__T:
 wave_outputN_S_:
 wave_outputN_ST:
@@ -622,8 +613,8 @@ envelope_writeCONTROL_REG:
     bne.b   .1
     move.b  #envelope_state_ATTACK,envelope_state(a0)
     moveq   #0,d1
-    move.b  envelope_attack(a0),d1
     lea     envelope_rate_counter_period(pc),a1
+    move.b  envelope_attack(a0),d1
     move.w  (a1,d1.w*2),envelope_rate_period(a0)
     clr.b   envelope_hold_zero(a0)
     bra     .2
@@ -634,8 +625,8 @@ envelope_writeCONTROL_REG:
     beq.b   .2
     move.b  #envelope_state_RELEASE,envelope_state(a0)
     moveq   #0,d1
-    move.b  envelope_release(a0),d1
     lea     envelope_rate_counter_period(pc),a1
+    move.b  envelope_release(a0),d1
     move.w  (a1,d1.w*2),envelope_rate_period(a0)
 .2
     move.b  d0,envelope_gate(a0)
@@ -1110,6 +1101,7 @@ filter_clock:
     bne.b   .1
     clr.l   d3
 .1
+    moveq   #0,d5
 
     tst.b   filter_enabled(a0)
     bne.b   .3
@@ -1122,7 +1114,6 @@ filter_clock:
     clr.l   filter_Vlp(a0)    
     rts
 .3
-    moveq   #0,d5
     move.b  filter_filt(a0),d5
     move.w  (.tab,pc,d5.w*2),d5
     jmp     .tab(pc,d5)
@@ -1460,8 +1451,8 @@ extfilter_clock:
     move.l  d1,a1
 
     move.l  extfilter_w0lp(a0),d3
-    asr.l   #5,d3 * mul 8, asr 8
     move.l  extfilter_w0hp(a0),d4
+    asr.l   #5,d3 * mul 8, asr 8
     asl.l   #3,d4 * mul 8
 
     move.l  extfilter_Vlp(a0),d6
