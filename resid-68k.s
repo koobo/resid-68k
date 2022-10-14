@@ -2083,11 +2083,108 @@ sid_clock:
     bra     extfilter_clock
 
 
-* Clock and get 8-bit output
+* Clock and get 16-bit samples corresponding on the number of cycles 
 * in:
 *   a0 = object
-*   a1 = output byte buffer pointer: high byte
-*   d0 = cycle_count delta_t, max cycles
+*   a1 = output buffer pointer 
+*   d0 = cycles to run
+*   d1 = buffer size limit in samples
+* out:
+*   d0 = samples written
+* uses:
+*   d0-a6
+sid_clock_fast:
+    move.l  a0,a5
+    * d3 = s
+    moveq   #0,d3
+    move.l  sid_sample_offset(a5),d5
+    
+    move.l  sid_sample_offset(a5),a4
+    move.l  sid_cycles_per_sample(a5),a6
+.loop
+    * d5 = next_sample_offset
+    ;move.l  sid_sample_offset(a5),d5
+    ;add.l   sid_cycles_per_sample(a5),d5
+    move.l  a4,d5
+    add.l   a6,d5
+    add.l   #1<<(FIXP_SHIFT-1),d5
+
+    * d2 = delta_t_sample
+    move.l  d5,d2
+    swap    d2
+    ext.l   d2      * >>FIXP_SHIFT
+   
+    * Loop termination conditions:
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
+    * buffer overflow check
+    * if (s >= n) 
+    cmp.l   d1,d3
+    bge     .x     
+
+    pushm   d0-d3/d5/a1/a4/a5
+    move.l  d2,d0
+    move.l  a5,a0
+    bsr     sid_clock
+    popm    d0-d3/d5/a1/a4/a5
+
+    sub.l   d2,d0
+    move.l  d5,d6
+    and.l   #FIXP_MASK,d6
+    sub.l   #1<<(FIXP_SHIFT-1),d6
+    move.l  d6,a4
+    
+    ; Inline output generation
+
+.range = 1<<16
+.half  = .range>>1
+; Divisor is 5.623626708984375
+; Inverse with shift (1/5.623626708984375)*512 = 91.04
+    move.l  sid_extfilt(a5),a0
+    ;extfilter_output inlined
+    moveq   #91,d6
+    muls.l  extfilter_Vo(a0),d6
+    asr.l   #8,d6   * FP shift
+    asr.l   #1,d6
+
+    cmp.l   #.half,d6
+    blt     .x1
+    move.w    #.half-1,d6
+    bra.b   .x2
+.x1
+    cmp.l   #-.half,d6
+    bge     .x2
+    move.w   #-.half,d6
+.x2
+
+    * store one sample d3
+    move.w  d6,(a1,d3.l*2)    * chip write
+    addq.l  #1,d3
+    bra     .loop
+    
+.break
+    * run remaining d0 cycles
+    move.l  a5,a0
+    pushm   d0/d3/a5
+    bsr     sid_clock
+    popm    d0/d3/a5
+
+    swap    d0
+    clr.w   d0      * delta_t<<FIXP_SHIFT
+    sub.l   d0,sid_sample_offset(a5)
+.x
+    move.l  a4,sid_sample_offset(a5)
+  
+    * samples written
+    move.l  d3,d0
+    rts
+
+
+* Clock and get 8-bit output with volume scaling
+* in:
+*   a0 = object
+*   a1 = output byte buffer pointer
 *   d1 = bytes to get
 * out:
 *   d0 = bytes got
@@ -2113,15 +2210,7 @@ sid_clock_fast8:
     move.l  d5,d2
     swap    d2
     ext.l   d2      * >>FIXP_SHIFT
-   
-    * if (delta_t_sample > delta_t)
-    ;cmp.l   d0,d2
-    ;bgt     .break
-    * buffer overflow check
-    * if (s >= n) 
-    ;cmp.l   d1,d3
-    ;bge     .x     
-
+ 
     pushm   d0-d3/d5/a1/a4/a5
     move.l  d2,d0
     move.l  a5,a0
@@ -2132,16 +2221,10 @@ sid_clock_fast8:
     move.l  d5,d6
     and.l   #FIXP_MASK,d6
     sub.l   #1<<(FIXP_SHIFT-1),d6
-    ;move.l  d6,sid_sample_offset(a5)
     move.l  d6,a4
 
-    ;move.l  d0,d2     * stash delta_t
-    
-    
-    ;move.l  a5,a0
-    ;bsr     sid_output8
-    ; Inline output generation
 
+    ; Inline output generation
 .range = 1<<8
 .half  = .range>>1
 ; Divisor is 5.623626708984375
@@ -2162,6 +2245,7 @@ sid_clock_fast8:
     bge     .x2
     moveq   #-.half,d6
 .x2
+    * Volume scaling
     mulu    sid_volume(a5),d6
     lsr.w   #6,d6
 
@@ -2169,23 +2253,8 @@ sid_clock_fast8:
     move.b  d6,(a1,d3.l)    * chip write
     addq.l  #1,d3
 
-    ;move.l  d2,d0
-    * All bytes generated?
     cmp.l   d3,d1
     bne     .loop
-;    bra     .x
-;
-;.break
-;
-;    move.l  a5,a0
-;    pushm   d0/d3/a5
-;    bsr     sid_clock
-;    popm    d0/d3/a5
-;
-;    swap    d0
-;    clr.w   d0      * delta_t<<FIXP_SHIFT
-;    sub.l   d0,sid_sample_offset(a5)
-;.x
 
     move.l  a4,sid_sample_offset(a5)
   
@@ -2194,12 +2263,11 @@ sid_clock_fast8:
     rts
 
 
-* Clock and get 14-bit output
+* Clock and get 14-bit output in pairs, with volume scaling
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer: high byte
-*   a2 = low byte
-*   d0 = cycle_count delta_t, max cycles
+*   a2 = output byte buffer pointer: low byte
 *   d1 = pairs of bytes to get
 * out:
 *   d0 = bytes got
@@ -2214,8 +2282,6 @@ sid_clock_fast14:
     move.l  sid_cycles_per_sample(a5),a6
 .loop
     * d5 = next_sample_offset
-    ;move.l  sid_sample_offset(a5),d5
-    ;add.l   sid_cycles_per_sample(a5),d5
     move.l  a4,d5
     add.l   a6,d5
     add.l   #1<<(FIXP_SHIFT-1),d5
@@ -2225,14 +2291,6 @@ sid_clock_fast14:
     swap    d2
     ext.l   d2      * >>FIXP_SHIFT
    
-    * if (delta_t_sample > delta_t)
-    ;cmp.l   d0,d2
-    ;bgt     .break
-    * buffer overflow check
-    * if (s >= n) 
-    ;cmp.l   d1,d3
-    ;bge     .x     
-
     pushm   d0-d3/d5/a1/a2/a4/a5
     move.l  d2,d0  
     move.l  a5,a0
@@ -2243,38 +2301,45 @@ sid_clock_fast14:
     move.l  d5,d6
     and.l   #FIXP_MASK,d6
     sub.l   #1<<(FIXP_SHIFT-1),d6
-    ;move.l  d6,sid_sample_offset(a5)
     move.l  d6,a4
 
-    ;move.l  d0,d2   * stash delta_t
-    move.l  a5,a0
-    bsr     sid_output16
-  
+    ; Inline output generation
+.range = 1<<16
+.half  = .range>>1
+; Divisor is 5.623626708984375
+; Inverse with shift (1/5.623626708984375)*512 = 91.04
+    move.l  sid_extfilt(a5),a0
+    ;extfilter_output inlined
+    moveq   #91,d6
+    muls.l  extfilter_Vo(a0),d6
+    asr.l   #8,d6   * FP shift
+    asr.l   #1,d6
+
+    cmp.l   #.half,d6
+    blt     .x1
+    move.w    #.half-1,d6
+    bra.b   .x2
+.x1
+    cmp.l   #-.half,d6
+    bge     .x2
+    move.w   #-.half,d6
+.x2
+    * Volume scaling
+    mulu    sid_volume(a5),d6
+    lsr.l   #6,d6
+
     * store low 6 bits
-    lsr.b   #2,d0
-    move.b  d0,(a2,d3.l)     * chip write
-    ror.w   #8,d0
+    lsr.b   #2,d6
+    move.b  d6,(a2,d3.l)     * chip write
+    ror.w   #8,d6
     * store high 8 bits
     addq.l  #1,d3
-    move.b  d0,-1(a1,d3.l)    * chip write
+    move.b  d6,-1(a1,d3.l)   * chip write, stall
   
-    ;move.l  d2,d0
     * All bytes generated?
     cmp.l   d3,d1
     bne     .loop
-;    bra     .x
-;
-;.break
-;
-;    move.l  a5,a0
-;    pushm   d0/d3/a5
-;    bsr     sid_clock
-;    popm    d0/d3/a5
-;
-;    swap    d0
-;    clr.w   d0      * delta_t<<FIXP_SHIFT
-;    sub.l   d0,sid_sample_offset(a5)
-;.x
+
     move.l  a4,sid_sample_offset(a5)
 
     * bytes written
