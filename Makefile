@@ -6,6 +6,9 @@ RESID    := resid-68k.i resid-68k.s
 
 all: testAudio testCycles
 
+clean:
+	rm testAudio testCycles
+
 testAudio: testAudio.s $(RESID)
 	$(VASM) $< -o $@  $(VASM_FLAGS)
 

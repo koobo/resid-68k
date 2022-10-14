@@ -1845,7 +1845,7 @@ sid_write
 *   a0 = object
 *   d0 = clock_frequency
 *   d1 = sampling method
-*   d2 = sample freq
+*   d2 = sampling frequency in Hz
 * out:
 *   d0 = true if ok, false with a bad param combo
 sid_set_sampling_parameters:
@@ -1877,6 +1877,46 @@ sid_set_sampling_parameters:
 .fail
     moveq   #0,d0
     rts
+
+* in:
+*   a0 = object
+*   d0 = clock_frequency
+*   d1 = sampling method
+*   d2 = Paula period value to determine the sampling frequency
+* out:
+*   d0 = true if ok, false with a bad param combo
+sid_set_sampling_parameters_paula:
+
+    cmp.b   #SAMPLING_METHOD_SAMPLE_FAST,d1
+    bne     .fail
+
+    move.l  d0,sid_clock_frequency(a0)
+    move.b  d1,sid_sampling_method(a0)
+    clr.l   sid_sample_offset(a0)
+    
+    ; Calculate cycles per sample as a fixed point value
+
+    ;cycles_per_sample = clock_freq / sample_freq * (1 << FIXP_SHIFT) + 0.5);
+
+.PAL_CLOCK=3546895   
+
+    * FP shift 10
+    move.l  #.PAL_CLOCK<<10,d3
+    divu.l  d2,d3
+    * d3 = Playback frequency in Hz as 22.10 FP
+
+    mulu.l  #10*(1<<FIXP_SHIFT)<<10,d1:d0    
+    divu.l  d3,d1:d0
+    addq.l  #5,d0
+    divu.l  #10,d0
+    move.l  d0,sid_cycles_per_sample(a0)
+
+    moveq   #1,d0
+    rts
+.fail
+    moveq   #0,d0
+    rts
+
 
 * in:
 *   a0 = object
