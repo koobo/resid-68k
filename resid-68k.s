@@ -211,16 +211,18 @@ wave_clock:
     move    wave_freq(a0),d3
     mulu.w  d0,d3
   
+    clr.b   wave_msb_rising(a0)
+
     move.l  d1,d2
     * d2 = accumulator
     add.l   d3,d2
     and.l   #$ffffff,d2
     move.l  d2,wave_accumulator(a0)
 
-    clr.b   wave_msb_rising(a0)
-    btst    #23,d1      * previous MSB
+    ;btst    #23,d1      * previous MSB
+    and.l   #$800000,d1 * test previous MSB, pOEP|sOEP
     bne     .noMsb
-    btst    #23,d2      * current MSB
+    btst    #23,d2      * test current MSB, pOEP-until-last
     beq     .noMsb
     st      wave_msb_rising(a0)
 .noMsb
@@ -1242,6 +1244,7 @@ filter_clock:
     move.l  filter_w0_ceil_dt(a0),d2
 
     move.l  filter_Vhp(a0),d3
+    printt  "try out other values here"
     moveq   #8,d1
     move.l  filter_Vbp(a0),d4
     move.l  d5,a2
