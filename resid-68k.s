@@ -2355,16 +2355,16 @@ sid_clock_fast14:
 
     cmp.l   #.half,d6
     blt     .x1
-    move.w    #.half-1,d6
+    move.w   #.half-1,d6
     bra.b   .x2
 .x1
     cmp.l   #-.half,d6
     bge     .x2
-    move.w   #-.half,d6
+    move.w  #-.half,d6
 .x2
     * Volume scaling
-    mulu    sid_volume(a5),d6
-    lsr.l   #6,d6
+    muls    sid_volume(a5),d6
+    asr.l   #6,d6
 
     * store low 6 bits
     lsr.b   #2,d6
