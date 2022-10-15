@@ -2097,7 +2097,7 @@ sid_clock:
 *   d0 = samples written
 * uses:
 *   d0-a6
-sid_clock_fast:
+sid_clock_fast16:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
@@ -2184,14 +2184,15 @@ sid_clock_fast:
     move.l  d3,d0
     rts
 
-
-* Clock and get 8-bit output with volume scaling
+* Clock and get 8-bit samples corresponding to the number of 
+* given cycles, with volume scaling.
 * in:
 *   a0 = object
-*   a1 = output byte buffer pointer
-*   d1 = bytes to get
+*   a1 = output buffer pointer 
+*   d0 = cycles to run
+*   d1 = buffer size limit in samples
 * out:
-*   d0 = bytes got
+*   d0 = samples written
 * uses:
 *   d0-a6
 sid_clock_fast8:
@@ -2214,7 +2215,16 @@ sid_clock_fast8:
     move.l  d5,d2
     swap    d2
     ext.l   d2      * >>FIXP_SHIFT
- 
+   
+    * Loop termination conditions:
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
+    * buffer overflow check
+    * if (s >= n) 
+    cmp.l   d1,d3
+    bge     .x     
+
     pushm   d0-d3/d5/a1/a4/a5
     move.l  d2,d0
     move.l  a5,a0
@@ -2226,7 +2236,7 @@ sid_clock_fast8:
     and.l   #FIXP_MASK,d6
     sub.l   #1<<(FIXP_SHIFT-1),d6
     move.l  d6,a4
-
+    
 
     ; Inline output generation
 .range = 1<<8
@@ -2255,37 +2265,52 @@ sid_clock_fast8:
 
     * store one byte at d3
     move.b  d6,(a1,d3.l)    * chip write
+
     addq.l  #1,d3
+    bra     .loop
+    
+.break
+    * run remaining d0 cycles
+    move.l  a5,a0
+    pushm   d0/d3/a5
+    bsr     sid_clock
+    popm    d0/d3/a5
 
-    cmp.l   d3,d1
-    bne     .loop
-
+    swap    d0
+    clr.w   d0      * delta_t<<FIXP_SHIFT
+    sub.l   d0,a4
+.x
     move.l  a4,sid_sample_offset(a5)
   
-    * bytes written
+    * samples written
     move.l  d3,d0
     rts
 
 
-* Clock and get 14-bit output in pairs, with volume scaling
+* Clock and get 14-bit samples corresponding to the number of 
+* given cycles, with volume scaling.
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer: high byte
 *   a2 = output byte buffer pointer: low byte
-*   d1 = pairs of bytes to get
+*   d0 = cycles to run
+*   d1 = buffer size limit in samples
 * out:
-*   d0 = bytes got
+*   d0 = samples written
 * uses:
 *   d0-a6
 sid_clock_fast14:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
-
+    move.l  sid_sample_offset(a5),d5
+    
     move.l  sid_sample_offset(a5),a4
     move.l  sid_cycles_per_sample(a5),a6
 .loop
     * d5 = next_sample_offset
+    ;move.l  sid_sample_offset(a5),d5
+    ;add.l   sid_cycles_per_sample(a5),d5
     move.l  a4,d5
     add.l   a6,d5
     add.l   #1<<(FIXP_SHIFT-1),d5
@@ -2295,8 +2320,17 @@ sid_clock_fast14:
     swap    d2
     ext.l   d2      * >>FIXP_SHIFT
    
+    * Loop termination conditions:
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
+    * buffer overflow check
+    * if (s >= n) 
+    cmp.l   d1,d3
+    bge     .x     
+
     pushm   d0-d3/d5/a1/a2/a4/a5
-    move.l  d2,d0  
+    move.l  d2,d0
     move.l  a5,a0
     bsr     sid_clock
     popm    d0-d3/d5/a1/a2/a4/a5
@@ -2306,7 +2340,7 @@ sid_clock_fast14:
     and.l   #FIXP_MASK,d6
     sub.l   #1<<(FIXP_SHIFT-1),d6
     move.l  d6,a4
-
+    
     ; Inline output generation
 .range = 1<<16
 .half  = .range>>1
@@ -2339,16 +2373,27 @@ sid_clock_fast14:
     * store high 8 bits
     addq.l  #1,d3
     move.b  d6,-1(a1,d3.l)   * chip write, stall
-  
-    * All bytes generated?
-    cmp.l   d3,d1
-    bne     .loop
 
+    bra     .loop
+    
+.break
+    * run remaining d0 cycles
+    move.l  a5,a0
+    pushm   d0/d3/a5
+    bsr     sid_clock
+    popm    d0/d3/a5
+
+    swap    d0
+    clr.w   d0      * delta_t<<FIXP_SHIFT
+    sub.l   d0,a4
+.x
     move.l  a4,sid_sample_offset(a5)
-
-    * bytes written
+  
+    * samples written
     move.l  d3,d0
     rts
+
+
 
 
 

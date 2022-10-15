@@ -126,7 +126,7 @@ FIXP_MASK = $ffff
         UBYTE   sid_sampling_method
         ULONG   sid_bus_value_ttl
         ULONG   sid_clock_frequency
-        ULONG   sid_cycles_per_sample   * fixed point
+        ULONG   sid_cycles_per_sample   * 16.16 fixed point
         ULONG   sid_sample_offset
         UWORD   sid_sample_prev
         UWORD   sid_volume
