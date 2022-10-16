@@ -524,8 +524,7 @@ voice_set_chip_model:
 voice_set_sync_source:
     move.l  voice_wave(a0),a0
     move.l  voice_wave(a1),a1
-    bsr     wave_set_sync_source
-    rts
+    bra     wave_set_sync_source
 
 * in:
 *    a0 = object
@@ -536,9 +535,8 @@ voice_writeCONTROL_REG:
     bsr     wave_writeCONTROL_REG
     popm    d0/a0
     move.l  voice_envelope(a0),a0
-    bsr     envelope_writeCONTROL_REG
-    rts
-
+    bra     envelope_writeCONTROL_REG
+   
 
 * in:
 *    a0 = object
@@ -943,7 +941,7 @@ filter_reset:
 *    a0 = object
 *    d0 = fc_lo
 * uses:
-*    d0,d1,d2,a0,a1
+*    d0,d1,a0,a1
 filter_writeFC_LO:
     move    filter_fc(a0),d1
     and     #$7f8,d1
@@ -956,7 +954,8 @@ filter_writeFC_LO:
 * in:
 *    a0 = object
 *    d0 = fc_hi
-*    d0,d1,d2,a0,a1
+* uses:
+*    d0,d1,a0,a1
 filter_writeFC_HI:
     lsl.w   #3,d0
     moveq   #7,d1
@@ -985,22 +984,19 @@ filter_writeRES_FILT:
 *    a0 = object
 *    d0 = mode_vol
 filter_writeMODE_VOL:
-    tst.b   d0
-    smi     filter_voice3off(a0)
-
     move.b  d0,d1
+    smi     filter_voice3off(a0)
     lsr.b   #4,d1
-    and     #7,d1
-    move.w  d1,filter_hp_bp_lp(a0)
-
     and     #$f,d0
+    and     #7,d1
     move.b  d0,filter_vol(a0)
+    move.w  d1,filter_hp_bp_lp(a0)
     rts
     
 * in:
 *    a0 = object
 * uses:
-*    d0,d1,a0
+*    d0,d1,a0,a1
 filter_set_w0:
 
     * constant: #2*3.1415926535897932385*1.048576 
@@ -1714,8 +1710,7 @@ sid_output16:
 
 * in:
 *   a0 = object
-* out:
-*   d0 = value
+*   d0 = byte value to write
 *   d1 = SID register offset
 * uses:
 *   d0,d1,d2,a0,a1
@@ -2231,8 +2226,8 @@ sid_clock_fast8:
     bsr     sid_clock
     popm    d0-d3/d5/a1/a4/a5
 
-    sub.l   d2,d0
     move.l  d5,d6
+    sub.l   d2,d0
     and.l   #FIXP_MASK,d6
     sub.l   #1<<(FIXP_SHIFT-1),d6
     move.l  d6,a4
@@ -2335,8 +2330,8 @@ sid_clock_fast14:
     bsr     sid_clock
     popm    d0-d3/d5/a1/a2/a4/a5
 
-    sub.l   d2,d0
     move.l  d5,d6
+    sub.l   d2,d0
     and.l   #FIXP_MASK,d6
     sub.l   #1<<(FIXP_SHIFT-1),d6
     move.l  d6,a4
