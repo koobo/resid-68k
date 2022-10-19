@@ -2025,26 +2025,21 @@ sid_clock:
 
     ; clock oscillators
     move.l  sid_voice1(a5),a0
+    move.l  a3,d0
     move.l  voice_wave(a0),a0
-    move.l  a3,d0
-    bsr     wave_clock
-  
+    ; wave_clock does not clobber d0
+    bsr     wave_clock  
     lea     wave_SIZEOF(a0),a0   
-    move.l  a3,d0
     bsr     wave_clock
-  
     lea     wave_SIZEOF(a0),a0   
-    move.l  a3,d0
     bsr     wave_clock
 
     ; synchronize oscillators
     move.l  sid_voice1(a5),a0
     move.l  voice_wave(a0),a0
     bsr     wave_synchronize
-
     lea     wave_SIZEOF(a0),a0   
     bsr     wave_synchronize
-    
     lea     wave_SIZEOF(a0),a0   
     bsr     wave_synchronize
 
@@ -2071,8 +2066,6 @@ sid_clock:
     move.l  (sp),d0      * restore delta_t
     move.l  sid_filter(a5),a0
     bsr     filter_clock
-
-    move.l  sid_filter(a5),a0
     bsr     filter_output
 
     ; Clock external filter
@@ -2195,16 +2188,16 @@ sid_clock_fast8:
     * d3 = s
     moveq   #0,d3
     move.l  sid_sample_offset(a5),d5
-    
     move.l  sid_sample_offset(a5),a4
     move.l  sid_cycles_per_sample(a5),a6
 .loop
-    * d5 = next_sample_offset
-    ;move.l  sid_sample_offset(a5),d5
-    ;add.l   sid_cycles_per_sample(a5),d5
+    * cycle_count next_sample_offset = sample_offset 
+    *                + cycles_per_sample
+    *                + (1 << (FIXP_SHIFT - 1));
     move.l  a4,d5
     add.l   a6,d5
     add.l   #1<<(FIXP_SHIFT-1),d5
+    * d5 = next_sample_offset
 
     * d2 = delta_t_sample
     move.l  d5,d2
@@ -2212,25 +2205,27 @@ sid_clock_fast8:
     ext.l   d2      * >>FIXP_SHIFT
    
     * Loop termination conditions:
-    * if (delta_t_sample > delta_t)
-    cmp.l   d0,d2
-    bgt     .break
     * buffer overflow check
     * if (s >= n) 
     cmp.l   d1,d3
     bge     .x     
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
+ 
+    * sample_offset = (next_sample_offset & FIXP_MASK) - (1 << (FIXP_SHIFT - 1));
+    and.l   #FIXP_MASK,d5
+    sub.l   #1<<(FIXP_SHIFT-1),d5
+    move.l  d5,a4
 
-    pushm   d0-d3/d5/a1/a4/a5
+    * delta_t -= delta_t_sample
+    sub.l   d2,d0
+    
+    pushm   d0-d3/a1/a4/a5 * 7 regs
     move.l  d2,d0
     move.l  a5,a0
     bsr     sid_clock
-    popm    d0-d3/d5/a1/a4/a5
-
-    move.l  d5,d6
-    sub.l   d2,d0
-    and.l   #FIXP_MASK,d6
-    sub.l   #1<<(FIXP_SHIFT-1),d6
-    move.l  d6,a4
+    popm    d0-d3/a1/a4/a5
     
 
     ; Inline output generation
@@ -2299,13 +2294,10 @@ sid_clock_fast14:
     * d3 = s
     moveq   #0,d3
     move.l  sid_sample_offset(a5),d5
-    
     move.l  sid_sample_offset(a5),a4
     move.l  sid_cycles_per_sample(a5),a6
 .loop
     * d5 = next_sample_offset
-    ;move.l  sid_sample_offset(a5),d5
-    ;add.l   sid_cycles_per_sample(a5),d5
     move.l  a4,d5
     add.l   a6,d5
     add.l   #1<<(FIXP_SHIFT-1),d5
@@ -2316,25 +2308,25 @@ sid_clock_fast14:
     ext.l   d2      * >>FIXP_SHIFT
    
     * Loop termination conditions:
-    * if (delta_t_sample > delta_t)
-    cmp.l   d0,d2
-    bgt     .break
     * buffer overflow check
     * if (s >= n) 
     cmp.l   d1,d3
     bge     .x     
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
 
-    pushm   d0-d3/d5/a1/a2/a4/a5
+    and.l   #FIXP_MASK,d5
+    sub.l   #1<<(FIXP_SHIFT-1),d5
+    move.l  d5,a4
+    sub.l   d2,d0
+
+    pushm   d0-d3/a1/a2/a4/a5 * 8 regs
     move.l  d2,d0
     move.l  a5,a0
     bsr     sid_clock
-    popm    d0-d3/d5/a1/a2/a4/a5
+    popm    d0-d3/a1/a2/a4/a5
 
-    move.l  d5,d6
-    sub.l   d2,d0
-    and.l   #FIXP_MASK,d6
-    sub.l   #1<<(FIXP_SHIFT-1),d6
-    move.l  d6,a4
     
     ; Inline output generation
 .range = 1<<16
