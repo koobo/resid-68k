@@ -577,12 +577,12 @@ envelope_reset:
     clr.b   envelope_sustain(a0)
     clr.b   envelope_release(a0)
     clr.b   envelope_gate(a0)
-    clr.w   envelope_rate_counter(a0)
+    clr.l   envelope_rate_counter(a0)
     clr.b   envelope_exponential_counter(a0)
     move.b  #1,envelope_exponential_counter_period(a0)
     move.b  #envelope_state_RELEASE,envelope_state(a0)
     lea     envelope_rate_counter_period(pc),a1
-    move    (a1),envelope_rate_period(a0) * offset at "release", ie. zero here
+    move.l  (a1),envelope_rate_period(a0) * offset at "release", ie. zero here
     st      envelope_hold_zero(a0)
     rts
 
@@ -599,9 +599,9 @@ envelope_writeCONTROL_REG:
     bne.b   .1
     move.b  #envelope_state_ATTACK,envelope_state(a0)
     moveq   #0,d1
-    lea     envelope_rate_counter_period(pc),a1
     move.b  envelope_attack(a0),d1
-    move.w  (a1,d1.w*2),envelope_rate_period(a0)
+    lea     envelope_rate_counter_period(pc),a1
+    move.l  (a1,d1.w*4),envelope_rate_period(a0)
     clr.b   envelope_hold_zero(a0)
     bra     .2
 .1
@@ -611,9 +611,9 @@ envelope_writeCONTROL_REG:
     beq.b   .2
     move.b  #envelope_state_RELEASE,envelope_state(a0)
     moveq   #0,d1
-    lea     envelope_rate_counter_period(pc),a1
     move.b  envelope_release(a0),d1
-    move.w  (a1,d1.w*2),envelope_rate_period(a0)
+    lea     envelope_rate_counter_period(pc),a1
+    move.l  (a1,d1.w*4),envelope_rate_period(a0)
 .2
     move.b  d0,envelope_gate(a0)
     rts
@@ -633,13 +633,13 @@ envelope_writeATTACK_DECAY:
     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
     bne.b   .1
     lea     envelope_rate_counter_period(pc),a1
-    move    (a1,d1.w*2),envelope_rate_period(a0)
+    move.l  (a1,d1.w*4),envelope_rate_period(a0)
     rts
 .1  
     cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     bne.b   .2
     lea     envelope_rate_counter_period(pc),a1
-    move    (a1,d0.w*2),envelope_rate_period(a0)
+    move.l  (a1,d0.w*4),envelope_rate_period(a0)
 .2
     rts
 
@@ -656,7 +656,7 @@ envelope_writeSUSTAIN_RELEASE:
     cmp.b   #envelope_state_RELEASE,envelope_state(a0)
     bne.b   .1
     lea     envelope_rate_counter_period(pc),a1
-    move    (a1,d0.w*2),envelope_rate_period(a0)
+    move.l  (a1,d0.w*4),envelope_rate_period(a0)
 .1
     rts
 
@@ -679,36 +679,121 @@ envelope_output:
 * in:
 *   a0 = object
 *   d0 = cycle_count delta_t
+*   d5,d2 = NULL
 * uses:
-*   d0,d1,d2,a0,a1
+*   d0-d7,a0,a1
+* note:
+*   call counts from frame $b of Advanced Chemistry (calls per output sample)
 envelope_clock:
-    * d1 = rate step
-    move.w  envelope_rate_period(a0),d1
-    sub.w   envelope_rate_counter(a0),d1
+    moveq   #0,d5
+    moveq   #0,d2
+
+    * Preload stuff for the loop
+    move.l  envelope_rate_counter(a0),d4
+    move.b  envelope_exponential_counter(a0),d3
+    move.b  envelope_counter(a0),d5
+   
+    move.l  envelope_rate_period(a0),d1
+    move.l  d1,d6
+    sub.l   d4,d1
     bgt     .overZero
-    add.w   #$7fff,d1
+    add.l   #$7fff,d1
 .overZero
+    * d1 = rate step
+    * d6 = envelope_rate_period
+    
+    
+    * calls: 3x
+.loop   
+    * calls: 14x
 
-.loop
-    tst.w   d0
-    beq     .x
+    cmp.l   d1,d0
+    bhs.b   .2
+    * calls: 2x
+    add.l   d0,d4
+    tst.w   d4
+    bpl     .x
+    addq.l  #1,d4
+    and.l   #$7fff,d4
+    bra     .x
 
+.2
+    * calls: 11x
+    moveq   #0,d4   * envelope_rate_counter
+    sub.l   d1,d0   * delta_t -= rate_step
+
+    cmp.b   #envelope_state_ATTACK,envelope_state(a0)
+    beq     .yesAttack
+    * calls: 7x
+
+    addq.b  #1,d3
+    cmp.b   envelope_exponential_counter_period(a0),d3
+    bne     .continueLoop
+
+.yesAttack
     * calls: 3x
 
-    cmp.w   d1,d0
-    bhs.b   .2
-    move.w  envelope_rate_counter(a0),d2
-    add.w   d0,d2
-    bpl.b   .3
-    addq.w  #1,d2
-    and.w   #$7fff,d2
-.3
+    moveq   #0,d3   * exponential_counter
+    tst.b   envelope_hold_zero(a0)
+    bne     .continueLoop
 
-    move.w  d2,envelope_rate_counter(a0)  
+    ; switch #1
+    cmp.b   #envelope_state_ATTACK,envelope_state(a0)
+    bne     .notAttack
+    * calls: 3x
+
+    addq.b  #1,d5
+    cmp.b   #$ff,d5
+    bne     .break1
+    move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
+    move.b  envelope_decay(a0),d2
+    lea     envelope_rate_counter_period(pc),a1
+    ;move.l  (a1,d2.w*4),envelope_rate_period(a0)
+    move.l  (a1,d2.w*4),d6
+    bra     .break1
+
+.notAttack
+    cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
+    bne     .notDS
+    * calls: 7x
+    move.b  envelope_sustain(a0),d2
+    cmp.b   envelope_sustain_level(pc,d2.w),d5
+    beq     .break1
+    * calls: 1x
+    * ... fall through ...
+.notDS
+    ; The remaining one is RELEASE.
+    * calls: 1x
+    subq.b  #1,d5
+.break1
+    * calls: 11x
+    * switch #2 replaced with a table 
+    tst.b   d5
+    bne.b   .1
+    * case 0x00:
+    move.b  #1,envelope_exponential_counter_period(a0)
+    st      envelope_hold_zero(a0)
+    bra     .continueLoop
+.1
+    * Other cases, values not in switch scope are null
+    move.b  exponential_counter_period_table(pc,d5.w),d2
+    beq     .continueLoop
+    move.b  d2,envelope_exponential_counter_period(a0)
+.continueLoop
+ 
+    * rate_step = rate_period
+    move.l  d6,d1
+
+    tst.l   d0
+    bne     .loop
+.x
+    move.b  d5,envelope_counter(a0)
+    move.b  d3,envelope_exponential_counter(a0)
+    move.l  d4,envelope_rate_counter(a0)
+    move.l  d6,envelope_rate_period(a0)
     rts
 
-
-.envelope_sustain_level:
+envelope_sustain_level:
   dc.b $00
   dc.b $11
   dc.b $22
@@ -726,118 +811,39 @@ envelope_clock:
   dc.b $ee
   dc.b $ff
 
-.2
-
-    clr.w   envelope_rate_counter(a0)
-    sub.w   d1,d0
-
-    * calls: 1.5x
-
-    cmp.b   #envelope_state_ATTACK,envelope_state(a0)
-    beq     .4
-    addq.b  #1,envelope_exponential_counter(a0)
-    move.b  envelope_exponential_counter_period(a0),d2
-    cmp.b   envelope_exponential_counter(a0),d2
-    bne     .continueLoop
-.4
-    clr.b   envelope_exponential_counter(a0)
-    tst.b   envelope_hold_zero(a0)
-    bne     .continueLoop
-
-    ; switch #1
-    cmp.b   #envelope_state_ATTACK,envelope_state(a0)
-    bne     .notAttack
-    addq.b  #1,envelope_counter(a0)
-    ;and.b   #$ff,envelope_counter(a0) this is a no-op
-    cmp.b   #$ff,envelope_counter(a0)
-    bne     .break1
-    move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
-    moveq   #0,d2
-    lea     envelope_rate_counter_period(pc),a1
-    move.b  envelope_decay(a0),d2
-    move.w  (a1,d2.w*2),envelope_rate_period(a0)
-    bra     .break1
-.notAttack
-    cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
-    bne     .notDS
-    moveq   #0,d2
-    move.b  envelope_sustain(a0),d2
-    move.b  .envelope_sustain_level(pc,d2),d2
-    cmp.b   envelope_counter(a0),d2
-    beq     .break1
-    subq.b  #1,envelope_counter(a0)
-    bra     .break1
-.notDS
-    ; No need to check envelope_state(a0), 
-    ; the remaining one is RELEASE.
-    subq.b  #1,envelope_counter(a0)
-    ;;and.b   #$ff,envelope_counter(a0)
-.break1
-
-    ; switch #2
-    move.b  envelope_counter(a0),d2
-    cmp.b   #$ff,d2
-    bne.b   .n1
-    move.b  #1,envelope_exponential_counter_period(a0)
-    bra     .break2
-.n1
-    cmp.b   #$5d,d2
-    bne.b   .n2
-    move.b  #2,envelope_exponential_counter_period(a0)
-    bra     .break2
-.n2
-    cmp.b   #$36,d2
-    bne.b   .n3
-    move.b  #4,envelope_exponential_counter_period(a0)
-    bra     .break2
-.n3
-    cmp.b   #$1a,d2
-    bne.b   .n4
-    move.b  #8,envelope_exponential_counter_period(a0)
-    bra     .break2
-.n4
-    cmp.b   #$0e,d2
-    bne.b   .n5
-    move.b  #16,envelope_exponential_counter_period(a0)
-    bra     .break2
-.n5
-    cmp.b   #$06,d2
-    bne.b   .n6
-    move.b  #30,envelope_exponential_counter_period(a0)
-    bra     .break2
-.n6
-    cmp.b   #$00,d2
-    bne.b   .n7
-    move.b  #1,envelope_exponential_counter_period(a0)
-    st      envelope_hold_zero(a0)
-.n7
-.break2
-
-
-.continueLoop
-    move.w  envelope_rate_period(a0),d1
-    bra     .loop
-.x
-
-    rts
+exponential_counter_period_table:
+.0   dc.b    1      * index= 0
+     dcb.b   6-0-1,0
+.6   dc.b    30     *        6
+     dcb.b   14-6-1,0
+.14  dc.b    16     * 0xe  = 14
+     dcb.b   26-14-1,0
+.26  dc.b    8      * 0x1a = 26
+     dcb.b   54-26-1,0
+.54  dc.b    4      * 0x36 = 54
+     dcb.b   93-54-1,0
+.93  dc.b    2      * 0x5d = 93
+     dcb.b   255-93-1,0
+.255 dc.b    1      * 0xff = 255
+     even
 
 envelope_rate_counter_period:
-  dc.w      9
-  dc.w     32
-  dc.w     63
-  dc.w     95
-  dc.w    149
-  dc.w    220
-  dc.w    267
-  dc.w    313
-  dc.w    392
-  dc.w    977
-  dc.w   1954
-  dc.w   3126
-  dc.w   3907
-  dc.w  11720
-  dc.w  19532
-  dc.w  31251
+  dc.l      9
+  dc.l     32
+  dc.l     63
+  dc.l     95
+  dc.l    149
+  dc.l    220
+  dc.l    267
+  dc.l    313
+  dc.l    392
+  dc.l    977
+  dc.l   1954
+  dc.l   3126
+  dc.l   3907
+  dc.l  11720
+  dc.l  19532
+  dc.l  31251
 
 
 
@@ -1700,9 +1706,7 @@ sid_output16:
 *   d1 = SID register offset
 * uses:
 *   d0,d1,d2,a0,a1
-sid_write
-    ;move.b  d1,sid_bus_value(a0)
-    ;move.l  #$2000,sid_bus_value_ttl(a0)
+sid_write:
     and     #$1f,d1
     move.w  .tab(pc,d1.w*2),d1
     jmp     .tab(pc,d1)
@@ -1751,67 +1755,85 @@ sid_write
     rts
 
 .w00:
-    move.l  ([sid_voice1.w,a0],voice_wave.w),a0
+    move.l  sid_voice1(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writeFREQ_LO
 .w01:
-    move.l  ([sid_voice1.w,a0],voice_wave.w),a0
+    move.l  sid_voice1(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writeFREQ_HI
 .w02:
-    move.l  ([sid_voice1.w,a0],voice_wave.w),a0
+    move.l  sid_voice1(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writePW_LO
 .w03:
-    move.l  ([sid_voice1.w,a0],voice_wave.w),a0
+    move.l  sid_voice1(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writePW_HI
 .w04:
     move.l  sid_voice1(a0),a0
     bra     voice_writeCONTROL_REG
 .w05:
-    move.l  ([sid_voice1.w,a0],voice_envelope.w),a0
+    move.l  sid_voice1(a0),a0
+    move.l  voice_envelope(a0),a0
     bra     envelope_writeATTACK_DECAY
 .w06:
-    move.l  ([sid_voice1.w,a0],voice_envelope.w),a0
+    move.l  sid_voice1(a0),a0
+    move.l  voice_envelope(a0),a0
     bra     envelope_writeSUSTAIN_RELEASE
 .w07:
-    move.l  ([sid_voice2.w,a0],voice_wave.w),a0
+    move.l  sid_voice2(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writeFREQ_LO
 .w08:
-    move.l  ([sid_voice2.w,a0],voice_wave.w),a0
+    move.l  sid_voice2(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writeFREQ_HI
 .w09:
-    move.l  ([sid_voice2.w,a0],voice_wave.w),a0
+    move.l  sid_voice2(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writePW_LO
 .w0a:
-    move.l  ([sid_voice2.w,a0],voice_wave.w),a0
+    move.l  sid_voice2(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writePW_HI
 .w0b:
     move.l  sid_voice2(a0),a0
     bra     voice_writeCONTROL_REG
 .w0c:
-    move.l  ([sid_voice2.w,a0],voice_envelope.w),a0
+    move.l  sid_voice2(a0),a0
+    move.l  voice_envelope(a0),a0
     bra     envelope_writeATTACK_DECAY
 .w0d:
-    move.l  ([sid_voice2.w,a0],voice_envelope.w),a0
+    move.l  sid_voice2(a0),a0
+    move.l  voice_envelope(a0),a0
     bra     envelope_writeSUSTAIN_RELEASE
 .w0e:
-    move.l  ([sid_voice3.w,a0],voice_wave.w),a0
+    move.l  sid_voice3(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writeFREQ_LO
 .w0f:
-    move.l  ([sid_voice3.w,a0],voice_wave.w),a0
+    move.l  sid_voice3(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writeFREQ_HI
 .w10:
-    move.l  ([sid_voice3.w,a0],voice_wave.w),a0
+    move.l  sid_voice3(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writePW_LO
 .w11:
-    move.l  ([sid_voice3.w,a0],voice_wave.w),a0
+    move.l  sid_voice3(a0),a0
+    move.l  voice_wave(a0),a0
     bra     wave_writePW_HI
 .w12:
     move.l  sid_voice3(a0),a0
     bra     voice_writeCONTROL_REG
 .w13:
-    move.l  ([sid_voice3.w,a0],voice_envelope.w),a0
+    move.l  sid_voice3(a0),a0
+    move.l  voice_envelope(a0),a0
     bra     envelope_writeATTACK_DECAY
 .w14:
-    move.l  ([sid_voice3.w,a0],voice_envelope.w),a0
+    move.l  sid_voice3(a0),a0
+    move.l  voice_envelope(a0),a0
     bra     envelope_writeSUSTAIN_RELEASE
 .w15:
     move.l  sid_filter(a0),a0
@@ -1917,8 +1939,8 @@ sid_clock:
 
     move.l  a0,a5
 
-    move.l  d0,d7
-    push    d7      * save delta_t
+    move.l  d0,a3
+    push    d0      * save delta_t
  
     move.l  sid_voice1(a5),a0
     move.l  voice_envelope(a0),a0
@@ -1926,13 +1948,14 @@ sid_clock:
  
     * assume envelope objects are stored one after another
     lea     envelope_SIZEOF(a0),a0
-    move.l  d7,d0
+    move.l  a3,d0
     bsr     envelope_clock
  
     lea     envelope_SIZEOF(a0),a0
-    move.l  d7,d0
+    move.l  a3,d0
     bsr     envelope_clock
 
+    move.l  a3,d7
     * d7 = delta_t_osc
 .loop
     tst.l   d7
@@ -1978,7 +2001,6 @@ sid_clock:
     * 16 bits is $101. We can likely use
     * 16-bit division as it's <=22(1/0) where
     * the 32-bit is 38(1/0) on 68060.
-
     divu.w  wave_freq(a0),d2
     bvs.b   .longDiv
     * d2.w = delta_t_next = delta_accumulator / freq
@@ -2059,6 +2081,7 @@ sid_clock:
     pop     d0          * restore delta_t
     move.l  sid_extfilt(a5),a0
     bra     extfilter_clock
+  
 
 
 * Clock and get 16-bit samples corresponding on the number of cycles 

@@ -66,8 +66,8 @@ FIXP_MASK = $ffff
     LABEL wave_SIZEOF   
 
     STRUCTURE   envelope,0
-        UWORD   envelope_rate_counter
-        UWORD   envelope_rate_period
+        ULONG   envelope_rate_counter
+        ULONG   envelope_rate_period
         UBYTE   envelope_counterHi
         UBYTE   envelope_counter
         UBYTE   envelope_pad
