@@ -1259,10 +1259,10 @@ filter_clock:
 
     cmp.l   d1,d0
     bhs.b   .4
+    move.l  d0,d1
     * delta_t_flt changed, update w0_delta_t
     move.l  filter_w0_ceil_dt(a0),d2
     muls.l  d1,d2
-    move.l  d0,d1
     asr.l   #6,d2
 .4  
 ;    * dVlp
