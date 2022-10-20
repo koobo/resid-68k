@@ -98,10 +98,7 @@ wave_set_chip_model
 *   a0 = object
 *   d0 = freq_lo
 wave_writeFREQ_LO:
-    move    wave_freq(a0),d1
-    and     #$ff00,d1
-    or.b    d0,d1
-    move    d1,wave_freq(a0)
+    move.b  d0,wave_freq+1(a0)
     rts
 
 
@@ -109,11 +106,7 @@ wave_writeFREQ_LO:
 *   a0 = object
 *   d0 = freq_hi
 wave_writeFREQ_HI:
-    lsl     #8,d0
-    move    wave_freq(a0),d1
-    and     #$00ff,d1
-    or      d0,d1
-    move    d1,wave_freq(a0)
+    move.b  d0,wave_freq+0(a0)
     rts
 
 
@@ -121,22 +114,15 @@ wave_writeFREQ_HI:
 *   a0 = object
 *   d0 = pw_lo
 wave_writePW_LO:
-    move    wave_pw(a0),d1
-    and     #$0f00,d1
-    or.b    d0,d1
-    move    d1,wave_pw(a0)
+    move.b  d0,wave_pw+1(a0)
     rts
 
 * in:
 *   a0 = object
 *   d0 = pw_hi
 wave_writePW_HI:
-    lsl     #8,d0
-    and     #$0f00,d0
-    move    wave_pw(a0),d1
-    and     #$00ff,d1
-    or      d0,d1
-    move    d1,wave_pw(a0)
+    and.b   #$f,d0
+    move.b  d0,wave_pw+0(a0)
     rts
 
 * in:
@@ -148,9 +134,9 @@ wave_writeCONTROL_REG:
     lsr.b   #4,d1
     move.w  d1,wave_waveform(a0)
 
-    moveq   #$04,d1
-    and.b  d0,d1
-    move.b  d1,wave_ring_mod(a0)
+    moveq   #$04,d2
+    and.b  d0,d2
+    move.b  d2,wave_ring_mod(a0)
 
     moveq   #$02,d1
     and.b  d0,d1
