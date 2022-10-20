@@ -1438,7 +1438,7 @@ extfilter_set_chip_model
 *   d0 = cycle_count delta_t
 *   d1 = sample Vi
 * uses:
-*   d0-d7,a0,a1,a2
+*   d0-d7,a0,a1,a2,a3,a4
 extfilter_clock:
     tst.b   extfilter_enabled(a0)
     bne     .1
@@ -1455,10 +1455,11 @@ extfilter_clock:
     asr.l   #5,d3 * mul 8, asr 8
     asl.l   #3,d4 * mul 8
 
-    move.l  extfilter_Vlp(a0),d6
+    move.l  extfilter_Vlp(a0),a4
     moveq   #8,d2
     move.l  extfilter_Vhp(a0),a3
     moveq   #20,d1  * shift
+    moveq   #12,d6  * another shift
   
     * d2 = delta_t_flt
     * a1 = Vi
@@ -1477,7 +1478,7 @@ extfilter_clock:
     asr.l   #8,d3
 .2
 ;    ; d7 = Vi - Vlp
-;    move.l  d6,d7
+;    move.l  a4,d7
 ;    sub.l   a3,d7
 ;
 ;    * a2 = Vo = Vlp - Vhp
@@ -1491,33 +1492,32 @@ extfilter_clock:
 ;
 ;    * dVlp
 ;    move.l  a1,d5
-;    sub.l   d6,d5
+;    sub.l   a4,d5
 ;    muls.l  d3,d5
 ;    asr.l   #8,d5
 ;    asr.l   #4,d5
 ;    * Vlp += dVlp
-;    add.l   d5,d6
+;    add.l   d5,a4
 
     * The above interleaved:
 
-    move.l  d6,d7
+    move.l  a4,d7
     sub.l   a3,d7
     move.l  d7,a2
     muls.l  d4,d7 * pOEP
     move.l  a1,d5 * sOEP 
     asr.l   d1,d7 * pOEP
-    sub.l   d6,d5 * sOEP
+    sub.l   a4,d5 * sOEP
     muls.l  d3,d5 * pOEP
     add.l   d7,a3 * sOEP
-    asr.l   #8,d5 * pOEP
-    asr.l   #4,d5 * resource conflict
-    add.l   d5,d6
+    asr.l   d6,d5 * pOEP
+    add.l   d5,a4
 
     sub.l   d2,d0
     bne     .loop
 .x
     move.l  a2,extfilter_Vo(a0)
-    move.l  d6,extfilter_Vlp(a0)
+    move.l  a4,extfilter_Vlp(a0)
     move.l  a3,extfilter_Vhp(a0)
     rts
 
