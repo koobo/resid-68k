@@ -354,10 +354,10 @@ wave_output__S_:
 wave_output__ST:
     ; wave_output__S_ inlined
     move.l  wave_accumulator(a0),d1
-    move.l  wave_wave__ST(a0),a1
-    lsr.l   #8,d1
     moveq   #0,d0
+    lsr.l   #8,d1
     lsr.w   #4,d1
+    move.l  wave_wave__ST(a0),a1
     move.b  (a1,d1.w),d0
     lsl.w   #4,d0
     rts
@@ -378,8 +378,8 @@ wave_output_P__:
     rts
 wave_output_P_T:
     bsr     wave_output___T
-    move.l  wave_wave_P_T(a0),a1
     lsr.w   #1,d0
+    move.l  wave_wave_P_T(a0),a1
     move.b  (a1,d0.w),d1
     lsl     #4,d1
     bsr     wave_output_P__
@@ -389,8 +389,8 @@ wave_output_PS_:
     ; wave_output__S_ inlined
     move.l  wave_accumulator(a0),d0
     lsr.l   #8,d0
-    move.l  wave_wave_PS_(a0),a1
     lsr.w   #4,d0
+    move.l  wave_wave_PS_(a0),a1
     move.b  (a1,d0.w),d1
     
     lsl.w   #4,d1
@@ -399,12 +399,11 @@ wave_output_PS_:
     rts
 wave_output_PST:
     ; wave_output__S_ inlined
-    move.l  wave_accumulator(a0),d0
+    move.l  wave_accumulator(a0),d0  
     lsr.l   #8,d0
-    move.l  wave_wave_PST(a0),a1
     lsr.w   #4,d0
+    move.l  wave_wave_PST(a0),a1
     move.b  (a1,d0.w),d1
-
     lsl.w   #4,d1
     bsr     wave_output_P__
     and     d1,d0
