@@ -766,23 +766,20 @@ envelope_clock:
     subq.b  #1,d5
 .break1
     * calls: 11x
-    * switch #2 replaced with a table 
-    tst.b   d5
-    bne.b   .1
-    * case 0x00:
-    move.b  #1,envelope_exponential_counter_period(a0)
-    st      envelope_hold_zero(a0)
-    bra     .continueLoop
-.1
-    * Other cases, values not in switch scope are null
+    * switch #2 (envelope_counter) replaced with a table 
+    * Values not in switch scope are null
     move.b  exponential_counter_period_table(pc,d5.w),d2
-    beq     .continueLoop
+    beq.b   .continueLoop
     move.b  d2,envelope_exponential_counter_period(a0)
+    * case 0x00:
+    tst.b   d5
+    bne.b   .continueLoop
+    * When the envelope counter is changed to zero, it is frozen at zero.
+    st      envelope_hold_zero(a0)
+
 .continueLoop
- 
     * rate_step = rate_period
     move.l  d6,d1
-
     tst.l   d0
     bne     .loop
 .x
