@@ -7,10 +7,12 @@
     include hardware/cia.i
     include hardware/dmabits.i
     include hardware/intbits.i
-
+    include libraries/timer_lib.i
+    include devices/timer.i
+    
 * Constants
 PAL_CLOCK=3546895
-SAMPLING_FREQ=44100/2
+SAMPLING_FREQ=27500
 PAULA_PERIOD=(PAL_CLOCK+SAMPLING_FREQ/2)/SAMPLING_FREQ
 SAMPLES_PER_FRAME set (SAMPLING_FREQ+25)/50
 SAMPLES_PER_HALF_FRAME set (SAMPLING_FREQ+50)/100
@@ -24,6 +26,7 @@ SAMPLES_PER_HALF_FRAME set SAMPLES_PER_HALF_FRAME+1
 * p=c/f
 
 main:
+    bsr     openTimer
     move.l  4.w,a6
     lea     DOSName,a1
     jsr     _LVOOldOpenLibrary(a6)
@@ -38,11 +41,11 @@ main:
     lea     Sid,a0
     jsr     sid_set_sampling_parameters
 
-    moveq   #1,d0
+    moveq   #0,d0
     lea     Sid,a0
     jsr     sid_enable_filter
 
-    moveq   #1,d0
+    moveq   #0,d0
     lea     Sid,a0
     jsr     sid_enable_external_filter
 
@@ -50,12 +53,11 @@ main:
     bsr     createReSIDWorkerTask
 
 ;;;;;;; DUMP TEST
-
-;    bsr     playDump  
-;    move    #1*50,d7
-;    bsr     wait
-;    bra     .skip
-
+; REM
+    bsr     playDump  
+    bra     .skip
+; EREM
+ 
 ;;;;;;;; POKE TEST
     moveq   #7*2,d7
     bsr     pokeSound
@@ -78,6 +80,10 @@ main:
     move    #0,$dff0b8
     move    #0,$dff0c8
     move    #0,$dff0d8
+
+    bsr     closeTimer
+
+    move.l  maxTime(pc),d0
     rts
 
 delay
@@ -289,6 +295,8 @@ switchBuffers:
     rts
 
 fillBufferA2:
+    bsr     startMeasure
+
     lea     Sid,a0
     ;move.l  a2,a1           * target buffer
     movem.l outBuffer1(pc),a1/a2
@@ -298,6 +306,13 @@ fillBufferA2:
     jsr     sid_clock_fast8
     * d0 = bytes received, make words
     lsr     #1,d0
+    move.l  d0,d7
+    bsr     stopMeasure
+    cmp.l   maxTime(pc),d0
+    blo.b   .1
+    move.l  d0,maxTime
+.1
+    move.l  d7,d0
     rts
 
 dmawait
@@ -377,7 +392,91 @@ reSIDLevel1Handler
     
 reSIDAudioSignal    dc.b    0
 reSIDExitSignal    dc.b    0
+maxTime             dc.l  0
     even
+
+
+***************************************************************************
+*
+* Performance measurement with timer.device
+*
+***************************************************************************
+
+openTimer
+	move.l	4.w,a0
+	move	LIB_VERSION(a0),d0
+	cmp	#36,d0
+	blo.b	.x
+	move.l	a0,a6
+
+	lea	.timerDeviceName(pc),a0
+	moveq	#UNIT_ECLOCK,d0
+	moveq	#0,d1
+	lea	timerRequest,a1
+	jsr	_LVOOpenDevice(a6)		; d0=0 if success
+	tst.l	d0
+	seq	timerOpen
+.x	rts
+
+.timerDeviceName dc.b	"timer.device",0
+	even
+
+closeTimer
+	tst.b	timerOpen
+	beq.b	.x
+	clr.b	timerOpen
+	move.l	4.w,a6
+	lea	timerRequest,a1
+	jsr	_LVOCloseDevice(a6)
+.x	rts
+
+startMeasure
+	tst.b	timerOpen(pc)
+	beq.b	.x
+	move.l	IO_DEVICE+timerRequest(pc),a6
+	lea	clockStart(pc),a0
+	jsr     _LVOReadEClock(a6)
+.x	rts
+
+; out: d0: difference in millisecs
+stopMeasure
+	tst.b	timerOpen(pc)
+	bne.b	.x
+	moveq	#-1,d0
+	rts
+.x
+	move.l	IO_DEVICE+timerRequest(pc),a6
+	lea	clockEnd,a0
+	jsr     _LVOReadEClock(a6)
+    * D0 will be 709379 for PAL.
+	move.l	d0,d2
+	; d2 = ticks/s
+	divu	#1000,d2
+	; d2 = ticks/ms
+	ext.l	d2
+	
+	; Calculate diff between start and stop times
+	; in 64-bits
+	move.l	EV_HI+clockEnd(pc),d0
+	move.l	EV_LO+clockEnd(pc),d1
+	move.l	EV_HI+clockStart(pc),d3
+	sub.l	EV_LO+clockStart(pc),d1
+	subx.l	d3,d0
+
+	; Turn the diff into millisecs
+	; Divide d0:d1 by d2
+	divu.l  d2,d0:d1
+   ; d0:d1 is now d0:d1/d2
+	; take the lower 32-bits
+	move.l	d1,d0
+	rts
+
+timerOpen               dc.w    1
+timerRequest	        ds.b    IOTV_SIZE
+clockStart              ds.b    EV_SIZE
+clockEnd                ds.b    EV_SIZE
+
+
 
 * in:
 *    d7 = offset: 0 = voice 1
@@ -505,14 +604,102 @@ pokeRelease
     jsr     sid_write
     rts
 
+* Frame $b from "Advanced Chemistry"
+pokeSound2:
+    move.b  #$00,d0
+    move.b  #$15,d1 * fc_lo
+    bsr     .w
+;   000b 1601 000b 17f1 
+    move.b  #$01,d0
+    move.b  #$16,d1 * fc_hi
+    bsr     .w
+    move.b  #$f1,d0 * res=f, filter voice 1
+    move.b  #$17,d1 * res_filt
+    bsr     .w
+;00000420:   186f   0507   06a2   0200  ...o............
+    move.b  #$6f,d0 * filter mode=6 (hp+bp), vol=f
+    move.b  #$18,d1 * mode_vol
+    bsr     .w
+    move.b  #$07,d0 * attack=0, decay=7
+    move.b  #$05,d1 * v1 attack decay
+    bsr     .w
+    move.b  #$a2,d0 * sustain=a, release=2
+    move.b  #$06,d1 * v1 sustain release
+    bsr     .w
+    move.b  #$00,d0
+    move.b  #$02,d1 * v1 pw lo
+    bsr     .w
+;00000430:   0387   0043   0103   0441  .......C.......A
+    move.b  #$87,d0
+    move.b  #$03,d1 * v1 pw hi
+    bsr     .w
+    move.b  #$43,d0
+    move.b  #$00,d1 * v1 freq lo
+    bsr     .w
+    move.b  #$03,d0
+    move.b  #$01,d1 * v1 freq hi
+    bsr     .w
+    move.b  #$41,d0 * gate, pulse
+    move.b  #$04,d1 * v1 control
+    bsr     .w
+;00000440:   0c00   0d64   0900   0a84  .......d........
+    move.b  #$00,d0 * attack=0, decay=0
+    move.b  #$0c,d1 * v2 attack decay
+    bsr     .w
+    move.b  #$64,d0 * sustain=6, release=4
+    move.b  #$0d,d1 * v2 sustain release
+    bsr     .w
+    move.b  #$00,d0
+    move.b  #$09,d1 * v2 pw lo
+    bsr     .w
+    move.b  #$84,d0
+    move.b  #$0a,d1 * v2 pw hi
+    bsr     .w
+;00000450:   0714   0827   0b41   1300  .......'...A....
+    move.b  #$14,d0
+    move.b  #$07,d1 * v2 freq lo
+    bsr     .w
+    move.b  #$27,d0
+    move.b  #$08,d1 * v2 freq hi
+    bsr     .w
+    move.b  #$41,d0 * gate, pulse
+    move.b  #$0b,d1 * v2 control
+    bsr     .w
+    move.b  #$00,d0 * attack=0, decay=0
+    move.b  #$13,d1 * v3 attack decay
+    bsr     .w
+;00000460:   14c2   10a0   1180   0e8d  ................
+    move.b  #$c2,d0 * sustain=c, release=2
+    move.b  #$14,d1 * v3 sustain release
+    bsr     .w
+    move.b  #$a0,d0
+    move.b  #$10,d1 * v3 pw lo
+    bsr     .w
+    move.b  #$80,d0
+    move.b  #$11,d1 * v3 pw hi
+    bsr     .w
+    move.b  #$8d,d0
+    move.b  #$0e,d1 * v3 freq lo
+    bsr     .w
+;00000470:   0f3a   1241 
+    move.b  #$3a,d0
+    move.b  #$0f,d1 * v3 freq hi
+    bsr     .w
+    move.b  #$41,d0 * gate, pulse
+    move.b  #$12,d1 * v3 control 
+    bsr     .w
+    rts    
+
+.w  lea Sid,a0
+    bra sid_write
 
 playDump
     lea     regDump+$000,a5
     lea     regDumpEnd,a6
 
     * vblank timer
+    move	 #$1080,d7
     moveq   #0,d7
-
 .loop
     move    #$f00,$dff180
     bsr     delay
@@ -534,15 +721,6 @@ playDump
     bra     .a
 
 .s
-;    movem.l d0-a6,-(sp)
-;    lea     Sid,a0
-;    movem.l outBuffer1(pc),a1/a2
-;    move.l  #100000,d0      * cycle limit, set high enough
-;    * bytes to get
-;    move.l  #10,d1
-;    jsr     sid_clock_fast8
-;    * d0 = bytes received, make words
-;    movem.l (sp)+,d0-a6
 
     addq.l  #1,d7
     cmp.l   a6,a5
@@ -556,10 +734,11 @@ DOSName     dc.b    "dos.library",0
     even
 
 regDump
-    incbin  clubstyle.regdump2
+;    incbin  clubstyle.regdump2
+    incbin  advanced_chemistry.regdump
 regDumpEnd
 
-    include "resid-68k.s"
+     include "resid-68k.s"
 
 
     section bss1,bss
@@ -573,4 +752,6 @@ buffer1  ds.b	10000
 buffer2  ds.b	10000
 buffer1b  ds.b	10000
 buffer2b  ds.b	10000
+
+
 
