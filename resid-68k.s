@@ -718,16 +718,25 @@ envelope_clock:
 
 .2
     * calls: 11x
+    
     moveq   #0,d4   * envelope_rate_counter
     sub.l   d1,d0   * delta_t -= rate_step
 
     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
     beq     .yesAttack
+
     * calls: 7x
 
     addq.b  #1,d3
     cmp.b   envelope_exponential_counter_period(a0),d3
     bne     .continueLoop
+
+    * Duplicate this bit to avoid unnecessary ATTACK state 
+    * check below
+    moveq   #0,d3   * exponential_counter
+    tst.b   envelope_hold_zero(a0)
+    bne     .continueLoop
+    bra     .notAttack
 
 .yesAttack
     * calls: 3x
@@ -736,11 +745,11 @@ envelope_clock:
     tst.b   envelope_hold_zero(a0)
     bne     .continueLoop
 
-    ; switch #1
-    cmp.b   #envelope_state_ATTACK,envelope_state(a0)
-    bne     .notAttack
-    * calls: 3x
+    ;;; switch #1
 
+    * Due to the above check the state is ATTACK here
+
+    * calls: 3x
     addq.b  #1,d5
     cmp.b   #$ff,d5
     bne     .break1
@@ -766,7 +775,9 @@ envelope_clock:
     subq.b  #1,d5
 .break1
     * calls: 11x
-    * switch #2 (envelope_counter) replaced with a table 
+    
+    ;;; switch #2 (envelope_counter) replaced with a table 
+
     * Values not in switch scope are null
     move.b  exponential_counter_period_table(pc,d5.w),d2
     beq.b   .continueLoop
