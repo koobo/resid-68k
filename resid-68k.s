@@ -2216,9 +2216,9 @@ sid_clock_fast8:
     * d5 = next_sample_offset
 
     * d2 = delta_t_sample
+    moveq   #FIXP_SHIFT,d4
     move.l  d5,d2
-    swap    d2
-    ext.l   d2      * >>FIXP_SHIFT
+    asr.l   d4,d2       * >>FIXP_SHIFT
    
     * Loop termination conditions:
     * buffer overflow check
@@ -2249,12 +2249,12 @@ sid_clock_fast8:
 .half  = .range>>1
 ; Divisor is 5.623626708984375
 ; Inverse with shift (1/5.623626708984375)*512 = 91.04
-    move.l  sid_extfilt(a5),a0
     ;extfilter_output inlined
+    move.l  sid_extfilt(a5),a0
     moveq   #91,d6
+    moveq   #16+1,d4
     muls.l  extfilter_Vo(a0),d6
-    swap    d6
-    asr.w   #1,d6   * FP shift + 16->8 bit shift
+    asr.l   d4,d6   * FP shift + 16->8 bit shift
 
     cmp.w   #.half,d6
     blt     .x1
@@ -2319,9 +2319,9 @@ sid_clock_fast14:
     add.l   #1<<(FIXP_SHIFT-1),d5
 
     * d2 = delta_t_sample
+    moveq   #FIXP_SHIFT,d4
     move.l  d5,d2
-    swap    d2
-    ext.l   d2      * >>FIXP_SHIFT
+    asr.l   d4,d2       * >>FIXP_SHIFT
    
     * Loop termination conditions:
     * buffer overflow check
@@ -2349,12 +2349,12 @@ sid_clock_fast14:
 .half  = .range>>1
 ; Divisor is 5.623626708984375
 ; Inverse with shift (1/5.623626708984375)*512 = 91.04
-    move.l  sid_extfilt(a5),a0
     ;extfilter_output inlined
+    move.l  sid_extfilt(a5),a0
     moveq   #91,d6
+    moveq   #9,d4
     muls.l  extfilter_Vo(a0),d6
-    asr.l   #8,d6   * FP shift
-    asr.l   #1,d6
+    asr.l   d4,d6   * FP shift
 
     cmp.l   #.half,d6
     blt     .x1
