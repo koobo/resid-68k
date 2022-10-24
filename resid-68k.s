@@ -998,37 +998,24 @@ filter_writeMODE_VOL:
 *    d0,d1,a0,a1
 filter_set_w0:
 
-    * constant: #2*3.1415926535897932385*1.048576 
-    *           = 6.58839731666114206971
-    * f0 table max value is 18000
-    * constant << 11: 13493.03770
-    * constant << 12: 26986.07540
-    * constant << 13: 53972.15081
-    * constant << 15: 215888.603
-
     ;move.w  filter_fc(a0),d0
     ;fmove.w ([(filter_f0).w,a0],d0.w*2),fp0
     ;fmul.s  #2*3.1415926535897932385*1.048576,fp0
     ;fmove.l fp0,d0
 
-    ; Use fixed point 
+    move.w  filter_fc(a0),d0
     move.l  filter_f0(a0),a1
-    move.w  #26986,d0
-    move.w  filter_fc(a0),d1
-    mulu.w  (a1,d1.w*2),d0
-    lsr.l   #8,d0
-    lsr.l   #4,d0
-      
-    move.l  d0,filter_w0(a0)
+    move.l  (a1,d0.w*4),d0
     * d0 = w0
-
+    
     move.l  d0,filter_w0_ceil_1(a0)
+    move.l  d0,filter_w0_ceil_dt(a0)
+    
     move.l  filter_w0_max_1(a0),d1
     cmp.l   d1,d0
     bls.b   .1
     move.l  d1,filter_w0_ceil_1(a0)
 .1
-    move.l  d0,filter_w0_ceil_dt(a0)
     move.l  filter_w0_max_dt(a0),d1
     cmp.l   d1,d0
     bls.b   .2

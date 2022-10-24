@@ -96,7 +96,6 @@ FIXP_MASK = $ffff
         ULONG   filter_Vbp
         ULONG   filter_Vlp
         ULONG   filter_Vnf
-        ULONG   filter_w0
         ULONG   filter_w0_ceil_1
         ULONG   filter_w0_ceil_dt
         ULONG   filter_1024_div_Q
