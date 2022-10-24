@@ -1287,27 +1287,46 @@ filter_clock:
 ;    sub.l   a3,d3
 ;    sub.l   a2,d3
 
+ REM
     * The above interleaved:
+    * OPTION 1
     move.l  d4,d7 
-    muls.l  d2,d7 * pOEP
-    move.l  d3,d6 * sOEP
-    asr.l   d5,d7 * pOEP
-    move.l  a1,d3 * sOEP
-    muls.l  d2,d6 * pOEP
-    sub.l   d7,a3 * sOEP
-    muls.l  d4,d3 * pOEP
-    asr.l   d5,d6 * sOEP
-    asr.l   #8,d3 * pOEP
-    sub.l   d6,d4 * sOEP
-    asr.l   #2,d3 * pOEP
+    muls.l  d2,d7 * 2 pOEP only
+    move.l  d3,d6 * 1 pOEP
+    asr.l   d5,d7 * 0 sOEP
+    move.l  a1,d3 * 1 pOEP
+    muls.l  d2,d6 * 2 pOEP only
+    sub.l   d7,a3 * 1 pOEP
+    muls.l  d4,d3 * 2 pOEP only
+    asr.l   d5,d6 * 1 pOEP
+    asr.l   #8,d3 * 0 sOEP
+    sub.l   d6,d4 * 1 pOEP
+    asr.l   #2,d3 * 0 sOEP
+    sub.l   a3,d3 * 1 pOEP
+    sub.l   a2,d3 * 1 pOEP
+    sub.l   d1,d0 * 0 sOEP
+    * 13 cycles
+ EREM
+ 
+    * The above interleaved:
+    * OPTION 2
+    move.l  d4,d7 
+    muls.l  d2,d7 * 2 pOEP only
+    move.l  d3,d6 * 1 pOEP
+    asr.l   d5,d7 * 0 sOEP
+    move.l  a1,d3 * 1 pOEP
+    sub.l   d7,a3 * 0 sOEP
+    muls.l  d2,d6 * 2 pOEP only
+    muls.l  d4,d3 * 2 pOEP only
+    asr.l   #8,d3 * 1 pOEP
+    asr.l   d5,d6 * 0 sOEP
+    asr.l   #2,d3 * 1 pOEP
+    sub.l   d6,d4 * 0 sOEP
+    sub.l   a3,d3 * 1 pOEP
+    sub.l   a2,d3 * 1 pOEP
+    sub.l   d1,d0 * 0 sOEP
+    * 12 cycles
 
-    * -Vlp
-    sub.l   a3,d3 * resource conflict
-    * -Vi
-    sub.l   a2,d3 * resource conflict
-
-    * delta_t -= delta_t_flt
-    sub.l   d1,d0
     bne     .loop
 .x
     move.l  d3,filter_Vhp(a0)
