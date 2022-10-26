@@ -1943,6 +1943,7 @@ sid_set_sampling_parameters_paula:
 *   d0 = cycle_count delta_t
 * uses:
 *    d0-d7,a0-a5
+*    a5 preserved
 sid_clock:
     tst.l   d0
     bgt     .1
@@ -2243,12 +2244,11 @@ sid_clock_fast8:
     * delta_t -= delta_t_sample
     sub.l   d2,d0
     
-    pushm   d0-d3/a1/a4/a5 * 7 regs
+    pushm   d0-d3/a1/a4 * 6 regs
     move.l  d2,d0
     move.l  a5,a0
     bsr     sid_clock
-    popm    d0-d3/a1/a4/a5
-    
+    popm    d0-d3/a1/a4
 
     ; Inline output generation
 .range = 1<<8
@@ -2284,9 +2284,9 @@ sid_clock_fast8:
 .break
     * run remaining d0 cycles
     move.l  a5,a0
-    pushm   d0/d3/a5
+    pushm   d0/d3
     bsr     sid_clock
-    popm    d0/d3/a5
+    popm    d0/d3
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
@@ -2343,11 +2343,11 @@ sid_clock_fast14:
     move.l  d5,a4
     sub.l   d2,d0
 
-    pushm   d0-d3/a1/a2/a4/a5 * 8 regs
+    pushm   d0-d3/a1/a2/a4 * 7 regs
     move.l  d2,d0
     move.l  a5,a0
     bsr     sid_clock
-    popm    d0-d3/a1/a2/a4/a5
+    popm    d0-d3/a1/a2/a4
 
     
     ; Inline output generation
@@ -2388,9 +2388,9 @@ sid_clock_fast14:
 .break
     * run remaining d0 cycles
     move.l  a5,a0
-    pushm   d0/d3/a5
+    pushm   d0/d3
     bsr     sid_clock
-    popm    d0/d3/a5
+    popm    d0/d3
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
@@ -2592,7 +2592,7 @@ sid_clock_interpolate:
     move.l  d2,a6
     sub.l   d6,a6
 
-    pushm   d0-d3/d5/a1/a4/a5 * 7 regs
+    pushm   d0-d3/d5/a1/a4 * 6 regs
 
     move.l  d6,d0 * d6 cycles
     move.l  a5,a0
@@ -2625,7 +2625,7 @@ sid_clock_interpolate:
     move.l  a5,a0
     bsr     sid_clock
    
-    popm    d0-d3/d5/a1/a4/a5
+    popm    d0-d3/d5/a1/a4
     
     move.l  a5,a0
 
