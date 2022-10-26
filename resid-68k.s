@@ -2547,9 +2547,9 @@ sid_clock_fast8_oversample:
 * EXPERIMENTAL
 * in:
 *   a0 = object
-*   a1 = output byte buffer pointer: high byte
+*   a1 = output byte buffer pointer
 *   d0 = cycle_count delta_t, max cycles
-*   d1 = bytes to get
+*   d1 = buffer limit
 * out:
 *   d0 = bytes got
 * uses:
@@ -2569,50 +2569,86 @@ sid_clock_interpolate:
     swap    d2
     ext.l   d2
 
-    moveq   #0,d4
+    * Loop termination conditions:
+    * buffer overflow check
+    * if (s >= n) 
+    cmp.l   d1,d3
+    bge     .x     
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
+
+    * sample_offset = next_sample_offset & FIXP_MASK
+    and.l   #FIXP_MASK,d5
+    move.l  d5,sid_sample_offset(a5)
+
+    * delta_t -= delta_t_sample
+    sub.l   d2,d0
+
+
     move.l  d2,d6
-    subq.l  #8,d6       * assume at least 8 cycles
-    pushm   d0-d6/a1/a5
-;.cycle1
-;    pushm   d4/d6
-;    moveq   #1,d0   * run one cycle
-;    move.l  a5,a0
-;    bsr     sid_clock
-;    popm    d4/d6
-;
-;    addq.l  #1,d4
-;    cmp.l   d6,d4
-;    bne.b   .cycle1
+    ;subq.l  #1,d6       * assume at least 8 cycles
+    lsr.l   #1,d6
+    move.l  d2,a6
+    sub.l   d6,a6
+
+    pushm   d0-d3/d5/a1/a4/a5 * 7 regs
 
     move.l  d6,d0 * d6 cycles
     move.l  a5,a0
     bsr     sid_clock
 
-    popm    d0-d6/a1/a5
-    
-    ;cmp.l   d4,d2
-    ;bls.b   .2
-
-    pushm   d0-d5/a1/a5
     move.l  a5,a0
-    bsr     sid_output16
-    move.w  d0,sid_sample_prev(a5)
-    moveq   #8,d0   * run the rest of the cycles
+
+    ;bsr     sid_output16
+.range = 1<<16
+.half  = .range>>1
+    move.l  sid_extfilt(a0),a0
+    ;extfilter_output inlined
+    move.l  extfilter_Vo(a0),d4
+    muls.l  #91,d4
+    asr.l   #8,d4
+    asr.l   #1,d4
+    
+    cmp.l   #.half,d4
+    blt     .1
+    move    #.half-1,d4
+    bra     .2
+.1
+    cmp.l   #-.half,d4
+    bge     .2
+    move    #-.half,d4
+.2
+
+    move.w  d4,sid_sample_prev(a5)
+    move.l  a6,d0
     move.l  a5,a0
     bsr     sid_clock
-    popm    d0-d5/a1/a5
-.2
-    * delta_t -= delta_t_sample
-    sub.l   d2,d0
-    * sample_offset = next_sample_offset & FIXP_MASK
-    and.l   #FIXP_MASK,d5
-    move.l  d5,sid_sample_offset(a5)
-
-    push    d0
+   
+    popm    d0-d3/d5/a1/a4/a5
+    
     move.l  a5,a0
-    bsr     sid_output16
-    move    d0,d4
-    pop     d0
+
+;    bsr     sid_output16
+    move.l  sid_extfilt(a0),a0
+    ;extfilter_output inlined
+    move.l  extfilter_Vo(a0),d4
+    muls.l  #91,d4
+    asr.l   #8,d4
+    asr.l   #1,d4
+    
+    cmp.l   #.half,d4
+    blt     .11
+    move    #.half-1,d4
+    bra     .22
+.11
+    cmp.l   #-.half,d4
+    bge     .22
+    move    #-.half,d4
+.22
+
+
+;    move    d0,d4
     * d4 = sample_now
 
     move    d4,d7
@@ -2623,15 +2659,43 @@ sid_clock_interpolate:
     add.w   sid_sample_prev(a5),d7
     move.w  d4,sid_sample_prev(a5)
 
+   
     * store one byte at d3
     lsr.w   #8,d7           * 16->8
     move.b  d7,(a1,d3.l)    * chip write
     addq.l  #1,d3
 
-    * All bytes generated?
-    cmp.l   d3,d1
-    bne     .loop
-  
+    bra     .loop
+
+.break
+    * run delta_t-1 cycles if possible
+    pushm   d0/d3
+
+    subq.l  #1,d0
+    bmi.b   .y
+
+    push    d0
+    move.l  a5,a0
+    bsr     sid_clock
+    move.l  a5,a0
+    bsr     sid_output16
+    move    d0,sid_sample_prev(a5)    
+
+    pop     d0
+    beq.b   .y
+
+    * run 1 cycles
+    moveq   #1,d0    
+    move.l  a5,a0
+    bsr     sid_clock
+.y
+    popm    d0/d3
+    swap    d0
+    clr.w   d0      * delta_t<<FIXP_SHIFT
+    sub.l   d0,sid_sample_offset(a5)
+
+.x
+
     * bytes written
     move.l  d3,d0
     rts
