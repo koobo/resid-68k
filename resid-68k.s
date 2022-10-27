@@ -51,6 +51,8 @@ pop    macro
 
     include resid-68k.i
 
+OVERSAMPLE_SHIFT = 1
+
 ******************************************************************************
 *
 * Wave
@@ -1582,7 +1584,7 @@ sid_constructor:
     move    #$40,sid_volume(a0)
 
     move.l  #985248,d0
-    moveq   #SAMPLING_METHOD_SAMPLE_FAST,d1
+    moveq   #SAMPLING_METHOD_SAMPLE_FAST8,d1
     move.l  #44100/2,d2
     bsr     sid_set_sampling_parameters
 
@@ -1861,6 +1863,32 @@ sid_write:
     move.l  sid_filter(a0),a0
     bra     filter_writeMODE_VOL
 
+
+sid_set_sampling_method:
+    lea     sid_clock_fast8(pc),a1
+    cmp.b   #SAMPLING_METHOD_SAMPLE_FAST8,d1
+    beq     .go
+
+    lea     sid_clock_fast14(pc),a1
+    cmp.b   #SAMPLING_METHOD_SAMPLE_FAST14,d1
+    beq     .go
+
+    lea     sid_clock_interpolate14(pc),a1
+    cmp.b   #SAMPLING_METHOD_INTERPOLATE14,d1
+    beq     .go
+
+    lea     sid_clock_oversample14(pc),a1
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE14,d1
+    beq     .go
+
+    * Error: set Z
+    or.b	#(1<<2),ccr
+    rts
+.go
+    * Ok: clear Z
+    and.b	#~(1<<2),ccr
+    rts
+
 * in:
 *   a0 = object
 *   d0 = clock_frequency
@@ -1868,14 +1896,21 @@ sid_write:
 *   d2 = sampling frequency in Hz
 * out:
 *   d0 = true if ok, false with a bad param combo
+*   a1 = clock routine address based on the sampling method
 sid_set_sampling_parameters:
-    cmp.b   #SAMPLING_METHOD_SAMPLE_FAST,d1
-    bne     .fail
 
     move.l  d0,sid_clock_frequency(a0)
     move.b  d1,sid_sampling_method(a0)
     clr.l   sid_sample_offset(a0)
     
+    bsr     sid_set_sampling_method
+    beq     .fail
+
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE14,sid_sampling_method(a0)
+    bne.b   .1
+    lsl.l   #OVERSAMPLE_SHIFT,d2
+.1
+
     ; Calculate cycles per sample as a fixed point value
 
     ;cycles_per_sample = clock_freq / sample_freq * (1 << FIXP_SHIFT) + 0.5);
@@ -1905,15 +1940,16 @@ sid_set_sampling_parameters:
 *   d2 = Paula period value to determine the sampling frequency
 * out:
 *   d0 = true if ok, false with a bad param combo
+*   a1 = clock routine address based on the sampling method
 sid_set_sampling_parameters_paula:
-
-    cmp.b   #SAMPLING_METHOD_SAMPLE_FAST,d1
-    bne     .fail
 
     move.l  d0,sid_clock_frequency(a0)
     move.b  d1,sid_sampling_method(a0)
     clr.l   sid_sample_offset(a0)
-    
+
+    bsr     sid_set_sampling_method
+    beq     .fail
+
     ; Calculate cycles per sample as a fixed point value
 
     ;cycles_per_sample = clock_freq / sample_freq * (1 << FIXP_SHIFT) + 0.5);
@@ -1925,6 +1961,10 @@ sid_set_sampling_parameters_paula:
     divu.l  d2,d3
     * d3 = Playback frequency in Hz as 22.10 FP
 
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE14,sid_sampling_method(a0)
+    bne.b   .1
+    lsl.l   #OVERSAMPLE_SHIFT,d3
+.1
     mulu.l  #10*(1<<FIXP_SHIFT)<<10,d1:d0    
     divu.l  d3,d1:d0
     addq.l  #5,d0
@@ -2195,6 +2235,7 @@ sid_clock_fast16:
     move.l  d3,d0
     rts
 
+
 * Clock and get 8-bit samples corresponding to the number of 
 * given cycles, with volume scaling.
 * in:
@@ -2405,142 +2446,131 @@ sid_clock_fast14:
 
 
 
-
-* Clock and get 8-bit output
-* EXPERIMENTAL
+* Clock and get 8-bit samples corresponding to the number of 
+* given cycles, with volume scaling.
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer: high byte
-*   d0 = cycle_count delta_t, max cycles
-*   d1 = bytes to get
+*   a2 = output byte buffer pointer: low byte
+*   d0 = cycles to run
+*   d1 = buffer size limit in samples
 * out:
-*   d0 = bytes got
+*   d0 = samples written
 * uses:
 *   d0-a6
-sid_clock_fast8_oversample:
+sid_clock_oversample14:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
     move.l  sid_sample_offset(a5),d5
-    
     move.l  sid_sample_offset(a5),a4
-    move.l  sid_cycles_per_sample(a5),a6
+
+    lsl.l   #OVERSAMPLE_SHIFT,d0
+
 .loop
+    * oversample count
+    move.w  #1<<OVERSAMPLE_SHIFT,a6
+    * sample data
+    moveq   #0,d7
  
-    * d5 = next_sample_offset
-    ;move.l  sid_sample_offset(a5),d5
-    ;add.l   sid_cycles_per_sample(a5),d5
+.innerLoop
+    ;----------------------------
     move.l  a4,d5
-    add.l   a6,d5
+    add.l   sid_cycles_per_sample(a5),d5
     add.l   #1<<(FIXP_SHIFT-1),d5
+    * d5 = next_sample_offset
 
     * d2 = delta_t_sample
+    moveq   #FIXP_SHIFT,d4
     move.l  d5,d2
-    swap    d2
-    ext.l   d2      * >>FIXP_SHIFT
+    asr.l   d4,d2       * >>FIXP_SHIFT
    
-    pushm   d0-d5/a1/a5
-    move.l  d2,d0
-    move.l  a5,a0
-    bsr     sid_clock
-    popm    d0-d5/a1/a5
-
-    sub.l   d2,d0
-    move.l  d5,d6
-    and.l   #FIXP_MASK,d6
-    sub.l   #1<<(FIXP_SHIFT-1),d6
-    move.l  d6,a4
-
-    ;move.l  a5,a0
-    ;bsr     sid_output16
-    move.l  sid_extfilt(a5),a0
-    move.l  extfilter_Vo(a0),d4  * 1st subsample
-
-
-
-
-
-
+    * Loop termination conditions:
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
  
-    * d5 = next_sample_offset
-    ;move.l  sid_sample_offset(a5),d5
-    ;add.l   sid_cycles_per_sample(a5),d5
-    move.l  a4,d5
-    add.l   a6,d5
-    add.l   #1<<(FIXP_SHIFT-1),d5
+    * sample_offset = (next_sample_offset & FIXP_MASK) - (1 << (FIXP_SHIFT - 1));
+    and.l   #FIXP_MASK,d5
+    sub.l   #1<<(FIXP_SHIFT-1),d5
+    move.l  d5,a4
 
-    * d2 = delta_t_sample
-    move.l  d5,d2
-    swap    d2
-    ext.l   d2      * >>FIXP_SHIFT
-   
-    pushm   d0-d5/a1/a5
-    move.l  d2,d0
-    move.l  a5,a0
-    bsr     sid_clock
-    popm    d0-d5/a1/a5
-
+    * delta_t -= delta_t_sample
     sub.l   d2,d0
-    move.l  d5,d6
-    and.l   #FIXP_MASK,d6
-    sub.l   #1<<(FIXP_SHIFT-1),d6
-    move.l  d6,a4
-
-    move.l  a5,a0
     
+    pushm   d0-d3/d7/a1/a2/a4
+    move.l  d2,d0
+    move.l  a5,a0
+    bsr     sid_clock
+    popm    d0-d3/d7/a1/a2/a4
+
+    move.l  sid_extfilt(a5),a0
+    add.l   extfilter_Vo(a0),d7
+    ;----------------------------
+    subq.w  #1,a6
+    tst.w   a6
+    bne     .innerLoop
+
+    * buffer overflow check
+    * if (s >= n) 
+    cmp.l   d1,d3
+    bge     .x     
+
+    ; Inline output generation
 .range = 1<<16
 .half  = .range>>1
-    move.l  sid_extfilt(a5),a0
-    add.l   extfilter_Vo(a0),d4     * Add 2nd subsample
-    asr.l   #1,d4       * average
-    
-    muls.l  #91,d4
-    ; fp shift
-    asr.l   #8,d4
-    asr.l   #1,d4
-    
-    cmp.w   #.half,d0
-    blt     .1
-    move    #.half-1,d0
-    bra     .2
-.1
-    cmp.w   #-.half,d0
-    bge     .2
-    move    #-.half,d0
-.2
+; Divisor is 5.623626708984375
+; Inverse with shift (1/5.623626708984375)*512 = 91.04
+    ;moveq   #91,d6
+ ifeq OVERSAMPLE_SHIFT-2 
+    moveq   #23,d6
+ endif
+ ifeq OVERSAMPLE_SHIFT-1 
+    moveq   #46,d6
+ endif
+    moveq   #9,d4
+    muls.l  d7,d6
+    asr.l   d4,d6   * FP shift 
 
+    cmp.l   #.half,d6
+    blt     .x1
+    move.w   #.half-1,d6
+    bra.b   .x2
+.x1
+    cmp.l   #-.half,d6
+    bge     .x2
+    move.w  #-.half,d6
+.x2
+    * Volume scaling
+    ;muls    sid_volume(a5),d6
+    ;asr.l   #6,d6
 
-    ; 16->8 bit
-    asr.l   #8,d4
-
-    move.b  d4,(a1,d3.l)    * chip write
+    * store low 6 bits
+    lsr.b   #2,d6
+    move.b  d6,(a2,d3.l)     * chip write
+    ror.w   #8,d6
+    * store high 8 bits
     addq.l  #1,d3
+    move.b  d6,-1(a1,d3.l)   * chip write, stall
 
-    * All bytes generated?
-    cmp.l   d3,d1
-    bne     .loop
+    bra     .loop
+    
+.break
+    * run remaining d0 cycles
+    move.l  a5,a0
+    pushm   d0/d3
+    bsr     sid_clock
+    popm    d0/d3
 
-
-
-;    bra     .x
-;
-;.break
-;
-;    move.l  a5,a0
-;    pushm   d0/d3/a5
-;    bsr     sid_clock
-;    popm    d0/d3/a5
-;
-;    swap    d0
-;    clr.w   d0      * delta_t<<FIXP_SHIFT
-;    sub.l   d0,sid_sample_offset(a5)
-;.x
-
+    swap    d0
+    clr.w   d0      * delta_t<<FIXP_SHIFT
+    sub.l   d0,a4
+.x
     move.l  a4,sid_sample_offset(a5)
-  
     * bytes written
     move.l  d3,d0
     rts
+
 
 
 * Clock and get 8-bit output
@@ -2554,7 +2584,7 @@ sid_clock_fast8_oversample:
 *   d0 = bytes got
 * uses:
 *   d0-a6
-sid_clock_interpolate:
+sid_clock_interpolate14:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
