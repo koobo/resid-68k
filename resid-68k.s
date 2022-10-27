@@ -1511,16 +1511,15 @@ extfilter_clock:
     move.l  a4,d7
     sub.l   a3,d7
     move.l  d7,a2
-    muls.l  d4,d7 * pOEP
-    move.l  a1,d5 * sOEP 
-    asr.l   d1,d7 * pOEP
-    sub.l   a4,d5 * sOEP
-    muls.l  d3,d5 * pOEP
-    add.l   d7,a3 * sOEP
-    asr.l   d6,d5 * pOEP
-    add.l   d5,a4
-
-    sub.l   d2,d0
+    muls.l  d4,d7 * 2 pOEP only
+    move.l  a1,d5 * 1 pOEP 
+    asr.l   d1,d7 * 0 sOEP
+    sub.l   a4,d5 * 1 pOEP
+    muls.l  d3,d5 * 2 pOEP only
+    add.l   d7,a3 * 1 pOEP
+    asr.l   d6,d5 * 0 sOEP
+    add.l   d5,a4 * 1 pOEP
+    sub.l   d2,d0 * 0 sOEP
     bne     .loop
 .x
     move.l  a2,extfilter_Vo(a0)
