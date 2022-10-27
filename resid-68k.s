@@ -1693,15 +1693,15 @@ sid_output8:
 sid_output16:
 .range = 1<<16
 .half  = .range>>1
-; Divisor is 5.623626708984375
-; Inverse with shift (1/5.623626708984375)*512 = 91.04
+; Divisor is (4095*255>>7)*3*15*2/(1<<15) = 11.24725341796875
+; Inverse with shift 10: (1/11.24725341796875)*(1<<10) = 91.0444
 
+    moveq   #10,d1      * FP 10
     move.l  sid_extfilt(a0),a0
     ;extfilter_output inlined
-    move.l  extfilter_Vo(a0),d0
-    muls.l  #91,d0
-    asr.l   #8,d0
-    asr.l   #1,d0
+    moveq   #91,d0
+    muls.l   extfilter_Vo(a0),d0
+    asr.l   d1,d0
     
     cmp.l   #.half,d0
     blt     .1
@@ -2193,14 +2193,12 @@ sid_clock_fast16:
 
 .range = 1<<16
 .half  = .range>>1
-; Divisor is 5.623626708984375
-; Inverse with shift (1/5.623626708984375)*512 = 91.04
     move.l  sid_extfilt(a5),a0
     ;extfilter_output inlined
     moveq   #91,d6
     muls.l  extfilter_Vo(a0),d6
-    asr.l   #8,d6   * FP shift
-    asr.l   #1,d6
+    asr.l   #8,d6   * FP 10 shift
+    asr.l   #2,d6
 
     cmp.l   #.half,d6
     blt     .x1
@@ -2293,12 +2291,10 @@ sid_clock_fast8:
     ; Inline output generation
 .range = 1<<8
 .half  = .range>>1
-; Divisor is 5.623626708984375
-; Inverse with shift (1/5.623626708984375)*512 = 91.04
     ;extfilter_output inlined
     move.l  sid_extfilt(a5),a0
     moveq   #91,d6
-    moveq   #16+1,d4
+    moveq   #10+8,d4    * FP 10, 16->8    
     muls.l  extfilter_Vo(a0),d6
     asr.l   d4,d6   * FP shift + 16->8 bit shift
 
@@ -2389,16 +2385,14 @@ sid_clock_fast14:
     bsr     sid_clock
     popm    d0-d3/a1/a2/a4
 
-    
+
     ; Inline output generation
 .range = 1<<16
 .half  = .range>>1
-; Divisor is 5.623626708984375
-; Inverse with shift (1/5.623626708984375)*512 = 91.04
     ;extfilter_output inlined
     move.l  sid_extfilt(a5),a0
     moveq   #91,d6
-    moveq   #9,d4
+    moveq   #10,d4  * FP 10
     muls.l  extfilter_Vo(a0),d6
     asr.l   d4,d6   * FP shift
 
@@ -2518,8 +2512,6 @@ sid_clock_oversample14:
     ; Inline output generation
 .range = 1<<16
 .half  = .range>>1
-; Divisor is 5.623626708984375
-; Inverse with shift (1/5.623626708984375)*512 = 91.04
     ;moveq   #91,d6
  ifeq OVERSAMPLE_SHIFT-2 
     moveq   #23,d6
@@ -2527,7 +2519,7 @@ sid_clock_oversample14:
  ifeq OVERSAMPLE_SHIFT-1 
     moveq   #46,d6
  endif
-    moveq   #9,d4
+    moveq   #10,d4  * FP
     muls.l  d7,d6
     asr.l   d4,d6   * FP shift 
 
@@ -2632,13 +2624,13 @@ sid_clock_interpolate14:
     ;bsr     sid_output16
 .range = 1<<16
 .half  = .range>>1
+    moveq   #10,d6      * FP
     move.l  sid_extfilt(a0),a0
     ;extfilter_output inlined
-    move.l  extfilter_Vo(a0),d4
-    muls.l  #91,d4
-    asr.l   #8,d4
-    asr.l   #1,d4
-    
+    moveq   #91,d4
+    muls.l  extfilter_Vo(a0),d4
+    asr.l   d6,d4       * FP shift
+
     cmp.l   #.half,d4
     blt     .1
     move    #.half-1,d4
@@ -2663,8 +2655,8 @@ sid_clock_interpolate14:
     ;extfilter_output inlined
     move.l  extfilter_Vo(a0),d4
     muls.l  #91,d4
-    asr.l   #8,d4
-    asr.l   #1,d4
+    asr.l   #8,d4   * FP 10
+    asr.l   #2,d4
     
     cmp.l   #.half,d4
     blt     .11
