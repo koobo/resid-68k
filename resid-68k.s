@@ -2019,8 +2019,6 @@ sid_clock:
 .1
     * calls: 1x, once per output sample in fast
 
-    move.l  a0,a5
-
     move.l  d0,a3
     push    d0      * save delta_t
  
@@ -2208,7 +2206,6 @@ sid_clock_fast16:
 
     pushm   d0-d3/d5/a1/a4/a5
     move.l  d2,d0
-    move.l  a5,a0
     bsr     sid_clock
     popm    d0-d3/d5/a1/a4/a5
 
@@ -2234,7 +2231,6 @@ sid_clock_fast16:
     
 .break
     * run remaining d0 cycles
-    move.l  a5,a0
     pushm   d0/d3/a5
     bsr     sid_clock
     popm    d0/d3/a5
@@ -2301,7 +2297,6 @@ sid_clock_fast8:
     
     pushm   d0-d3/a1/a4 * 6 regs
     move.l  d2,d0
-    move.l  a5,a0
     bsr     sid_clock
     popm    d0-d3/a1/a4
 
@@ -2325,7 +2320,6 @@ sid_clock_fast8:
     
 .break
     * run remaining d0 cycles
-    move.l  a5,a0
     pushm   d0/d3
     bsr     sid_clock
     popm    d0/d3
@@ -2387,13 +2381,10 @@ sid_clock_fast14:
 
     pushm   d0-d3/a1/a2/a4 * 7 regs
     move.l  d2,d0
-    move.l  a5,a0
     bsr     sid_clock
     popm    d0-d3/a1/a2/a4
 
-
     ; Inline output generation
-    ;extfilter_output inlined
     move.l  sid_extfilt(a5),a0
     moveq   #91,d6
     moveq   #10,d4  * FP 10
@@ -2416,7 +2407,6 @@ sid_clock_fast14:
     
 .break
     * run remaining d0 cycles
-    move.l  a5,a0
     pushm   d0/d3
     bsr     sid_clock
     popm    d0/d3
@@ -2493,7 +2483,6 @@ sid_clock_oversample14:
     
     pushm   d0-d3/d7/a1/a2/a4
     move.l  d2,d0
-    move.l  a5,a0
     bsr     sid_clock
     popm    d0-d3/d7/a1/a2/a4
 
@@ -2537,7 +2526,6 @@ sid_clock_oversample14:
     
 .break
     * run remaining d0 cycles
-    move.l  a5,a0
     pushm   d0/d3
     bsr     sid_clock
     popm    d0/d3
@@ -2668,7 +2656,6 @@ sid_clock_interpolate14:
     bmi.b   .y
 
     push    d0
-    move.l  a5,a0
     bsr     sid_clock
     move.l  a5,a0
     bsr     sid_output16
@@ -2679,7 +2666,6 @@ sid_clock_interpolate14:
 
     * run 1 cycles
     moveq   #1,d0    
-    move.l  a5,a0
     bsr     sid_clock
 .y
     popm    d0/d3
