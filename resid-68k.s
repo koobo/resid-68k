@@ -52,6 +52,34 @@ pop    macro
     include resid-68k.i
 
 OVERSAMPLE_SHIFT = 1
+RANGE8           = 1<<8
+HALF8            = RANGE8>>1
+RANGE16          = 1<<16
+HALF16           = RANGE16>>1
+
+CLAMP8 macro
+    cmp.w   #HALF8,\1
+    blt.b   .\@1
+    moveq   #HALF8-1,\1
+    bra.b   .\@2
+.\@1
+    cmp.w   #-HALF8,\1
+    bge.b   .\@2
+    moveq   #-HALF8,\1
+.\@2
+    endm
+
+CLAMP16 macro
+    cmp.l   #HALF16,\1
+    blt.b   .\@1
+    move.w  #HALF16-1,\1
+    bra.b   .\@2
+.\@1
+    cmp.l   #-HALF16,\1
+    bge.b   .\@2
+    move.w  #-HALF16,\1
+.\@2
+    endm
 
 ******************************************************************************
 *
@@ -1672,15 +1700,7 @@ sid_output8:
     divs.w  #1440,d0
 
     * clamp to [-128..127]
-    cmp     #.half,d0
-    blt     .1
-    moveq   #.half-1,d0
-    rts
-.1
-    cmp     #-.half,d0
-    bge     .2
-    moveq   #-.half,d0
-.2
+    CLAMP8  d0
     rts
 
 
@@ -1703,15 +1723,7 @@ sid_output16:
     muls.l   extfilter_Vo(a0),d0
     asr.l   d1,d0
     
-    cmp.l   #.half,d0
-    blt     .1
-    move    #.half-1,d0
-    rts
-.1
-    cmp.l   #-.half,d0
-    bge     .2
-    move    #-.half,d0
-.2
+    CLAMP16 d0
     rts
 
 * in:
@@ -2190,25 +2202,13 @@ sid_clock_fast16:
     move.l  d6,a4
     
     ; Inline output generation
-
-.range = 1<<16
-.half  = .range>>1
     move.l  sid_extfilt(a5),a0
     ;extfilter_output inlined
     moveq   #91,d6
     muls.l  extfilter_Vo(a0),d6
     asr.l   #8,d6   * FP 10 shift
     asr.l   #2,d6
-
-    cmp.l   #.half,d6
-    blt     .x1
-    move.w    #.half-1,d6
-    bra.b   .x2
-.x1
-    cmp.l   #-.half,d6
-    bge     .x2
-    move.w   #-.half,d6
-.x2
+    CLAMP16  d6
 
     * store one sample d3
     move.w  d6,(a1,d3.l*2)    * chip write
@@ -2289,24 +2289,13 @@ sid_clock_fast8:
     popm    d0-d3/a1/a4
 
     ; Inline output generation
-.range = 1<<8
-.half  = .range>>1
     ;extfilter_output inlined
     move.l  sid_extfilt(a5),a0
     moveq   #91,d6
     moveq   #10+8,d4    * FP 10, 16->8    
     muls.l  extfilter_Vo(a0),d6
     asr.l   d4,d6   * FP shift + 16->8 bit shift
-
-    cmp.w   #.half,d6
-    blt     .x1
-    moveq    #.half-1,d6
-    bra.b   .x2
-.x1
-    cmp.w   #-.half,d6
-    bge     .x2
-    moveq   #-.half,d6
-.x2
+    CLAMP8  d6
     * Volume scaling
     mulu    sid_volume(a5),d6
     lsr.w   #6,d6
@@ -2387,24 +2376,13 @@ sid_clock_fast14:
 
 
     ; Inline output generation
-.range = 1<<16
-.half  = .range>>1
     ;extfilter_output inlined
     move.l  sid_extfilt(a5),a0
     moveq   #91,d6
     moveq   #10,d4  * FP 10
     muls.l  extfilter_Vo(a0),d6
     asr.l   d4,d6   * FP shift
-
-    cmp.l   #.half,d6
-    blt     .x1
-    move.w   #.half-1,d6
-    bra.b   .x2
-.x1
-    cmp.l   #-.half,d6
-    bge     .x2
-    move.w  #-.half,d6
-.x2
+    CLAMP16 d6
     * Volume scaling
     muls    sid_volume(a5),d6
     asr.l   #6,d6
@@ -2510,8 +2488,6 @@ sid_clock_oversample14:
     bge     .x     
 
     ; Inline output generation
-.range = 1<<16
-.half  = .range>>1
     ;moveq   #91,d6
  ifeq OVERSAMPLE_SHIFT-2 
     moveq   #23,d6
@@ -2622,24 +2598,13 @@ sid_clock_interpolate14:
     move.l  a5,a0
 
     ;bsr     sid_output16
-.range = 1<<16
-.half  = .range>>1
     moveq   #10,d6      * FP
     move.l  sid_extfilt(a0),a0
     ;extfilter_output inlined
     moveq   #91,d4
     muls.l  extfilter_Vo(a0),d4
     asr.l   d6,d4       * FP shift
-
-    cmp.l   #.half,d4
-    blt     .1
-    move    #.half-1,d4
-    bra     .2
-.1
-    cmp.l   #-.half,d4
-    bge     .2
-    move    #-.half,d4
-.2
+    CLAMP16 d4
 
     move.w  d4,sid_sample_prev(a5)
     move.l  a6,d0
@@ -2657,17 +2622,7 @@ sid_clock_interpolate14:
     muls.l  #91,d4
     asr.l   #8,d4   * FP 10
     asr.l   #2,d4
-    
-    cmp.l   #.half,d4
-    blt     .11
-    move    #.half-1,d4
-    bra     .22
-.11
-    cmp.l   #-.half,d4
-    bge     .22
-    move    #-.half,d4
-.22
-
+    CLAMP16 d4
 
 ;    move    d0,d4
     * d4 = sample_now
