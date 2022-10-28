@@ -51,7 +51,6 @@ pop    macro
 
     include resid-68k.i
 
-OVERSAMPLE_SHIFT = 1
 RANGE8           = 1<<8
 HALF8            = RANGE8>>1
 RANGE16          = 1<<16
@@ -1671,6 +1670,7 @@ sid_reset:
     clr.b   sid_bus_value(a5)
     clr.l   sid_bus_value_ttl(a5)
     move    #$40,sid_volume(a5)
+    clr     sid_sample_prev(a5)
 
     move.l  sid_voice1(a5),a0
     bsr     voice_reset
@@ -1891,7 +1891,12 @@ sid_set_sampling_method:
     beq     .go
 
     lea     sid_clock_oversample14(pc),a1
-    cmp.b   #SAMPLING_METHOD_OVERSAMPLE14,d1
+    move    #1,sid_oversampleShift(a5)
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x14,d1
+    beq     .go
+
+    move    #2,sid_oversampleShift(a5)
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,d1
     beq     .go
 
     * Error: set Z
@@ -1919,9 +1924,13 @@ sid_set_sampling_parameters:
     bsr     sid_set_sampling_method
     beq     .fail
 
-    cmp.b   #SAMPLING_METHOD_OVERSAMPLE14,sid_sampling_method(a0)
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x14,sid_sampling_method(a0)
+    beq.b   .2
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,sid_sampling_method(a0)
     bne.b   .1
-    lsl.l   #OVERSAMPLE_SHIFT,d2
+.2
+    move    sid_oversampleShift(a5),d3
+    lsl.l   d3,d2
 .1
 
     ; Calculate cycles per sample as a fixed point value
@@ -1974,10 +1983,16 @@ sid_set_sampling_parameters_paula:
     divu.l  d2,d3
     * d3 = Playback frequency in Hz as 22.10 FP
 
-    cmp.b   #SAMPLING_METHOD_OVERSAMPLE14,sid_sampling_method(a0)
+
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x14,sid_sampling_method(a0)
+    beq.b   .2
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,sid_sampling_method(a0)
     bne.b   .1
-    lsl.l   #OVERSAMPLE_SHIFT,d3
+.2
+    move    sid_oversampleShift(a5),d4
+    lsl.l   d4,d3
 .1
+
     mulu.l  #10*(1<<FIXP_SHIFT)<<10,d1:d0    
     divu.l  d3,d1:d0
     addq.l  #5,d0
@@ -2419,8 +2434,7 @@ sid_clock_fast14:
 
 
 
-* Clock and get 8-bit samples corresponding to the number of 
-* given cycles, with volume scaling.
+* Clock oversample EXPERIMENTAL
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer: high byte
@@ -2438,11 +2452,17 @@ sid_clock_oversample14:
     move.l  sid_sample_offset(a5),d5
     move.l  sid_sample_offset(a5),a4
 
-    lsl.l   #OVERSAMPLE_SHIFT,d0
+    * Multiply cycles needed
+    move    sid_oversampleShift(a5),d7
+    lsl.l   d7,d0
 
 .loop
-    * oversample count
-    move.w  #1<<OVERSAMPLE_SHIFT,a6
+    * Loop as many times as oversampled
+    move    sid_oversampleShift(a5),d7
+    moveq   #1,d5
+    lsl     d7,d5
+    move    d5,a6
+
     * sample data
     moveq   #0,d7
  
@@ -2490,13 +2510,13 @@ sid_clock_oversample14:
     bge     .x     
 
     ; Inline output generation
-    ;moveq   #91,d6
- ifeq OVERSAMPLE_SHIFT-2 
-    moveq   #23,d6
- endif
- ifeq OVERSAMPLE_SHIFT-1 
-    moveq   #46,d6
- endif
+    ;moveq   #91,d6 * No oversample
+    moveq   #46,d6 * Oversample 2x
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x14,sid_sampling_method(a5)
+    beq.b   .o
+    moveq   #23,d6 * Oversample 4x
+.o
+
     moveq   #10,d4  * FP
     muls.l  d7,d6
     asr.l   d4,d6   * FP shift 
@@ -2533,11 +2553,11 @@ sid_clock_oversample14:
 
 
 
-* Clock and get 8-bit output
-* EXPERIMENTAL
+* Clock interpolate EXPERIMENTAL
 * in:
 *   a0 = object
-*   a1 = output byte buffer pointer
+*   a1 = output byte buffer pointer: high byte
+*   a2 = output byte buffer pointer: low byte
 *   d0 = cycle_count delta_t, max cycles
 *   d1 = buffer limit
 * out:
