@@ -2500,19 +2500,10 @@ sid_clock_oversample14:
     moveq   #10,d4  * FP
     muls.l  d7,d6
     asr.l   d4,d6   * FP shift 
-
-    cmp.l   #.half,d6
-    blt     .x1
-    move.w   #.half-1,d6
-    bra.b   .x2
-.x1
-    cmp.l   #-.half,d6
-    bge     .x2
-    move.w  #-.half,d6
-.x2
+    CLAMP16 d6
     * Volume scaling
-    ;muls    sid_volume(a5),d6
-    ;asr.l   #6,d6
+    muls    sid_volume(a5),d6
+    asr.l   #6,d6
 
     * store low 6 bits
     lsr.b   #2,d6
