@@ -1468,6 +1468,8 @@ extfilter_set_chip_model
 *   a0 = object
 *   d0 = cycle_count delta_t
 *   d1 = sample Vi
+* out:
+*   a2 = Vo
 * uses:
 *   d0-d7,a0,a1,a2,a3,a4
 extfilter_clock:
@@ -1477,6 +1479,7 @@ extfilter_clock:
     clr.l   extfilter_Vhp(a0)
     sub.l   extfilter_mixer_DC(a0),d1
     move.l  d1,extfilter_Vo(a0)
+    move.l  d1,a2
     rts
 .1
     move.l  d1,a1
@@ -2002,11 +2005,13 @@ sid_set_sampling_parameters_paula:
 
 
 * in:
-*   a0 = object
+*   a5 = object
 *   d0 = cycle_count delta_t
+* out:
+*   a2 = extfilter output
 * uses:
-*    d0-d7,a0-a5
-*    a5 preserved
+*   d0-d7,a0-a5
+*   a5 preserved
 sid_clock:
     tst.l   d0
     bgt     .1
