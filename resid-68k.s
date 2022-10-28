@@ -261,24 +261,19 @@ wave_clock:
     * shift_period = delta_accumulator
     move.l  d3,d1
 
-    cmp.l   #$80000,d1 
-    bhi     .else
     move.l  d2,d4
     sub.l   d1,d4
+
+    cmp.l   #$80000,d1 
+    bhi     .else
     and.l   #$80000,d4
     bne     .break
-    ;move.l  d2,d4
-    ;and.l   #$80000,d4
     btst    #19,d2
     beq     .break
     bra     .continue
 .else
-    move.l  d2,d4
-    sub.l   d1,d4
     and.l   #$80000,d4
     beq     .continue
-    ;move.l  d2,d4
-    ;and.l   #$80000,d4
     btst    #19,d2
     beq     .break
 
