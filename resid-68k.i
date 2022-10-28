@@ -45,27 +45,29 @@ FIXP_MASK = $ffff
     STRUCTURE   voice,0
         APTR    voice_wave
         APTR    voice_envelope
-        UWORD   voice_wave_zero
         ULONG   voice_voice_DC
-    LABEL voice_SIZEOF   
+        UWORD   voice_wave_zero
+        UWORD   voice_pad
+    LABEL voice_SIZEOF ; = 16
 
     STRUCTURE   wave,0
-        APTR    wave_sync_source
-        APTR    wave_sync_dest
         ULONG   wave_accumulator    * 24-bit
         ULONG   wave_shift_register * 24-bit
-        UWORD   wave_freq
-        UWORD   wave_pw
-        UWORD   wave_waveform       * Control register right-shifted 4 bits for table lookup
-        UBYTE   wave_msb_rising     * Tells whether the accumulator MSB was set high on this cycle.
-        UBYTE   wave_test           * the remaining control register bits
-        UBYTE   wave_ring_mod
-        UBYTE   wave_sync
+        APTR    wave_sync_source
+        APTR    wave_sync_dest
         APTR    wave_wave__ST       * Pointers to sample data for waveform combinations
         APTR    wave_wave_P_T
         APTR    wave_wave_PS_
         APTR    wave_wave_PST
-    LABEL wave_SIZEOF   
+        UBYTE   wave_msb_rising     * Tells whether the accumulator MSB was set high on this cycle.
+        UBYTE   wave_test           * the remaining control register bits
+        UBYTE   wave_ring_mod
+        UBYTE   wave_sync
+        UWORD   wave_freq
+        UWORD   wave_pw
+        UWORD   wave_waveform       * Control register right-shifted 4 bits for table lookup
+        UWORD   wave_pad
+    LABEL wave_SIZEOF ; = 44
 
     STRUCTURE   envelope,0
         ULONG   envelope_rate_counter
@@ -82,7 +84,7 @@ FIXP_MASK = $ffff
         UBYTE   envelope_release
         UBYTE   envelope_gate
         UBYTE   envelope_state
-    LABEL envelope_SIZEOF   
+    LABEL envelope_SIZEOF ; = 20
 
     STRUCTURE   filter,0
         UBYTE   filter_enabled
@@ -90,7 +92,9 @@ FIXP_MASK = $ffff
         UBYTE   filter_filt
         UBYTE   filter_voice3off
         UBYTE   filter_vol
-        UBYTE   filter_pad
+        UBYTE   filter_pad1
+        UBYTE   filter_pad2
+        UBYTE   filter_pad3
         UWORD   filter_hp_bp_lp
         UWORD   filter_fc
         ULONG   filter_mixer_DC
@@ -104,18 +108,20 @@ FIXP_MASK = $ffff
         APTR    filter_f0
         ULONG   filter_w0_max_1
         ULONG   filter_w0_max_dt
-    LABEL filter_SIZEOF  
+    LABEL filter_SIZEOF ; = 56
 
     STRUCTURE   extfilter,0
         UBYTE   extfilter_enabled
-        UBYTE   extfilter_pad
+        UBYTE   extfilter_pad1
+        UBYTE   extfilter_pad2
+        UBYTE   extfilter_pad3
         ULONG   extfilter_mixer_DC
         ULONG   extfilter_Vlp
         ULONG   extfilter_Vhp
         ULONG   extfilter_Vo
         ULONG   extfilter_w0lp
         ULONG   extfilter_w0hp
-    LABEL extfilter_SIZEOF  
+    LABEL extfilter_SIZEOF ; = 28
 
     STRUCTURE   sid,0
         APTR    sid_voice1
@@ -123,16 +129,17 @@ FIXP_MASK = $ffff
         APTR    sid_voice3
         APTR    sid_filter
         APTR    sid_extfilt
-        UBYTE   sid_bus_value
-        UBYTE   sid_sampling_method
         ULONG   sid_bus_value_ttl
         ULONG   sid_clock_frequency
         ULONG   sid_cycles_per_sample   * 16.16 fixed point
         ULONG   sid_sample_offset
+        APTR    sid_clock_routine
+        UBYTE   sid_bus_value
+        UBYTE   sid_sampling_method
         UWORD   sid_sample_prev
         UWORD   sid_volume
-        APTR    sid_clock_routine
-    LABEL sid_SIZEOF  
+        UWORD   sid_pad
+    LABEL sid_SIZEOF ; = 48
 
            ENDIF
 

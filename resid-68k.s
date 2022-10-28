@@ -2672,6 +2672,7 @@ sid_clock_interpolate14:
 
     section reSID_bss,bss_p
 
+    cnop    0,4
 Sid         ds.b sid_SIZEOF
 * Voice, Wave and Envelope objects should be one after another,
 * the order is assumed in sid_clock.
