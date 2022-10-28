@@ -2602,10 +2602,9 @@ sid_clock_interpolate14:
     move.l  d2,a6
     sub.l   d6,a6
 
-    pushm   d0-d3/d5/a1/a4 * 6 regs
+    pushm   d0-d3/d5/a1/a2/a4 * 6 regs
 
     move.l  d6,d0 * d6 cycles
-    move.l  a5,a0
     bsr     sid_clock
 
     move.l  a5,a0
@@ -2621,10 +2620,9 @@ sid_clock_interpolate14:
 
     move.w  d4,sid_sample_prev(a5)
     move.l  a6,d0
-    move.l  a5,a0
     bsr     sid_clock
    
-    popm    d0-d3/d5/a1/a4
+    popm    d0-d3/d5/a1/a2/a4
     
     move.l  a5,a0
 
@@ -2648,11 +2646,17 @@ sid_clock_interpolate14:
     add.w   sid_sample_prev(a5),d7
     move.w  d4,sid_sample_prev(a5)
 
-   
-    * store one byte at d3
-    lsr.w   #8,d7           * 16->8
-    move.b  d7,(a1,d3.l)    * chip write
+    * Volume scaling
+    muls    sid_volume(a5),d7
+    asr.l   #6,d7
+
+    * store low 6 bits
+    lsr.b   #2,d7
+    move.b  d7,(a2,d3.l)     * chip write
+    ror.w   #8,d7
+    * store high 8 bits
     addq.l  #1,d3
+    move.b  d7,-1(a1,d3.l)   * chip write, stall
 
     bra     .loop
 
