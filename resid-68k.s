@@ -864,6 +864,7 @@ exponential_counter_period_table:
 .255 dc.b    1      * 0xff = 255
      even
 
+    cnop    0,4
 envelope_rate_counter_period:
   dc.l      9
   dc.l     32
@@ -1072,6 +1073,7 @@ filter_set_Q:
     rts
 
     ; Precalculated values for each resonance parameter
+    cnop    0,4
 .tab
     dc.l    $5a8
     dc.l    $52c
@@ -2696,6 +2698,7 @@ ExtFilter   ds.b extfilter_SIZEOF
 
 	section	reSID_data,data
 
+    cnop    0,4
     ; Precalculated filter tables from reSID.
     ; labels: filter_f0_6581, filter_f0_8580
     include "filter_f0_data.s"
