@@ -24,7 +24,7 @@ sid_main:
     lea     Sid,a0
     jsr	    sid_constructor
     move.l  #985248,d0
-    moveq   #SAMPLING_METHOD_SAMPLE_FAST,d1
+    moveq   #SAMPLING_METHOD_SAMPLE_FAST8,d1
     move.l  #PAULA_PERIOD,d2
 
     lea     Sid,a0
