@@ -1,8 +1,27 @@
 Motorola 68020 port of reSID version 0.16.
 
-Only the "SAMPLE_FAST" method is provided: delta clocking picking nearest sample.
-This is the lightest in terms of CPU use. It will also sometimes produce sampling noise. 
-The other methods are likely too heavy for the 68060/50MHz.
+There are a few choices for output functions. Each are given
+output buffer address and amount of SID cycles to run.
+
+- fast8: 8-bit samples, the nearest SID samples are used.
+- fast14: Samples for 14-bit Paula output. The nearest SID samples are used.
+- fast16: 16-bit samples. The nearest SID samples are used.
+- interpolate14: SID is sampled in shorter intervals and the samples
+                 are interpolated. This is a heavier than the fast methods.
+                 Samples for 14-bit Paula output.
+- oversample2x14: SID is sampled twice the sampling frequency and
+                  the samples are averaged. This is heavier than the fast methods.
+                  Samples for 14-bit Paula output.
+- oversample4x14: SID is sampled four times the sampling frequency and
+                  the samples are averaged. This more heavy than the 
+                  oversample2x14 method.
+                  Samples for 14-bit Paula output.
+
+The fast modes produce sampling noise depending on the tune that is being
+played. The interpolate and oversample modes should reduce the noise level.
+
+A 68060 at 50MHz can manage the fast modes at CPU load of 50-80% depending
+on the tune that is being played.
 
 The code is optimized for 68060. It uses a lot of multiplications and tries
 to avoid divisions. Instructions have been arranged for superscalar execution.
