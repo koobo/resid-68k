@@ -10,15 +10,14 @@ output buffer address and amount of SID cycles to run.
                  are interpolated. This is a heavier than the fast methods.
                  Samples for 14-bit Paula output.
 - oversample2x14: SID is sampled twice the sampling frequency and
-                  the samples are averaged. This is heavier than the fast methods.
+                  the samples are averaged. This is heavier than 
+                  the fast methods.
                   Samples for 14-bit Paula output.
-- oversample4x14: SID is sampled four times the sampling frequency and
-                  the samples are averaged. This more heavy than the 
-                  oversample2x14 method.
-                  Samples for 14-bit Paula output.
+- oversample3x14: Sample three times, heavier than above.
+- oversample4x14: Sample four times, heavier than above.
 
 The fast modes produce sampling noise depending on the tune that is being
-played. The interpolate and oversample modes should reduce the noise level.
+played. The interpolate and oversample modes should reduce the noise.
 
 A 68060 at 50MHz can manage the fast modes at CPU load of 50-80% depending
 on the tune that is being played.
