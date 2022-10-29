@@ -141,7 +141,8 @@ FIXP_MASK = $ffff
         UBYTE   sid_sampling_method
         UWORD   sid_sample_prev
         UWORD   sid_volume
-        UWORD   sid_oversampleShift
+        UWORD   sid_oversample
+        ULONG   sid_oversampleScale
     LABEL sid_SIZEOF ; = 48
 
            ENDIF

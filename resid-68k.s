@@ -702,7 +702,6 @@ envelope_output:
 * in:
 *   a0 = object
 *   d0 = cycle_count delta_t
-*   d5,d2 = NULL
 * uses:
 *   d0-d7,a0,a1
 * note:
@@ -1889,11 +1888,13 @@ sid_set_sampling_method:
     beq     .go
 
     lea     sid_clock_oversample14(pc),a1
-    move    #1,sid_oversampleShift(a5)
+    move    #2,sid_oversample(a0)
+    move.l  #46,sid_oversampleScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x14,d1
     beq     .go
 
-    move    #2,sid_oversampleShift(a5)
+    move    #4,sid_oversample(a0)
+    move.l  #23,sid_oversampleScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,d1
     beq     .go
 
@@ -1927,8 +1928,9 @@ sid_set_sampling_parameters:
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,sid_sampling_method(a0)
     bne.b   .1
 .2
-    move    sid_oversampleShift(a5),d3
-    lsl.l   d3,d2
+    moveq   #0,d3
+    move    sid_oversample(a0),d3
+    mulu.l  d3,d2
 .1
 
     ; Calculate cycles per sample as a fixed point value
@@ -1987,8 +1989,9 @@ sid_set_sampling_parameters_paula:
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,sid_sampling_method(a0)
     bne.b   .1
 .2
-    move    sid_oversampleShift(a5),d4
-    lsl.l   d4,d3
+    moveq   #0,d4
+    move    sid_oversample(a0),d4
+    mulu.l  d4,d3
 .1
 
     mulu.l  #10*(1<<FIXP_SHIFT)<<10,d1:d0    
@@ -2443,15 +2446,11 @@ sid_clock_oversample14:
     move.l  sid_sample_offset(a5),a4
 
     * Multiply cycles needed
-    move    sid_oversampleShift(a5),d7
-    lsl.l   d7,d0
+    mulu.w  sid_oversample(a5),d0
 
 .loop
     * Loop as many times as oversampled
-    move    sid_oversampleShift(a5),d7
-    moveq   #1,d5
-    lsl     d7,d5
-    move    d5,a6
+    move    sid_oversample(a5),a6
 
     * sample data
     moveq   #0,d7
@@ -2499,28 +2498,21 @@ sid_clock_oversample14:
     bge     .x     
 
     ; Inline output generation
-    ;moveq   #91,d6 * No oversample
-    moveq   #46,d6 * Oversample 2x
-    cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x14,sid_sampling_method(a5)
-    beq.b   .o
-    moveq   #23,d6 * Oversample 4x
-.o
-
     moveq   #10,d4  * FP
-    muls.l  d7,d6
-    asr.l   d4,d6   * FP shift 
-    CLAMP16 d6
+    muls.l  sid_oversampleScale(a5),d7
+    asr.l   d4,d7   * FP shift 
+    CLAMP16 d7
     * Volume scaling
-    muls    sid_volume(a5),d6
-    asr.l   #6,d6
+    muls    sid_volume(a5),d7
+    asr.l   #6,d7
 
     * store low 6 bits
-    lsr.b   #2,d6
-    move.b  d6,(a2,d3.l)     * chip write
-    ror.w   #8,d6
+    lsr.b   #2,d7
+    move.b  d7,(a2,d3.l)     * chip write
+    ror.w   #8,d7
     * store high 8 bits
     addq.l  #1,d3
-    move.b  d6,-1(a1,d3.l)   * chip write, stall
+    move.b  d7,-1(a1,d3.l)   * chip write, stall
 
     bra     .loop
     
@@ -2595,12 +2587,9 @@ sid_clock_interpolate14:
     move.l  d6,d0 * d6 cycles
     bsr     sid_clock
 
-    move.l  a5,a0
-
     ;bsr     sid_output16
     moveq   #10,d6      * FP
-    move.l  sid_extfilt(a0),a0
-    ;extfilter_output inlined
+    move.l  sid_extfilt(a5),a0
     moveq   #91,d4
     muls.l  extfilter_Vo(a0),d4
     asr.l   d6,d4       * FP shift
@@ -2612,18 +2601,13 @@ sid_clock_interpolate14:
    
     popm    d0-d3/d5/a1/a2/a4
     
-    move.l  a5,a0
 
-;    bsr     sid_output16
-    move.l  sid_extfilt(a0),a0
-    ;extfilter_output inlined
-    move.l  extfilter_Vo(a0),d4
-    muls.l  #91,d4
-    asr.l   #8,d4   * FP 10
-    asr.l   #2,d4
+    moveq   #10,d6      * FP
+    move.l  sid_extfilt(a5),a0
+    moveq   #91,d4
+    muls.l  extfilter_Vo(a0),d4
+    asr.l   d6,d4       * FP shift
     CLAMP16 d4
-
-;    move    d0,d4
     * d4 = sample_now
 
     move    d4,d7
