@@ -2549,9 +2549,10 @@ sid_clock_interpolate14:
     * d3 = s
     moveq   #0,d3
 
+    move.l  sid_sample_offset(a5),a4
 .loop
     * d5 = next_sample_offset
-    move.l  sid_sample_offset(a5),d5
+    move.l  a4,d5
     add.l   sid_cycles_per_sample(a5),d5
     
     * d2 = delta_t_sample
@@ -2570,7 +2571,8 @@ sid_clock_interpolate14:
 
     * sample_offset = next_sample_offset & FIXP_MASK
     and.l   #FIXP_MASK,d5
-    move.l  d5,sid_sample_offset(a5)
+    ;move.l  d5,sid_sample_offset(a5)
+    move.l  d5,a4
 
     * delta_t -= delta_t_sample
     sub.l   d2,d0
@@ -2655,9 +2657,10 @@ sid_clock_interpolate14:
     popm    d0/d3
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
-    sub.l   d0,sid_sample_offset(a5)
-
+    ;sub.l   d0,sid_sample_offset(a5)
+    sub.l   d0,a4
 .x
+    move.l  a4,sid_sample_offset(a5)
 
     * bytes written
     move.l  d3,d0
