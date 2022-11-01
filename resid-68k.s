@@ -1667,7 +1667,7 @@ sid_reset:
     clr.b   sid_bus_value(a5)
     clr.l   sid_bus_value_ttl(a5)
     move    #$40,sid_volume(a5)
-    clr     sid_sample_prev(a5)
+    clr.l   sid_sample_prev(a5)
 
     move.l  sid_voice1(a5),a0
     bsr     voice_reset
@@ -2587,28 +2587,31 @@ sid_clock_interpolate14:
     * delta_t -= delta_t_sample
     sub.l   d2,d0
 
-
+    * Divide required amount cycles into two portions,
+    * run first part and grab sample,
+    * run second part and grab sample
     move.l  d2,d6
-    ;subq.l  #1,d6       * assume at least 8 cycles
-    lsr.l   #1,d6
+    subq.l  #1,d6       
+    ;lsr.l   #1,d6
     move.l  d2,a6
     sub.l   d6,a6
 
     pushm   d0-d3/d5/a1/a2/a4 * 6 regs
 
-    move.l  d6,d0 * d6 cycles
+    move.l  d6,d0       * d6 cycles, first part
     bsr     sid_clock
 
-    ;bsr     sid_output16
+    * Grab sample 
     moveq   #10,d6      * FP
     move.l  sid_extfilt(a5),a0
     moveq   #91,d4
     muls.l  extfilter_Vo(a0),d4
     asr.l   d6,d4       * FP shift
-    CLAMP16 d4
+    ;CLAMP16 d4
+    ;ext.l   d4
+    move.l  d4,sid_sample_prev(a5)
 
-    move.w  d4,sid_sample_prev(a5)
-    move.l  a6,d0
+    move.l  a6,d0       * a6 cycles, second part
     bsr     sid_clock
    
     popm    d0-d3/d5/a1/a2/a4
@@ -2619,17 +2622,20 @@ sid_clock_interpolate14:
     moveq   #91,d4
     muls.l  extfilter_Vo(a0),d4
     asr.l   d6,d4       * FP shift
-    CLAMP16 d4
+    ;CLAMP16 d4
+    ;ext.l   d4
     * d4 = sample_now
 
-    move    d4,d7
-    sub.w   sid_sample_prev(a5),d7
-    ext.l   d7
+    moveq   #16,d6 * >>FP_SHIFT
+    move.l  d4,d7
+    sub.l   sid_sample_prev(a5),d7
     muls.l  d5,d7
-    swap    d7
-    add.w   sid_sample_prev(a5),d7
-    move.w  d4,sid_sample_prev(a5)
+    asr.l   d6,d7
+    add.l   sid_sample_prev(a5),d7
+    * sample_prev = sample_now
+    move.l  d4,sid_sample_prev(a5)
 
+    CLAMP16 d7
     * Volume scaling
     muls    sid_volume(a5),d7
     asr.l   #6,d7
@@ -2654,8 +2660,13 @@ sid_clock_interpolate14:
     push    d0
     bsr     sid_clock
     move.l  a5,a0
-    bsr     sid_output16
-    move    d0,sid_sample_prev(a5)    
+    ;bsr     sid_output16
+    moveq   #10,d6      * FP
+    move.l  sid_extfilt(a5),a0
+    moveq   #91,d4
+    muls.l  extfilter_Vo(a0),d4
+    asr.l   d6,d4       * FP shift
+    move.l  d4,sid_sample_prev(a5)    
 
     pop     d0
     beq.b   .y

@@ -138,12 +138,12 @@ FIXP_MASK = $ffff
         ULONG   sid_cycles_per_sample   * 16.16 fixed point
         ULONG   sid_sample_offset
         APTR    sid_clock_routine
+        ULONG   sid_sample_prev
+        ULONG   sid_oversampleScale
+        UWORD   sid_oversample
+        UWORD   sid_volume
         UBYTE   sid_bus_value
         UBYTE   sid_sampling_method
-        UWORD   sid_sample_prev
-        UWORD   sid_volume
-        UWORD   sid_oversample
-        ULONG   sid_oversampleScale
     LABEL sid_SIZEOF ; = 48
 
            ENDIF
