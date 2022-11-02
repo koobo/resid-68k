@@ -2464,7 +2464,6 @@ sid_clock_oversample14:
 
     * sample data
     moveq   #0,d7
- 
 .innerLoop
     ;----------------------------
     move.l  a4,d5
@@ -2584,14 +2583,16 @@ sid_clock_interpolate14:
     ;move.l  d5,sid_sample_offset(a5)
     move.l  d5,a4
 
-    * delta_t -= delta_t_sample
+    * delta_t -= delta_t_sample  
     sub.l   d2,d0
 
     * Divide required amount cycles into two portions,
     * run first part and grab sample,
     * run second part and grab sample
     move.l  d2,d6
-    subq.l  #1,d6       
+    ; Leave 8 cycles for the 2nd part, it will align with the
+    ; filter loops which loop in 8 cycle steps, a small speed up.
+    subq.l  #8,d6
     ;lsr.l   #1,d6
     move.l  d2,a6
     sub.l   d6,a6
