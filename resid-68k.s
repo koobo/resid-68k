@@ -2678,6 +2678,7 @@ sid_clock_interpolate14:
     bra     .loop
 
 .break
+ REM * Option A, seems a bit superfluous
     * run delta_t-1 cycles if possible
     pushm   d0/d3
 
@@ -2703,6 +2704,13 @@ sid_clock_interpolate14:
     bsr     sid_clock
 .y
     popm    d0/d3
+ EREM
+    * Option B
+    * run remaining d0 cycles
+    pushm   d0/d3
+    bsr     sid_clock
+    popm    d0/d3
+ 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
     ;sub.l   d0,sid_sample_offset(a5)
