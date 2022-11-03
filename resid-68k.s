@@ -1471,8 +1471,6 @@ extfilter_set_chip_model
 *   a0 = object
 *   d0 = cycle_count delta_t
 *   d1 = sample Vi
-* out:
-*   a2 = Vo
 * uses:
 *   d0-d7,a0,a1,a2,a3,a4
 extfilter_clock:
@@ -1482,7 +1480,6 @@ extfilter_clock:
     clr.l   extfilter_Vhp(a0)
     sub.l   extfilter_mixer_DC(a0),d1
     move.l  d1,extfilter_Vo(a0)
-    move.l  d1,a2
     rts
 .1
     move.l  d1,a1
@@ -1642,8 +1639,33 @@ sid_enable_filter:
 *   a0 = object
 *   d0 = true to enable, false to not
 sid_enable_external_filter:
-    move.l  sid_extfilt(a0),a0
+    move.l  a0,a1
+    move.l  sid_extfilt(a1),a0
     bsr     extfilter_enable_filter
+
+    tst.b   d0
+    bne.b   .enabled
+    * Ext filter not enabled!
+    * Hack around with the DC levels so that the signal stays centered
+    * centered in the value range.
+    
+    clr.l   extfilter_mixer_DC(a0)
+    move.l  sid_filter(a1),a0
+    ;clr.l   filter_mixer_DC(a0)
+  
+    move.l  sid_voice1(a1),a0
+    ;move.w  #$800,voice_wave_zero(a0)
+    clr.l   voice_voice_DC(a0)
+
+    move.l  sid_voice2(a1),a0
+    ;move.w  #$800,voice_wave_zero(a0)
+    clr.l   voice_voice_DC(a0)
+    
+    move.l  sid_voice3(a1),a0
+    ;move.w  #$800,voice_wave_zero(a0)
+    clr.l   voice_voice_DC(a0)
+
+.enabled
     rts
 
 
