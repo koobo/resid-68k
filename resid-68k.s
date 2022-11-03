@@ -250,9 +250,6 @@ wave_clock:
     * d3 = delta_accumulator
 
 .loop
-    tst.l   d3
-    beq.b   .break
-
     cmp.l   d1,d3
     bhs.b   .continue
     
@@ -294,7 +291,7 @@ wave_clock:
     move.l  d6,wave_shift_register(a0)
 
     sub.l   d1,d3
-    bra     .loop
+    bne     .loop
 
 .break
     rts
@@ -2080,9 +2077,6 @@ sid_clock:
     move.l  a3,d7
     * d7 = delta_t_osc
 .loop
-    tst.l   d7
-    beq     .loopExit
-    
     * a3 = delta_t_min
     move.l  d7,a3
 
@@ -2174,7 +2168,7 @@ sid_clock:
     bsr     wave_synchronize
 
     sub.l   a3,d7
-    bra     .loop
+    bne     .loop
 
 .loopExit
 
