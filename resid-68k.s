@@ -931,7 +931,8 @@ filter_set_chip_model
     cmp.b   #CHIP_MODEL_MOS6581,d0
     bne     .1
 
-    move.l  #(-$fff*$ff/18)>>7,filter_mixer_DC(a0)
+    ; (-$fff*$ff/18)>>7 = -453.22265625
+    move.l  #-453,filter_mixer_DC(a0)
     move.l  #filter_f0_6581,filter_f0(a0)
     bra     .2
 .1
@@ -1457,7 +1458,10 @@ extfilter_reset:
 extfilter_set_chip_model
     cmp.b   #CHIP_MODEL_MOS6581,d0
     bne.b   .1
-    move.l  #(((($800-$380)+$800)*$ff*3-$fff*$ff/18)>>7)*$f,extfilter_mixer_DC(a0)
+    ; ((((0x800 - 0x380) + 0x800)*0xff*3 - 0xfff*0xff/18) >> 7)*0x0f
+    ; = 280076.66015625 or 
+    ; = 280065 
+    move.l  #280065,extfilter_mixer_DC(a0)
     rts
 .1
     clr.l   extfilter_mixer_DC(a0)
