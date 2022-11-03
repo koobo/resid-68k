@@ -23,13 +23,22 @@ sid_main:
 
     lea     Sid,a0
     jsr	    sid_constructor
+ 
     move.l  #985248,d0
-    moveq   #SAMPLING_METHOD_SAMPLE_FAST8,d1
+    moveq   #SAMPLING_METHOD_INTERPOLATE14,d1
     move.l  #PAULA_PERIOD,d2
 
     lea     Sid,a0
     jsr     sid_set_sampling_parameters_paula
 
+    lea     Sid,a0
+    moveq   #1,d0
+    jsr     sid_enable_external_filter
+    lea     Sid,a0
+    moveq   #1,d0
+    jsr     sid_enable_filter
+
+    lea     Sid,a0
     move.l  #SAMPLES_PER_FRAME,d0
     mulu.l  sid_cycles_per_sample(a0),d1:d0
     * Shift by 16 and 10 to get the FP to 
@@ -43,11 +52,13 @@ sid_main:
     bsr    startMeasure
 
     lea    output,a1
+    lea    output,a2
     move.l cyclesPerFrame,d0
+    muls.l #10,d0
     ;move.l #10000,d0  * cycles
     move.l #10000,d1 * buffer limit
     lea    Sid,a0
-    jsr    sid_clock_fast8
+    jsr    sid_clock_interpolate14
 
     ; 227 samples
 
