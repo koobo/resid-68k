@@ -709,14 +709,17 @@ envelope_output:
 envelope_clock:
     moveq   #0,d5
     moveq   #0,d2
+    moveq   #0,d7
 
     * Preload stuff for the loop
+    * Load in memory order
     move.l  envelope_rate_counter(a0),d4
-    move.b  envelope_exponential_counter(a0),d3
-    move.b  envelope_counter(a0),d5
-   
     move.l  envelope_rate_period(a0),d1
+    move.b  envelope_counter(a0),d5
+    move.b  envelope_exponential_counter(a0),d3
     move.l  d1,d6
+    move.b  envelope_sustain(a0),d7
+
     sub.l   d4,d1
     bgt     .overZero
     add.l   #$7fff,d1
@@ -787,8 +790,8 @@ envelope_clock:
     cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     bne     .notDS
     * calls: 7x
-    move.b  envelope_sustain(a0),d2
-    cmp.b   envelope_sustain_level(pc,d2.w),d5
+    * This seems to be good for the 060:
+    cmp.b   envelope_sustain_level(pc,d7.w),d5 
     beq     .break1
     * calls: 1x
     * ... fall through ...
