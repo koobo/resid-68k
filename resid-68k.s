@@ -2240,10 +2240,10 @@ sid_clock_fast16:
     cmp.l   d1,d3
     bge     .x     
 
-    pushm   d0-d3/d5/a1/a4/a5
+    pushm   d0/d1/d3/d5/a1/a4
     move.l  d2,d0
     bsr     sid_clock
-    popm    d0-d3/d5/a1/a4/a5
+    popm    d0/d1/d3/d5/a1/a4
 
     sub.l   d2,d0
     move.l  d5,d6
@@ -2331,10 +2331,10 @@ sid_clock_fast8:
     * delta_t -= delta_t_sample
     sub.l   d2,d0
     
-    pushm   d0-d3/a1/a4 * 6 regs
+    pushm   d0/d1/d3/a1/a4 * 5 regs
     move.l  d2,d0
     bsr     sid_clock
-    popm    d0-d3/a1/a4
+    popm    d0/d1/d3/a1/a4
 
     ; Inline output generation
     ;extfilter_output inlined
@@ -2415,10 +2415,10 @@ sid_clock_fast14:
     move.l  d5,a4
     sub.l   d2,d0
 
-    pushm   d0-d3/a1/a2/a4 * 7 regs
+    pushm   d0/d1/d3/a1/a2/a4 * 6 regs
     move.l  d2,d0
     bsr     sid_clock
-    popm    d0-d3/a1/a2/a4
+    popm    d0/d1/d3/a1/a2/a4
 
     ; Inline output generation
     move.l  sid_extfilt(a5),a0
@@ -2476,7 +2476,7 @@ sid_clock_oversample14:
     * d3 = s
     moveq   #0,d3
     move.l  sid_sample_offset(a5),d5
-    move.l  sid_sample_offset(a5),a4
+    ;move.l  sid_sample_offset(a5),a4
 
     * Multiply cycles needed
     mulu.w  sid_oversample(a5),d0
@@ -2485,11 +2485,14 @@ sid_clock_oversample14:
     * Loop as many times as oversampled
     move    sid_oversample(a5),a6
 
-    * sample data
+    * sample data goes to d7
     moveq   #0,d7
+    * save these, not needed in the inner loop
+    pushm   d1/d3/a1/a2
 .innerLoop
     ;----------------------------
-    move.l  a4,d5
+    ;move.l  a4,d5
+    move.l  sid_sample_offset(a5),d5
     add.l   sid_cycles_per_sample(a5),d5
     add.l   #1<<(FIXP_SHIFT-1),d5
     * d5 = next_sample_offset
@@ -2498,31 +2501,36 @@ sid_clock_oversample14:
     moveq   #FIXP_SHIFT,d4
     move.l  d5,d2
     asr.l   d4,d2       * >>FIXP_SHIFT
-   
-    * Loop termination conditions:
-    * if (delta_t_sample > delta_t)
-    cmp.l   d0,d2
-    bgt     .break
  
     * sample_offset = (next_sample_offset & FIXP_MASK) - (1 << (FIXP_SHIFT - 1));
     and.l   #FIXP_MASK,d5
     sub.l   #1<<(FIXP_SHIFT-1),d5
-    move.l  d5,a4
-
+    ;move.l  d5,a4
+    move.l  d5,sid_sample_offset(a5)
+    
     * delta_t -= delta_t_sample
     sub.l   d2,d0
-    
-    pushm   d0-d3/d7/a1/a2/a4
+
+    ; Try to stash as few regs as possible, 
+    ; it hurts performance
+    pushm   d0/d7
     move.l  d2,d0
     bsr     sid_clock
-    popm    d0-d3/d7/a1/a2/a4
-
+    popm    d0/d7
+    
     move.l  sid_extfilt(a5),a0
     add.l   extfilter_Vo(a0),d7
     ;----------------------------
     subq.w  #1,a6
     tst.w   a6
     bne     .innerLoop
+
+    popm    d1/d3/a1/a2
+
+    * Loop termination conditions:
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
 
     * buffer overflow check
     * if (s >= n) 
@@ -2556,9 +2564,10 @@ sid_clock_oversample14:
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
-    sub.l   d0,a4
+    ;sub.l   d0,a4
+    sub.l   d0,sid_sample_offset(a5)
 .x
-    move.l  a4,sid_sample_offset(a5)
+    ;move.l  a4,sid_sample_offset(a5)
     * bytes written
     move.l  d3,d0
     rts
@@ -2588,9 +2597,9 @@ sid_clock_interpolate14:
     add.l   sid_cycles_per_sample(a5),d5
     
     * d2 = delta_t_sample
+    moveq   #FIXP_SHIFT,d6
     move.l  d5,d2
-    swap    d2
-    ext.l   d2
+    asr.l   d6,d2       * >>FIXP_SHIFT
 
     * Loop termination conditions:
     * buffer overflow check
@@ -2620,7 +2629,7 @@ sid_clock_interpolate14:
     move.l  d2,a6
     sub.l   d6,a6
 
-    pushm   d0-d3/d5/a1/a2/a4 * 6 regs
+    pushm   d0/d1/d3/d5/a1/a2/a4 * 7 regs
 
     move.l  d6,d0       * d6 cycles, first part
     bsr     sid_clock
@@ -2638,7 +2647,8 @@ sid_clock_interpolate14:
     move.l  a6,d0       * a6 cycles, second part
     bsr     sid_clock
    
-    popm    d0-d3/d5/a1/a2/a4
+  
+    popm    d0/d1/d3/d5/a1/a2/a4
     
 
     moveq   #10,d6      * FP
