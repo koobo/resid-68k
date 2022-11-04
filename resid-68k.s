@@ -359,25 +359,33 @@ wave_output___T:
     move.l  wave_accumulator(a1),d2
     eor.l   d2,d1
 .noRingMod
+    moveq   #11,d3 * shift
     and.l   #$800000,d1
     beq     .noMsb
     not.l   d0
 .noMsb
-    lsr.l   #8,d0
-    lsr.w   #3,d0
+    lsr.l   d3,d0
     and     #$0fff,d0
     rts
+
 wave_output__S_:
+;    move.l  wave_accumulator(a0),d0
+;    lsr.l   #8,d0
+;    lsr.w   #4,d0
+; = 3 cycles
+
+    moveq   #12,d1
     move.l  wave_accumulator(a0),d0
-    lsr.l   #8,d0
-    lsr.w   #4,d0
+    lsr.l   d1,d0
+; = 2 cycles
     rts
+
 wave_output__ST:
     ; wave_output__S_ inlined
+    moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d1
     moveq   #0,d0
-    lsr.l   #8,d1
-    lsr.w   #4,d1
+    lsr.l   d2,d1
     move.l  wave_wave__ST(a0),a1
     move.b  (a1,d1.w),d0
     lsl.w   #4,d0
@@ -387,9 +395,9 @@ wave_output__ST:
 wave_output_P__:
     tst.b   wave_test(a0)
     bne.b   .do
+    moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0
-    lsr.l   #8,d0
-    lsr.w   #4,d0
+    lsr.l   d2,d0
     cmp     wave_pw(a0),d0
     bhs.b   .do
     moveq   #0,d0
@@ -408,9 +416,9 @@ wave_output_P_T:
     rts
 wave_output_PS_:
     ; wave_output__S_ inlined
+    moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0
-    lsr.l   #8,d0
-    lsr.w   #4,d0
+    lsr.l   d2,d0
     move.l  wave_wave_PS_(a0),a1
     move.b  (a1,d0.w),d1
     
@@ -420,9 +428,9 @@ wave_output_PS_:
     rts
 wave_output_PST:
     ; wave_output__S_ inlined
+    moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0  
-    lsr.l   #8,d0
-    lsr.w   #4,d0
+    lsr.l   d2,d0
     move.l  wave_wave_PST(a0),a1
     move.b  (a1,d0.w),d1
     lsl.w   #4,d1
@@ -436,17 +444,16 @@ wave_outputN___:
 
     move.l  d1,d2
     move.l  d1,d3
+    andi.l  #$400000,d2
     move.l  d1,d4
+    andi.l  #$100000,d3
     move.l  d1,d5
+    andi.l  #$010000,d4
     move.l  d1,d6
+    andi.w  #$002000,d5
     move.l  d1,d7
-
-    andi.l   #$400000,d2
-    andi.l   #$100000,d3
-    andi.l   #$010000,d4
-    andi.w   #$002000,d5
-    andi.w   #$000800,d6
-    andi.w   #$000080,d7
+    andi.w  #$000800,d6
+    andi.w  #$000080,d7
 
     lsr.l   #8,d2 
     lsr.l   #8,d3
