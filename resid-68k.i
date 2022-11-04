@@ -30,9 +30,7 @@ FIXP_MASK = $ffff
     EITEM   CHIP_MODEL_MOS8580
 
     ENUM
-    ; Output bytes
     EITEM   SAMPLING_METHOD_SAMPLE_FAST8
-    ; Output two bytes suitable for 14-bit Paula output
     EITEM   SAMPLING_METHOD_SAMPLE_FAST14
     EITEM   SAMPLING_METHOD_INTERPOLATE14
     EITEM   SAMPLING_METHOD_OVERSAMPLE2x14
@@ -140,7 +138,7 @@ FIXP_MASK = $ffff
         APTR    sid_clock_routine
         ULONG   sid_sample_prev
         ULONG   sid_oversampleScale
-        UWORD   sid_oversample
+        ULONG   sid_oversample
         UWORD   sid_volume
         UBYTE   sid_bus_value
         UBYTE   sid_sampling_method

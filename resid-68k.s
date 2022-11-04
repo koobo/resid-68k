@@ -1901,17 +1901,17 @@ sid_set_sampling_method:
 
     lea     sid_clock_oversample14(pc),a1
 
-    move    #2,sid_oversample(a0)
+    move.l  #2,sid_oversample(a0)
     move.l  #46,sid_oversampleScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x14,d1
     beq     .go
 
-    move    #3,sid_oversample(a0)
+    move.l  #3,sid_oversample(a0)
     move.l  #30,sid_oversampleScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE3x14,d1
     beq     .go
 
-    move    #4,sid_oversample(a0)
+    move.l  #4,sid_oversample(a0)
     move.l  #23,sid_oversampleScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,d1
     beq     .go
@@ -1948,9 +1948,7 @@ sid_set_sampling_parameters:
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,sid_sampling_method(a0)
     bne.b   .1
 .2
-    moveq   #0,d3
-    move    sid_oversample(a0),d3
-    mulu.l  d3,d2
+    mulu.l  sid_oversample(a0),d2
 .1
 
     ; Calculate cycles per sample as a fixed point value
@@ -2011,9 +2009,7 @@ sid_set_sampling_parameters_paula:
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,sid_sampling_method(a0)
     bne.b   .1
 .2
-    moveq   #0,d4
-    move    sid_oversample(a0),d4
-    mulu.l  d4,d3
+    mulu.l  sid_oversample(a0),d3
 .1
 
     mulu.l  #10*(1<<FIXP_SHIFT)<<10,d1:d0    
@@ -2464,16 +2460,17 @@ sid_clock_oversample14:
     ;move.l  sid_sample_offset(a5),a4
 
     * Multiply cycles needed
-    mulu.w  sid_oversample(a5),d0
+    mulu.l  sid_oversample(a5),d0
 
 .loop
     * Loop as many times as oversampled
-    move    sid_oversample(a5),a6
+    move.l  sid_oversample(a5),a6
 
     * sample data goes to d7
     moveq   #0,d7
     * save these, not needed in the inner loop
     pushm   d1/d3/a1/a2
+
 .innerLoop
     ;----------------------------
     ;move.l  a4,d5
