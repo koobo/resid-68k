@@ -263,7 +263,8 @@ wave_clock:
 
     cmp.l   #$80000,d1 
     bhi     .else
-    and.l   #$80000,d4
+    ;and.l   #$80000,d4
+    btst    #19,d4   ; this seems to win over and.l here
     bne     .break
     btst    #19,d2
     beq     .break
