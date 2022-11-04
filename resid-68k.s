@@ -1373,12 +1373,14 @@ filter_output:
     muls.l  d1,d0
     rts
 .1  
-    move.w  filter_hp_bp_lp(a0),d0
-    move.w  .tab(pc,d0.w*2),d0
-    jmp     .tab(pc,d0)
+    move.l  filter_Vnf(a0),d0
+
+    move.w  filter_hp_bp_lp(a0),d1
+    move.w  .tab(pc,d1.w*2),d1
+    jmp     .tab(pc,d1)
 
 .tab
-    dc.w    .f0-.tab
+    dc.w    .break-.tab
     dc.w    .f1-.tab
     dc.w    .f2-.tab
     dc.w    .f3-.tab
@@ -1387,38 +1389,33 @@ filter_output:
     dc.w    .f6-.tab
     dc.w    .f7-.tab
 
-.f0 
-    clr.l   d0
-    bra     .break
 .f1
-    move.l  filter_Vlp(a0),d0
+    add.l   filter_Vlp(a0),d0
     bra     .break
 .f2
-    move.l  filter_Vbp(a0),d0
+    add.l   filter_Vbp(a0),d0
     bra     .break
 .f3
-    move.l  filter_Vlp(a0),d0
+    add.l   filter_Vlp(a0),d0
     add.l   filter_Vbp(a0),d0
     bra     .break
 .f4
-    move.l  filter_Vhp(a0),d0
+    add.l   filter_Vhp(a0),d0
     bra     .break
 .f5
-    move.l  filter_Vlp(a0),d0
+    add.l   filter_Vlp(a0),d0
     add.l   filter_Vhp(a0),d0
     bra     .break
 .f6
-    move.l  filter_Vbp(a0),d0
+    add.l   filter_Vbp(a0),d0
     add.l   filter_Vhp(a0),d0
     bra     .break
 .f7
-    move.l  filter_Vlp(a0),d0
+    add.l   filter_Vlp(a0),d0
     add.l   filter_Vbp(a0),d0
     add.l   filter_Vhp(a0),d0
-    ;bra     .break
     
 .break
-    add.l   filter_Vnf(a0),d0
     moveq   #0,d1
     add.l   filter_mixer_DC(a0),d0
     move.b  filter_vol(a0),d1
