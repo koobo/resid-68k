@@ -1101,7 +1101,6 @@ filter_set_Q:
 *    d1 = voice1 sample
 *    d2 = voice2 sample
 *    d3 = voice3 sample
-*    d4 = ext_in sample
 * uses:
 *    d0-d7,a0-a3
 filter_clock:
@@ -1110,7 +1109,6 @@ filter_clock:
     asr.l   #7,d1
     asr.l   #7,d2
     asr.l   #7,d3
-    asr.l   #7,d4
 
     tst.b   filter_voice3off(a0)
     beq.b   .1
@@ -1123,7 +1121,6 @@ filter_clock:
 
     tst.b   filter_enabled(a0)
     bne.b   .3
-    add.l   d4,d1
     add.l   d3,d1
     add.l   d2,d1
     move.l  d1,filter_Vnf(a0)
@@ -1155,103 +1152,88 @@ filter_clock:
     dc.w    .ff-.tab
 
 .f0
-    add.l   d4,d1
-    clr.l   d5
     add.l   d3,d1
+    clr.l   d5
     add.l   d2,d1
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f1
-    add.l   d4,d2
-    move.l  d1,d5
     add.l   d3,d2
+    move.l  d1,d5
     move.l  d2,filter_Vnf(a0)
     bra     .break
 .f2
-    add.l   d4,d1
-    move.l  d2,d5
     add.l   d3,d1
+    move.l  d2,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f3
     move.l  d1,d5
-    add.l   d3,d4
+    move.l  d3,filter_Vnf(a0)
     add.l   d2,d5
-    move.l  d4,filter_Vnf(a0)
     bra     .break
 .f4
-    add.l   d4,d1
-    move.l  d3,d5
     add.l   d2,d1
+    move.l  d3,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f5
     move.l  d1,d5
-    add.l   d4,d2
-    add.l   d3,d5
     move.l  d2,filter_Vnf(a0)
+    add.l   d3,d5
     bra     .break
 .f6
     move.l  d2,d5
-    add.l   d4,d1
-    add.l   d3,d5
     move.l  d1,filter_Vnf(a0)
+    add.l   d3,d5
     bra     .break
 .f7
     move.l  d1,d5
     add.l   d2,d5
-    move.l  d4,filter_Vnf(a0)
+    clr.l   filter_Vnf(a0)
     add.l   d3,d5
     bra     .break
 .f8
     add.l   d3,d1
-    move.l  d4,d5
     add.l   d2,d1
+    clr.l   d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .f9
-    move.l  d4,d5
     add.l   d3,d2
-    add.l   d1,d5
+    move.l  d1,d5
     move.l  d2,filter_Vnf(a0)
     bra     .break
 .fa
-    move.l  d4,d5
     add.l   d3,d1
-    add.l   d2,d5
+    move.l  d2,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .fb
-    move.l  d4,d5
-    add.l   d1,d5
+    move.l  d1,d5
     move.l  d3,filter_Vnf(a0)
     add.l   d2,d5
     bra     .break
 .fc
-    move.l  d4,d5
     add.l   d2,d1
-    add.l   d3,d5
+    move.l  d3,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
 .fd
-    move.l  d4,d5
-    add.l   d3,d5
+    move.l  d3,d5
     move.l  d2,filter_Vnf(a0)
     add.l   d1,d5
     bra     .break
 .fe
-    move.l  d4,d5
-    add.l   d3,d5
+    move.l  d3,d5
     move.l  d1,filter_Vnf(a0)
     add.l   d2,d5
     bra     .break
 .ff
-    move.l  d4,d5
-    add.l   d3,d5
+    move.l  d3,d5
     add.l   d2,d5
     clr.l   filter_Vnf(a0)
     add.l   d1,d5
-;    bra     .break
 
 .break
     * w0_delta_t is dependent on delta_t_flt
@@ -2189,7 +2171,6 @@ sid_clock:
     move.l  d0,d1
     move.l  a4,d2
     move.l  a3,d3
-    moveq   #0,d4   * ext_in
 
     move.l  (sp),d0      * restore delta_t
     move.l  sid_filter(a5),a0
