@@ -2512,8 +2512,7 @@ sid_clock_oversample14:
     ;----------------------------
     subq.w  #1,a6
     tst.w   a6
-    bne     .innerLoop
-
+    bgt     .innerLoop
     popm    d1/d3/a1/a2
 
     * Loop termination conditions:
