@@ -257,10 +257,11 @@ wave_clock:
 
     * shift_period = delta_accumulator
     move.l  d3,d1
-
     move.l  d2,d4
+    move.l  #$80000,d6  ; bit 19 mask 
     sub.l   d1,d4
 
+ REM ; option 1
     cmp.l   #$80000,d1 
     bhi     .else
     ;and.l   #$80000,d4
@@ -274,6 +275,23 @@ wave_clock:
     beq     .continue
     btst    #19,d2
     beq     .break
+ EREM
+ ;REM ; option 2
+ ;possibly faster since Bcc and std intruction may pair in certain
+ ;situations
+    cmp.l   d6,d1 
+    bhi     .else
+    and.l   d6,d4
+    bne     .break
+    and.l   d2,d6
+    beq     .break
+    bra     .continue
+.else
+    and.l   d6,d4
+    beq     .continue
+    and.l   d2,d6
+    beq     .break
+ ;EREM
 
 .continue
     * Shift the noise/random register.  
