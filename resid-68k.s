@@ -303,20 +303,25 @@ wave_clock:
 * uses:
 *   d0,d1,a0,a1,a2
 wave_synchronize:
+
+WAVE_SYNC macro
     tst.b   wave_msb_rising(a0)
-    beq.b   .x
+    beq.b   .\1x
     move.l  wave_sync_dest(a0),a1
     tst.b   wave_sync(a1)
-    beq.b   .x
+    beq.b   .\1x
 
     tst.b   wave_sync(a0)
-    beq     .y
+    beq     .\1y
     move.l  wave_sync_source(a0),a2
     tst.b   wave_msb_rising(a2)
-    bne     .x
-.y
+    bne     .\1x
+.\1y
     clr.l   wave_accumulator(a1)
-.x
+.\1x
+    endm
+
+    WAVE_SYNC 1
     rts
 
 * in:
@@ -570,19 +575,23 @@ voice_reset:
 *         Ideal range [-2048*255, 2047*255].
 * uses:
 *    d0-d7,a0,a1,a2
-voice_output:
 
+VOICE_OUT macro
     move.l  voice_wave(a2),a0
     bsr     wave_output
     * d0 = 12-bit
     sub.w   voice_wave_zero(a2),d0
-
     * envelope_output inlined:
     move.l  voice_envelope(a2),a1
     muls.w  envelope_counterHi(a1),d0
     * d0 = 20-bit
     add.l   voice_voice_DC(a2),d0
+    endm
+
+voice_output:
+    VOICE_OUT
     rts
+
 
 
 ******************************************************************************
@@ -1242,7 +1251,6 @@ filter_clock:
     move.l  filter_w0_ceil_dt(a0),d2
 
     move.l  filter_Vhp(a0),d3
-    printt  "try out other values here"
     moveq   #8,d1
     move.l  filter_Vbp(a0),d4
     move.l  d5,a2
@@ -2069,13 +2077,8 @@ sid_clock:
     move.l  sid_voice1(a5),a0
     * assume wave objects are stored one after another
     move.l  voice_wave(a0),a0
-    bsr     .cycleCheck
-    lea     wave_SIZEOF(a0),a0 
-    bsr     .cycleCheck
-    lea     wave_SIZEOF(a0),a0
-    bsr     .cycleCheck
-    bra     .continue
-
+    * Loop three waves
+    moveq   #3-1,d6
 .cycleCheck
     * calls: 3x
 
@@ -2101,7 +2104,18 @@ sid_clock:
     * 16-bit division as it's <=22(1/0) where
     * the 32-bit is 38(1/0) on 68060.
     divu.w  wave_freq(a0),d2
-    bvs.b   .longDiv
+    bvc.s   .shortDivOk     ; branch if overflow clear
+
+    ; fallback in case of overflow
+    moveq   #0,d3
+    move    wave_freq(a0),d3
+    divul.l d3,d3:d2
+    * d2 = delta_t_next = delta_accumulator / freq
+    * d3 = remainder (ie. modulo)
+    tst.l   d3
+    bra.b   .c
+
+.shortDivOk
     * d2.w = delta_t_next = delta_accumulator / freq
     move.l  d2,d1
     swap    d1
@@ -2116,17 +2130,9 @@ sid_clock:
     bge.b   .cx
     move.l  d2,a3
 .cx
-    rts
-
-    ; fallback just to be sure
-.longDiv
-    moveq   #0,d3
-    move    wave_freq(a0),d3
-    divul.l d3,d3:d2
-    * d2 = delta_t_next = delta_accumulator / freq
-    * d3 = remainder (ie. modulo)
-    tst.l   d3
-    bra.b   .c
+    ; next wave
+    lea     wave_SIZEOF(a0),a0
+    dbra    d6,.cycleCheck
 
 .continue
 
@@ -2144,12 +2150,12 @@ sid_clock:
     ; synchronize oscillators
     move.l  sid_voice1(a5),a0
     move.l  voice_wave(a0),a0
-    bsr     wave_synchronize
+    WAVE_SYNC 1
     lea     wave_SIZEOF(a0),a0   
-    bsr     wave_synchronize
+    WAVE_SYNC 2
     lea     wave_SIZEOF(a0),a0   
-    bsr     wave_synchronize
-
+    WAVE_SYNC 3
+    
     sub.l   a3,d7
     bne     .loop
 
@@ -2157,14 +2163,14 @@ sid_clock:
 
      ; Clock filter
     move.l  sid_voice3(a5),a2
-    bsr     voice_output
+    VOICE_OUT
     move.l  d0,a3
     * Assume voice objects are stored one after another
     lea     -voice_SIZEOF(a2),a2
-    bsr     voice_output
+    VOICE_OUT
     move.l  d0,a4
     lea     -voice_SIZEOF(a2),a2
-    bsr     voice_output
+    VOICE_OUT
     move.l  d0,d1
     move.l  a4,d2
     move.l  a3,d3
