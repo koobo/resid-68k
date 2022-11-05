@@ -2180,10 +2180,17 @@ sid_clock:
     bsr     filter_clock
     bsr     filter_output
 
+    move.l  sid_extfilt(a5),a0
+    tst.b   extfilter_enabled(a0)
+    bne.b   .2
+    ; Quick exit
+    move.l  d0,extfilter_Vo(a0)
+    addq.l  #4,sp   * pop
+    rts
+.2
     ; Clock external filter
     move.l  d0,d1       * input for the filter
     pop     d0          * restore delta_t
-    move.l  sid_extfilt(a5),a0
     bra     extfilter_clock
   
 
