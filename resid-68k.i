@@ -131,18 +131,18 @@ FIXP_MASK = $ffff
         APTR    sid_voice3
         APTR    sid_filter
         APTR    sid_extfilt
-        ULONG   sid_bus_value_ttl
+        ULONG   sid_bus_value_ttl       * unused
         ULONG   sid_clock_frequency
         ULONG   sid_cycles_per_sample   * 16.16 fixed point
         ULONG   sid_sample_offset
         APTR    sid_clock_routine
-        ULONG   sid_sample_prev
-        ULONG   sid_oversampleScale
-        ULONG   sid_oversample
+        ULONG   sid_sample_prev         * interpolate mode
+        ULONG   sid_oversampleScale     * oversample mode
+        ULONG   sid_oversample          * oversample mode
         UWORD   sid_volume
-        UBYTE   sid_bus_value
+        UBYTE   sid_bus_value           * unused
         UBYTE   sid_sampling_method
-    LABEL sid_SIZEOF ; = 48
+    LABEL sid_SIZEOF ; = 56
 
            ENDIF
 

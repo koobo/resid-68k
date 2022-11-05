@@ -258,7 +258,9 @@ wave_clock:
     * shift_period = delta_accumulator
     move.l  d3,d1
     move.l  d2,d4
+
     move.l  #$80000,d6  ; bit 19 mask 
+
     sub.l   d1,d4
 
  REM ; option 1
@@ -2055,8 +2057,6 @@ sid_set_sampling_parameters_paula:
 * in:
 *   a5 = object
 *   d0 = cycle_count delta_t
-* out:
-*   a2 = extfilter output
 * uses:
 *   d0-d7,a0-a5
 *   a5 preserved
