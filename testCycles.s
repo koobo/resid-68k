@@ -6,6 +6,7 @@
     include exec/exec_lib.i
     include libraries/timer_lib.i
     include devices/timer.i
+    include dos/dos_lib.i
 
 * Period should be divisible by 64 for bug free 14-bit output
 PAULA_PERIOD=128    
@@ -25,7 +26,7 @@ sid_main:
     jsr	    sid_constructor
  
     move.l  #985248,d0
-    moveq   #SAMPLING_METHOD_INTERPOLATE14,d1
+    moveq   #SAMPLING_METHOD_OVERSAMPLE2x14,d1
     move.l  #PAULA_PERIOD,d2
 
     lea     Sid,a0
@@ -47,22 +48,39 @@ sid_main:
     move.l  d0,cyclesPerFrame
    
  ;   bsr     .pokeOceanLoaderV3
-    bsr     pokeSound2
+
+    move.l  4.w,a6
+    jsr     _LVOForbid(a6)
 
     bsr    startMeasure
 
+    moveq   #4-1,d7
+loop
+    move    #$f00,$dff180
+    bsr     pokeSound2
     lea    output,a1
     lea    output,a2
+    ; do 10 frames per poked sound
     move.l cyclesPerFrame,d0
-    muls.l #10,d0
-    ;move.l #10000,d0  * cycles
-    move.l #10000,d1 * buffer limit
+    muls.l #10,d0 
+    move.l #100000,d1 * buffer limit
     lea    Sid,a0
-    jsr    sid_clock_interpolate14
+    move.l d7,-(sp)
+    jsr    sid_clock_oversample14
+    move.l (sp)+,d7
+    dbf     d7,loop
 
     ; 227 samples
 
     bsr    stopMeasure
+    move.l  d0,d7
+
+    move.l  4.w,a6
+    jsr     _LVOPermit(a6)
+
+    move.l  d7,d0
+    bsr     print
+
     rts
 
 
@@ -381,7 +399,43 @@ pokeSound2:
 .w  lea Sid,a0
     bra sid_write
 
+print:
+    move.l  4.w,a6
 
+    lea     result(pc),a0
+    bsr     desmsg
+
+    lea	dosname(pc),a1
+	jsr     _LVOOldOpenLibrary(a6)
+	move.l	d0,a6
+
+    jsr     _LVOOutput(a6)
+    move.l  d0,d1
+    move.l  #desbuf,d2
+    move.l  #128,d3
+    jsr     _LVOWrite(a6)
+
+    move.l  a6,a1
+    move.l  4.w,a6
+    jsr     _LVOCloseLibrary(a6)
+    rts
+
+desmsg:
+	movem.l	d0-d7/a0-a3/a6,-(sp)
+	lea	desbuf(pc),a3
+	move.l	sp,a1	
+	lea	putc(pc),a2	
+	move.l	4.w,a6
+	jsr 	_LVORawDoFmt(a6)
+	movem.l	(sp)+,d0-d7/a0-a3/a6
+	rts
+putc	move.b	d0,(a3)+	
+	rts
+
+desbuf  ds.b    256
+
+result      dc.b    "Result: %ld ms",10,0
+dosname		dc.b	"dos.library",0
 
 
 ***************************************************************************
@@ -465,9 +519,10 @@ clockStart              ds.b    EV_SIZE
 clockEnd                ds.b    EV_SIZE
 
 
-
-
-
-output	ds.b	10000
-
     include     "resid-68k.s"
+
+
+    section out,data_c
+
+
+output	ds.b	100000
