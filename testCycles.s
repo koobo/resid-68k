@@ -12,11 +12,22 @@
 PAULA_PERIOD=128    
 PAL_CLOCK=3546895
 * Sampling frequency: PAL_CLOCK/PAULA_PERIOD=27710.1171875
+
+* reSID update frequency 100 Hz:
 * Samples per 1/100s = 277.10117
 * Samples per 1/100s as 22.10 FP = 283751.59808
-SAMPLES_PER_FRAME = 283752
+* SAMPLES_PER_FRAME = 283752
+
+* reSID update frequency 200 Hz:
+* Samples per 1/200s = 138.550585
+* Samples per 1/200s as 22.10 FP = 141875.79904
+SAMPLES_PER_FRAME = 141876
+
 * Output buffer size 
-SAMPLE_BUFFER_SIZE = 277+1     * 277.101171875
+* 100 Hz
+*SAMPLE_BUFFER_SIZE = 277+1  * 277.101171875
+* 200 Hz
+SAMPLE_BUFFER_SIZE = 140     * 138.550585
 
     * Launch and run a few cycles
 sid_main:     
@@ -27,10 +38,15 @@ sid_main:
  
     move.l  #985248,d0
     moveq   #SAMPLING_METHOD_OVERSAMPLE2x14,d1
+    moveq   #SAMPLING_METHOD_OVERSAMPLE3x14,d1
+    moveq   #SAMPLING_METHOD_OVERSAMPLE4x14,d1
+    moveq   #SAMPLING_METHOD_INTERPOLATE14,d1
+    moveq   #SAMPLING_METHOD_SAMPLE_FAST14,d1
     move.l  #PAULA_PERIOD,d2
 
     lea     Sid,a0
     jsr     sid_set_sampling_parameters_paula
+    move.l  a1,a4
 
     lea     Sid,a0
     moveq   #1,d0
@@ -47,30 +63,28 @@ sid_main:
     divu.l  #1<<(16+10),d1:d0
     move.l  d0,cyclesPerFrame
    
- ;   bsr     .pokeOceanLoaderV3
-
-    move.l  4.w,a6
+       move.l  4.w,a6
     jsr     _LVOForbid(a6)
+
+    bsr     pokeSound2
 
     bsr    startMeasure
 
-    moveq   #4-1,d7
+    * Loop count
+    moveq   #1-1,d7
 loop
-    move    #$f00,$dff180
-    bsr     pokeSound2
-    lea    output,a1
-    lea    output,a2
-    ; do 10 frames per poked sound
-    move.l cyclesPerFrame,d0
-    muls.l #10,d0 
-    move.l #100000,d1 * buffer limit
-    lea    Sid,a0
-    move.l d7,-(sp)
-    jsr    sid_clock_oversample14
-    move.l (sp)+,d7
+    * output for high byte
+    lea     output,a1
+    * output for low byte
+    lea     output,a2
+    move.l  cyclesPerFrame,d0
+    muls.l  #20,d0  * 20 * 5ms = 100 ms
+    move.l  #100000,d1 * buffer limit
+    lea     Sid,a0
+    movem.l a4/d7,-(sp)
+    jsr     (a4)    * call clock function
+    movem.l (sp)+,d7/a4
     dbf     d7,loop
-
-    ; 227 samples
 
     bsr    stopMeasure
     move.l  d0,d7
@@ -78,48 +92,10 @@ loop
     move.l  4.w,a6
     jsr     _LVOPermit(a6)
 
+ ifd __VASM
     move.l  d7,d0
     bsr     print
-
-    rts
-
-
-    * select voice
-  ;  move    #0*7,d7
-  ;  bsr     .pokeSound
-
-    move.l  4.w,a6
-    jsr     _LVOForbid(a6)
-
-    move   #1-1,d6
-    moveq  #0,d7
-
-.loop
-
-    movem.l d6/d7,-(sp)
-    move   #$ff0,$dff180
-    bsr    startMeasure
-
-    lea    Sid,a0
-    lea    output,a1
-    move.l #100000,d0  * cycles (upper limit)
-    move.l #10000,d1 * buffer limit
-    jsr    sid_clock_fast8
-
-    bsr    stopMeasure
-    clr    $dff180
-    movem.l (sp)+,d6/d7
-    cmp.l  d0,d7
-    bhs.b  .1
-    move.l d0,d7
-.1
-
-    dbf  d6,.loop
-
-
-    move.l  4.w,a6
-    jsr     _LVOPermit(a6)
-    bsr     closeTimer
+ endif
     rts
 
 cyclesPerFrame dc.l 0
