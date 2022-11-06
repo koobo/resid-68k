@@ -2473,6 +2473,7 @@ sid_clock_fast14:
 
 
 
+
 * Clock oversample EXPERIMENTAL
 * in:
 *   a0 = object
@@ -2488,72 +2489,58 @@ sid_clock_oversample14:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
-    move.l  sid_sample_offset(a5),d5
-    ;move.l  sid_sample_offset(a5),a4
 
     * Multiply cycles needed
     mulu.l  sid_oversample(a5),d0
-
 .loop
-    * Loop as many times as oversampled
+    * inner loop count
     move.l  sid_oversample(a5),a6
-
-    * sample data goes to d7
+    * sample data accumulator
     moveq   #0,d7
-    * save these, not needed in the inner loop
     pushm   d1/d3/a1/a2
-
 .innerLoop
-    ;----------------------------
-    ;move.l  a4,d5
+    ; ---------------------------------
+    * d5 = next_sample_offset
     move.l  sid_sample_offset(a5),d5
     add.l   sid_cycles_per_sample(a5),d5
     add.l   #1<<(FIXP_SHIFT-1),d5
-    * d5 = next_sample_offset
 
     * d2 = delta_t_sample
     moveq   #FIXP_SHIFT,d4
     move.l  d5,d2
     asr.l   d4,d2       * >>FIXP_SHIFT
- 
-    * sample_offset = (next_sample_offset & FIXP_MASK) - (1 << (FIXP_SHIFT - 1));
+   
+;    * Loop termination conditions:
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .popAndBreak
+
     and.l   #FIXP_MASK,d5
     sub.l   #1<<(FIXP_SHIFT-1),d5
-    ;move.l  d5,a4
     move.l  d5,sid_sample_offset(a5)
-    
-    * delta_t -= delta_t_sample
     sub.l   d2,d0
 
-    ; Try to stash as few regs as possible, 
-    ; it hurts performance
     pushm   d0/d7
     move.l  d2,d0
     bsr     sid_clock
     popm    d0/d7
     
+    ; Inline output generation
     move.l  sid_extfilt(a5),a0
     add.l   extfilter_Vo(a0),d7
-    ;----------------------------
+    ; ---------------------------------
     subq.w  #1,a6
     tst.w   a6
     bgt     .innerLoop
-    popm    d1/d3/a1/a2
-
-    * Loop termination conditions:
-    * if (delta_t_sample > delta_t)
-    cmp.l   d0,d2
-    bgt     .break
-
-    * buffer overflow check
-    * if (s >= n) 
+    popm    d1/d3/a1/a2 
+    ; ---------------------------------
+    ; buffer overflow check
     cmp.l   d1,d3
     bge     .x     
-
-    ; Inline output generation
-    moveq   #10,d4  * FP
+    ; ---------------------------------
+    moveq   #10,d4  * FP 10
     muls.l  sid_oversampleScale(a5),d7
-    asr.l   d4,d7   * FP shift 
+    asr.l   d4,d7   * FP shift
     CLAMP16 d7
     * Volume scaling
     muls    sid_volume(a5),d7
@@ -2566,10 +2553,14 @@ sid_clock_oversample14:
     * store high 8 bits
     addq.l  #1,d3
     move.b  d7,-1(a1,d3.l)   * chip write, stall
-
+    ; ---------------------------------
     bra     .loop
-    
+
+.popAndBreak
+    popm    d1/d3/a1/a2 
+
 .break
+    ; ---------------------------------
     * run remaining d0 cycles
     pushm   d0/d3
     bsr     sid_clock
@@ -2577,13 +2568,14 @@ sid_clock_oversample14:
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
-    ;sub.l   d0,a4
     sub.l   d0,sid_sample_offset(a5)
 .x
-    ;move.l  a4,sid_sample_offset(a5)
-    * bytes written
+  
+    * samples written
     move.l  d3,d0
     rts
+
+
 
 
 
