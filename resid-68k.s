@@ -733,6 +733,7 @@ envelope_output:
     rts
 
 
+
 * in:
 *   a0 = object
 *   d0 = cycle_count delta_t
@@ -2059,6 +2060,14 @@ sid_set_sampling_parameters_paula:
 * uses:
 *   d0-d7,a0-a5
 *   a5 preserved
+* notes:
+*   clock cycles per one call with different sampling modes
+*   with the ~28 kHz base sampling rate:
+*   - fast: 36
+*   - interpolate: 27 + 8
+*   - oversample x2: 17/18
+*   - oversample x3: 11/12
+*   - oversample x4: 8/9
 sid_clock:
     tst.l   d0
     bgt     .1
@@ -2471,9 +2480,8 @@ sid_clock_fast14:
 
 
 
-
-
-* Clock oversample EXPERIMENTAL
+* Clock by oversampling and averaging the samples.
+* Seems to be effective in reducing the sampling noise.
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer: high byte
@@ -2576,9 +2584,9 @@ sid_clock_oversample14:
 
 
 
-
-
-* Clock interpolate EXPERIMENTAL
+* Clock by interpolating between samples.
+* EXPERIMENTAL, this is different than the reSID interpolate mode,
+* which runs one clock cycle at a time.
 * in:
 *   a0 = object
 *   a1 = output byte buffer pointer: high byte
