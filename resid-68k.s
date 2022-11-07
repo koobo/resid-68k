@@ -813,11 +813,9 @@ envelope_clock:
     addq.b  #1,d5
     cmp.b   #$ff,d5
     bne     .break1
-    move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     move.b  envelope_decay(a0),d2
-    lea     envelope_rate_counter_period(pc),a1
-    ;move.l  (a1,d2.w*4),envelope_rate_period(a0)
-    move.l  (a1,d2.w*4),d6
+    move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
+    move.l  envelope_rate_counter_period(pc,d2.w*4),d6
     bra     .break1
 
 .notAttack
@@ -878,22 +876,6 @@ envelope_sustain_level:
   dc.b $ee
   dc.b $ff
 
-exponential_counter_period_table:
-.0   dc.b    1      * index= 0
-     dcb.b   6-0-1,0
-.6   dc.b    30     *        6
-     dcb.b   14-6-1,0
-.14  dc.b    16     * 0xe  = 14
-     dcb.b   26-14-1,0
-.26  dc.b    8      * 0x1a = 26
-     dcb.b   54-26-1,0
-.54  dc.b    4      * 0x36 = 54
-     dcb.b   93-54-1,0
-.93  dc.b    2      * 0x5d = 93
-     dcb.b   255-93-1,0
-.255 dc.b    1      * 0xff = 255
-     even
-
     cnop    0,4
 envelope_rate_counter_period:
   dc.l      9
@@ -912,6 +894,23 @@ envelope_rate_counter_period:
   dc.l  11720
   dc.l  19532
   dc.l  31251
+ 
+
+exponential_counter_period_table:
+.0   dc.b    1      * index= 0
+     dcb.b   6-0-1,0
+.6   dc.b    30     *        6
+     dcb.b   14-6-1,0
+.14  dc.b    16     * 0xe  = 14
+     dcb.b   26-14-1,0
+.26  dc.b    8      * 0x1a = 26
+     dcb.b   54-26-1,0
+.54  dc.b    4      * 0x36 = 54
+     dcb.b   93-54-1,0
+.93  dc.b    2      * 0x5d = 93
+     dcb.b   255-93-1,0
+.255 dc.b    1      * 0xff = 255
+     even
 
 
 
