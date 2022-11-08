@@ -84,6 +84,8 @@ main:
     bsr     closeTimer
 
     move.l  maxTime(pc),d0
+    move.l  dumpPointer,d1
+    sub.l   #regDump,d1
     rts
 
 delay
@@ -691,15 +693,144 @@ pokeSound2:
     rts    
 
 .w  lea Sid,a0
-    bra sid_write
+    jmp	sid_write
+
+; one hihat hit, one snare hit, voice 3
+katakisStart:
+	DC.w	$0733
+    dc.b    $00,$13 * attack, decay = 0
+    dc.w    $0733
+    dc.b    $A0,$14 * sustain level = a
+	DC.w	$0733
+    dc.b    $00,$10 * pulse lo = 0 
+    dc.w    $0733
+    dc.b    $00,$11 * pulse hi = 0
+	DC.w	$0733
+    dc.b    $00,$12 * control = 0
+    dc.w    $0733
+    dc.b    $A2,$0E * freq lo = a2
+	DC.w	$0733
+    dc.b    $0E,$0F * freq hi = e
+    dc.w    $0733
+    dc.b    $00,$15 * filter cut off lo = 0
+	DC.w	$0733
+    dc.b    $70,$16 * filter cut off hi = 70
+    dc.w    $0734
+    dc.b    $00,$13 * attack, decay = 0
+	DC.w	$0734
+    dc.b    $A0,$14 * sustain level = a
+    dc.w    $0734
+    dc.b    $00,$10 * pulse lo = 0 
+	DC.w	$0734
+    dc.b    $00,$11 * pulse hi = 0
+    dc.w    $0734
+    dc.b    $81,$12 * control = noise, gate 
+	DC.w	$0734
+    dc.b    $14,$0E * freq lo = e
+    dc.w    $0734
+    dc.b    $75,$0F * freq hi = f
+	DC.w	$0734
+    dc.b    $00,$15 * filter cut off lo = 0
+    dc.w    $0734
+    dc.b    $5A,$16 * filter cut off hi = $5a
+	DC.w	$0734
+    dc.b    $F1,$17 * filter resonance = f, voice 1
+    dc.w    $0734
+    dc.b    $1F,$18 * filter low pass, main volume = f
+	DC.w	$0735
+    dc.b    $00,$13 * attack, decay = 0
+    dc.w    $0735
+    dc.b    $A0,$14 * sustain level = a
+	DC.w	$0735
+    dc.b    $00,$10 * pulse lo = 0 
+    dc.w    $0735
+    dc.b    $00,$11 * pulse hi = 0
+	DC.w	$0735
+    dc.b    $00,$12 * control = 0
+    dc.w    $0735
+    dc.b    $45,$0E * freq lo = e
+	DC.w	$0735
+    dc.b    $1D,$0F * freq hi = f
+    dc.w    $0735
+    dc.b    $00,$15 * filter cut off lo = 0
+	DC.w	$0735
+    dc.b    $44,$16 * filter cut off hi = 44
+    dc.w    $0736
+    dc.b    $00,$13 * attack, decay = 0
+	DC.w	$0736
+    dc.b    $A0,$14 * sustain level = a
+    dc.w    $0736
+    dc.b    $00,$10 * pulse lo = 0 
+	DC.w	$0736
+    dc.b    $00,$11 * pulse hi = 0
+    dc.w    $0736
+    dc.b    $00,$12 * control = 0
+	DC.w	$0736
+    dc.b    $ED,$0E * freq lo = ed
+    dc.w    $0736
+    dc.b    $00,$15 * filter cut off lo = 0
+	DC.w	$0736
+    dc.b    $2E,$16 * filter cut off hi = 2e
+    DC.w	$0737
+    dc.b    $08,$12 * control = test bit
+    dc.w    $0737
+    dc.b    $F1,$17 * filter resonance = f, voice 1
+	DC.w	$0737
+    dc.b    $1F,$18 * filter low pass, main volume = f
+    dc.w    $0738
+    dc.b    $08,$13 * attack = 0, decay = 8
+	DC.w	$0738
+    dc.b    $08,$14 * sustain = 0, release = 8
+    dc.w    $0738
+    dc.b    $40,$10 * pulse lo = 40
+	DC.w	$0738
+    dc.b    $08,$11 * pulse hi = 8
+    dc.w    $0738
+    dc.b    $41,$12 * control = triangle, gate
+	DC.w	$0738
+    dc.b    $A2,$0E * freq lo = a2
+    dc.w    $0738
+    dc.b    $0E,$0F * freq hi = e
+	DC.w	$0738
+    dc.b    $00,$15 * filter cutoff lo = 0
+    dc.w    $0738
+    dc.b    $86,$16 * filter cutoff hi = 86
+	DC.w	$0739
+    dc.b    $08,$13 * attack = 0, decay = 3
+    dc.w    $0739
+    dc.b    $08,$14 * sustain = 0, release = 8
+	DC.w	$0739
+    dc.b    $80,$10 * pulse low = 80
+    dc.w    $0739
+    dc.b    $08,$11 * pulse high = 11
+	DC.w	$0739
+    dc.b    $41,$12 * control = triangle, gate
+    dc.w    $0739
+    dc.b    $45,$0E * freq lo = 45
+	DC.w	$0739
+    dc.b    $1D,$0F * freq hi = 1d
+    dc.w    $0739
+    dc.b    $00,$15 * filter cutoff lo = 0
+	DC.w	$0739
+    dc.b    $70,$16 * filter cutoff hi = 16
+    dc.w    $073A
+    dc.b    $08,$13 * attack = 0, decay = 3
+katakisEnd:
+
 
 playDump
-    lea     regDump+$000,a5
+ 
+    lea     regDump,a5
     lea     regDumpEnd,a6
 
-    * vblank timer
-    move	 #$1080,d7
-    moveq   #0,d7
+ REM
+    lea		katakisStart,a5
+    lea		katakisEnd,a6
+ EREM
+    
+    * vblank timer, set start time
+    ;moveq   #0,d7
+    move     (a5),d7 
 .loop
     move    #$f00,$dff180
     bsr     delay
@@ -711,6 +842,8 @@ playDump
     bne     .s 
     move.b  2(a5),d1 * addr
     move.b  3(a5),d0 * data
+    
+    ;exg	    d0,d1    * swapped with katakis dump!
 
     lea     Sid,a0
     jsr     sid_write
@@ -721,14 +854,14 @@ playDump
     bra     .a
 
 .s
-
     addq.l  #1,d7
     cmp.l   a6,a5
     blo     .loop
 .x
-
+    move.l  a5,dumpPointer
     rts
 
+dumpPointer	dc.l	0
 
 DOSName     dc.b    "dos.library",0
     even
