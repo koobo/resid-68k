@@ -53,23 +53,37 @@ FIXP_MASK = $ffff
     LABEL voice_SIZEOF ; = 16
 
     STRUCTURE   wave,0
-        ULONG   wave_accumulator    * 24-bit
-        ULONG   wave_shift_register * 24-bit
+        ULONG   wave_accumulator    * reg24
+        ULONG   wave_shift_register * reg24
         APTR    wave_sync_source
         APTR    wave_sync_dest
-        APTR    wave_wave__ST       * Pointers to sample data for waveform combinations
-        APTR    wave_wave_P_T
-        APTR    wave_wave_PS_
-        APTR    wave_wave_PST
-        UBYTE   wave_msb_rising     * Tells whether the accumulator MSB was set high on this cycle.
-        UBYTE   wave_test           * the remaining control register bits
-        UBYTE   wave_ring_mod
-        UBYTE   wave_sync
-        UWORD   wave_freq
-        UWORD   wave_pw
-        UWORD   wave_waveform       * Control register right-shifted 4 bits for table lookup
+        APTR    wave_model_wave     * pointer to SID specific model_wave
+        APTR    wave_model_dac
+        APTR    wave_wave           * pointer to current wave data from model_wave
+        ULONG   wave_freq           * reg24
+        UWORD   wave_pw             * reg12
+        UWORD   wave_waveform       * reg8
+        UWORD   wave_waveform_prev  * reg8
+        ULONG   wave_shift_register_reset * cycle_count
+        ULONG   wave_shift_pipeline * cycle_count
+        ULONG   wave_ring_msb_mask  * reg24
+        UWORD   wave_no_noise       * short
+        UWORD   wave_noise_output   * short
+        UWORD   wave_no_noise_or_noise_output * short
+        UWORD   wave_no_pulse       * short
+        UWORD   wave_pulse_output   * short
+        UWORD   wave_tri_saw_pipeline * reg12
+        UWORD   wave_osc3           * reg12
+        UWORD   wave_waveform_output * reg12
+        ULONG   wave_floating_output_ttl
+        UBYTE   wave_msb_rising     * bool
+        UBYTE   wave_test           * reg8
+        UBYTE   wave_test_prev      * reg8
+        UBYTE   wave_ring_mod       * reg8
+        UBYTE   wave_sync           * reg8
+        UBYTE   wave_sid_model      * chip model
         UWORD   wave_pad
-    LABEL wave_SIZEOF ; = 44
+    LABEL wave_SIZEOF ; = ?
 
     STRUCTURE   envelope,0
         ULONG   envelope_rate_counter

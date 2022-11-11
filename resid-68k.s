@@ -82,14 +82,102 @@ CLAMP16 macro
 
 ******************************************************************************
 *
-* Wave
+* Wave - reSID 1.0
 *
 ******************************************************************************
 
+SHIFT_REGISTER_RESET_START_6581 = 9768
+SHIFT_REGISTER_RESET_BIT_6581   = 1000
+SHIFT_REGISTER_RESET_START_8580 = 2519864
+SHIFT_REGISTER_RESET_BIT_8580   = 315000
+FLOATING_OUTPUT_TTL_START_6581  = 182000
+FLOATING_OUTPUT_TTL_BIT_6581    = 1500
+FLOATING_OUTPUT_TTL_START_8580  = 4400000
+FLOATING_OUTPUT_TTL_BIT_8580    = 50000
+
+* control waveform selection:
+* 4 = triangle   %0001
+* 5 = sawtooth   %0010
+* 6 = pulse      %0100
+* 7 = noise      %1000
+* 3 bits used to select wave
+* 0 = %000 
+* 1 = %001 triangle
+* 2 = %010 sawt
+* 3 = %011 saw+tri
+* 4 = %100 pulse
+* 5 = %101 pulse+tri
+* 6 = %110 pulse+sawt
+* 7 = %111 pulsw+sawt+tri
+
+
+wave_model_wave_6581:
+    dc.l    wave_noise_mask
+    dc.l    wave_triangle
+    dc.l    wave_sawtooth
+    dc.l    wave6581__ST
+    dc.l    wave_pulse_mask
+    dc.l    wave6581_P_T
+    dc.l    wave6581_PS_
+    dc.l    wave6581_PST   
+
+wave_model_wave_8580:
+    dc.l    wave_noise_mask
+    dc.l    wave_triangle
+    dc.l    wave_sawtooth
+    dc.l    wave8580__ST
+    dc.l    wave_pulse_mask
+    dc.l    wave8580_P_T
+    dc.l    wave8580_PS_
+    dc.l    wave8580_PST   
+
+
+wave_generate_model:
+    moveq   #0,d0   * accumulator
+    moveq   #0,d1   * loop variable
+    lea     wave_noise_mask,a0
+    lea     wave_triangle,a1
+    lea     wave_sawtooth,a2
+    lea     wave_pulse_mask,a3
+.loop
+    * if MSB is set, d2 will be -1, 0 otherwise
+    move.l  d0,d2
+    and.l   #$800000,d2
+    sne     d2
+    extb    d2
+
+    * noise
+    move.w  #$fff,(a0)+
+
+    * triangle
+    move.l  d0,d3
+    eor.l   d2,d3
+    lsr.l   #8,d3
+    lsr.l   #3,d3
+    and.w   #$ffe,d3
+    move.w  d3,(a1)+
+
+    * sawtooth
+    move.l  d0,d3
+    lsr.l   #8,d3
+    lsr.l   #4,d3
+    move.w  d3,(a2)+
+
+    * pulse
+    move.w  #$fff,(a3)+
+
+    add.l   #$1000,d0
+    addq.w  #1,d1
+    cmp.w   #1<<12,d1
+    bne     .loop
+    rts
+ 
 * in:
 *   a0 = object
 wave_constructor:
     move.l  a0,wave_sync_source(a0)
+    move.l  #$555555,wave_accumulator(a0)
+    move.w  #$555,wave_tri_saw_pipeline(a0)
     moveq   #CHIP_MODEL_MOS6581,d0
     bsr     wave_set_chip_model
     bsr     wave_reset
@@ -107,20 +195,21 @@ wave_set_sync_source
 *   a0 = object
 *   d0 = chip model
 wave_set_chip_model
+    move.b  d0,wave_sid_model(a0)
+
     cmp.b   #CHIP_MODEL_MOS6581,d0
     bne.b   .1
-    move.l  #wave6581__ST,wave_wave__ST(a0)
-    move.l  #wave6581_P_T,wave_wave_P_T(a0) 
-    move.l  #wave6581_PS_,wave_wave_PS_(a0) 
-    move.l  #wave6581_PST,wave_wave_PST(a0)
-    rts
+    move.l  #wave_model_wave_6581,wave_model_wave(a0)
+    bra     .x
 .1
-    move.l  #wave8580__ST,wave_wave__ST(a0)
-    move.l  #wave8580_P_T,wave_wave_P_T(a0) 
-    move.l  #wave8580_PS_,wave_wave_PS_(a0) 
-    move.l  #wave8580_PST,wave_wave_PST(a0)
+    move.l  #wave_model_wave_8580,wave_model_wave(a0)
 .x
+    moveq   #7,d1
+    and     wave_waveform(a0),d1
+    move.l  wave_model_wave(a0),a1
+    move.l  (a1,d1.w*4),wave_wave(a0)
     rts
+
 
 
 * in:
@@ -144,6 +233,17 @@ wave_writeFREQ_HI:
 *   d0 = pw_lo
 wave_writePW_LO:
     move.b  d0,wave_pw+1(a0)
+    
+    moveq   #12,d1
+    move.l  wave_accumulator(a0),d0
+    lsr.l   d1,d0
+
+    cmp     wave_pw(a0),d0
+    bhs.b   .do
+    clr.w   wave_pulse_output(a0)
+    rts
+.do
+    move.w  #$0fff,wave_pulse_output(a0)
     rts
 
 * in:
@@ -152,37 +252,526 @@ wave_writePW_LO:
 wave_writePW_HI:
     and.b   #$f,d0
     move.b  d0,wave_pw+0(a0)
+
+    moveq   #12,d1
+    move.l  wave_accumulator(a0),d0
+    lsr.l   d1,d0
+
+    cmp     wave_pw(a0),d0
+    bhs.b   .do
+    clr.w   wave_pulse_output(a0)
+    rts
+.do
+    move.w  #$0fff,wave_pulse_output(a0)
     rts
 
 * in:
 *   a0 = object
 *   d0 = control
+* uses:
+*   a0,a1,d0-d4
 wave_writeCONTROL_REG:
-    moveq   #0,d1
-    move.b  d0,d1
-    lsr.b   #4,d1
-    move.w  d1,wave_waveform(a0)
+    move.w  wave_waveform(a0),wave_waveform_prev(a0)
+    move.b  wave_test(a0),wave_test_prev(a0)
 
-    moveq   #$04,d2
-    and.b  d0,d2
-    move.b  d2,wave_ring_mod(a0)
+    moveq   #0,d3
+    move.b  d0,d3
+    lsr.b   #4,d3
+    move.w  d3,wave_waveform(a0)
 
+    ; Set up waveform table
+    moveq   #7,d1
+    and     d3,d1
+    move.l  wave_model_wave(a0),a1
+    move.l  (a1,d1.w*4),wave_wave(a0)
+
+    moveq   #$08,d1
+    and.b   d0,d1
+    move.b  d1,wave_test(a0)
+
+    moveq   #$04,d1
+    and.b   d0,d1
+    move.b  d1,wave_ring_mod(a0)
+    
     moveq   #$02,d1
-    and.b  d0,d1
+    and.b   d0,d1
     move.b  d1,wave_sync(a0)
 
-    and.b   #$08,d0
-    beq     .noTestNext
-    clr.l   wave_accumulator(a0)
-    clr.l   wave_shift_register(a0)
-    bra     .1
-.noTestNext
+    ;  ring_msb_mask = ((~control >> 5) & (control >> 2) & 0x1) << 23;
+    move.b  d0,d1
+    not.b   d1
+    lsl.b   #5,d1
+    move.b  d0,d2
+    lsr.b   #2,d2
+    and.b   d2,d1
+    and.b   #1,d1
+    moveq   #23,d2
+    lsl.l   d2,d1
+    move.l  d1,wave_ring_msb_mask(a0)
+
+    ;  no_noise = waveform & 0x8 ? 0x000 : 0xfff;
+    ; set 0 if bit 8 is set
+    moveq   #8,d2
+    and     d3,d2
+    * set to ff if d2 is zero 
+    seq     d2
+    * ff -> ffff
+    ext     d2
+    * ffff -> fff
+    lsr     #4,d2
+    move    d2,wave_no_noise(a0)
+
+    ; no_noise_or_noise_output = no_noise | noise_output;
+    or.w    wave_noise_output(a0),d2
+    move.w  d2,wave_no_noise_or_noise_output(a0)
+
+    ;  no_pulse = waveform & 0x4 ? 0x000 : 0xfff;
+    moveq   #4,d2
+    and     d3,d2
+    seq     d2
+    ext     d2
+    lsr     #4,d2
+    move    d2,wave_no_pulse(a0)
+
+    * if (!test_prev && test) {
+    tst.b   wave_test_prev(a0)
+    bne.b   .elseif
     tst.b   wave_test(a0)
-    beq.b   .1
-    move.l  #$7ffff8,wave_shift_register(a0)
-.1
-    move.b  d0,wave_test(a0)
+    beq.b   .elseif
+
+    clr.l   wave_accumulator(a0)
+    clr.l   wave_shift_pipeline(a0)
+
+    move.l  #SHIFT_REGISTER_RESET_START_6581,d0
+    cmp.b   #CHIP_MODEL_MOS6581,wave_sid_model(a0)
+    beq.b   .5
+    move.l  #SHIFT_REGISTER_RESET_START_8580,d0
+.5  move.l  d0,wave_shift_register_reset(a0)
+
+    ; The test bit sets pulse high.
+    move.w  #$fff,wave_pulse_output(a0)
+    bra.b   .endif
+
+    ; else if (test_prev && !test) {
+.elseif
+    tst.b   wave_test_prev(a0)
+    beq.b   .endif
+    tst.b   wave_test(a0)
+    bne.b   .endif
+
+    ; ----------- wave_do_pre_writeback
+    cmp.w   #8,wave_waveform_prev(a0)
+    bls     .writebackFalse
+    cmp.w   #8,d3
+    beq     .writebackFalse
+    cmp.w   #$c,wave_waveform_prev(a0)
+    beq     .writebackFalse
+    cmp.b   #CHIP_MODEL_MOS6581,wave_sid_model(a0)
+    bne     .writebackFalse
+    moveq   #3,d1
+    and     wave_waveform_prev(a0),d1
+    moveq   #3,d2
+    and     d3,d2
+    * d1 = waveform_prev & 3
+    * d2 = waveform & 3
+    cmp     #1,d1
+    bne     .bb
+    cmp     #2,d2
+    beq     .writebackTrue
+.bb
+    cmp     #2,d1
+    bne     .writebackFalse
+    cmp     #1,d2
+    bne     .writebackFalse
+.writebackTrue
+    bsr     wave_write_shift_register
+.writebackFalse
+    ; --------------------------------
+
+    ; reg24 bit0 = (~shift_register >> 17) & 0x1;
+    move.l  wave_shift_register(a0),d1
+    move.l  d1,d2
+    not.l   d1
+    moveq   #17,d4
+    lsr.l   d4,d1
+    and     #1,d1
+
+    ; shift_register = ((shift_register << 1) | bit0) & 0x7fffff;
+    add.l   d2,d2
+    or.b    d1,d2
+    and.l   #$7fffff,d2
+    move.l  d2,wave_shift_register(a0)
+
+    bsr     wave_set_noise_output
+
+.endif
+
+    tst.w   wave_waveform(a0)
+    bne     wave_set_waveform_output_single
+
+    tst.w   wave_waveform_prev(a0)
+    beq.b   .3
+    move.l  #FLOATING_OUTPUT_TTL_START_6581,d0
+    cmp.b   #CHIP_MODEL_MOS6581,wave_sid_model(a0)
+    beq.b   .4
+    move.l  #FLOATING_OUTPUT_TTL_START_8580,d0
+.4
+    move.l  d0,wave_floating_output_ttl(a0)
+.3
     rts
+
+* in:
+*   a0 = object
+* uses:
+*   d0,d1,a0
+wave_wave_bitfade:
+    move.w  wave_waveform_output(a0),d0
+    move.w  d0,d1
+    lsr.w   #1,d1
+    and.w   d1,d0
+    move.w  d0,wave_osc3(a0)
+    move.w  d0,wave_waveform_output(a0)
+    beq.b   .1
+    move.l  #FLOATING_OUTPUT_TTL_BIT_6581,d0
+    cmp.b   #CHIP_MODEL_MOS6581,wave_sid_model(a0)
+    beq.b   .2
+    move.l  #FLOATING_OUTPUT_TTL_BIT_8580,d0
+.2  move.l  d0,wave_floating_output_ttl(a0)
+.1
+    rts
+
+* in:
+*   a0 = object
+wave_shiftreg_bitfade:
+    moveq   #1,d0
+    or.l    wave_shift_register(a0),d0
+    move.l  d0,d1
+    add.l   d1,d1
+    or.l    d1,d0
+    move.l  d0,wave_shift_register(a0)
+
+    bsr     wave_set_noise_output
+    
+    cmp.l   #$7fffff,wave_shift_register(a0)
+    beq.b   .1
+    move.l  #SHIFT_REGISTER_RESET_BIT_6581,d0
+    cmp.b   #CHIP_MODEL_MOS6581,wave_sid_model(a0)
+    beq.b   .2
+    move.l  #SHIFT_REGISTER_RESET_BIT_8580,d0
+.2  move.l  d0,wave_shift_register_reset(a0)
+.1
+    rts
+
+* in:
+*   a0 = object
+* uses:
+*   d0-d2,a0
+wave_write_shift_register:
+    move.l  #~((1<<20)|(1<<18)|(1<<14)|(1<<11)|(1<<9)|(1<<5)|(1<<2)|(1<<0)),d2
+    moveq   #0,d0
+    move.w  wave_waveform_output(a0),d0
+
+    move.l  d0,d1
+    and.w   #$800,d1
+    lsl.l   #8,d1
+    lsl.l   #1,d1
+    or.l    d1,d2
+
+    move.l  d0,d1
+    and.w   #$400,d1
+    lsl.l   #8,d1
+    or.l    d1,d2
+
+    move.l  d0,d1
+    and.w   #$200,d1
+    lsl.l   #5,d1
+    or.l    d1,d2
+
+    move.l  d0,d1
+    and.w   #$100,d1
+    lsl.l   #3,d1
+    or.l    d1,d2
+
+    move.l  d0,d1
+    and.w   #$080,d1
+    lsl.l   #2,d1
+    or.l    d1,d2
+
+    moveq   #$040,d1
+    and.w   d0,d1
+    lsr.w   #1,d1
+    or.w    d1,d2
+
+    moveq   #$010,d1
+    and.w   d0,d1
+    lsr.w   #3,d1
+    or.w    d1,d2
+
+    moveq   #$010,d1
+    and.w   d0,d1
+    lsr.w   #4,d1
+    or.w    d1,d2
+
+    and.l   d2,wave_shift_register(a0)
+    and.w   d0,wave_noise_output(a0)
+    
+    move.w  wave_no_noise(a0),d0
+    or.w    wave_noise_output(a0),d0
+    move.w  d0,wave_no_noise_or_noise_output(a0)
+    rts
+
+* in:
+*   a0 = object
+* uses:
+*   d0-d3,a0
+wave_set_noise_output:
+    move.l  wave_shift_register(a0),d0
+    moveq   #0,d2
+
+    move.l  d0,d1
+    and.l   #$100000,d1
+    lsr.l   #8,d1
+    lsr.l   #1,d1
+    or.l    d1,d2
+
+    move.l  d0,d1
+    and.l   #$040000,d1
+    lsr.l   #8,d1
+    or.l    d1,d2
+
+    move.w  d0,d1
+    and.w   #$004000,d1
+    lsr.w   #5,d1
+    or.w    d1,d2
+
+    move.w  d0,d1
+    and.w   #$000800,d1
+    lsr.w   #3,d1
+    or.w    d1,d2
+    move.w  d0,d1
+
+    move.w  d0,d1
+    and.w   #$000200,d1
+    lsr.w   #2,d1
+    or.w    d1,d2
+
+    move.w  d0,d1
+    and.w   #$000020,d1
+    lsl.w   #1,d1
+    or.w    d1,d2
+
+    move.w  d0,d1
+    and.w   #$000004,d1
+    lsl.w   #3,d1
+    or.w    d1,d2
+
+    move.w  d0,d1
+    and.w   #$000001,d1
+    lsl.w   #4,d1
+    or.w    d1,d2
+
+    move.w  d2,wave_noise_output(a0)
+    or.w    wave_no_noise(a0),d2
+    move.w  d2,wave_no_noise_or_noise_output(a0)
+    rts
+
+*   d0 = cycle_count delta_t
+
+* in:
+*   a0 = object
+* uses:
+*   d0-d2,a0,a1
+wave_set_waveform_output_single:
+    tst.w   wave_waveform(a0)
+    beq     .noWaveform
+
+    ; ---------------------------------
+    ; ix = (accumulator ^ (~sync_source->accumulator & ring_msb_mask)) >> 12;
+    move.l  wave_accumulator(a0),d0
+    move.l  wave_sync_source(a0),a1
+    move.l  wave_accumulator(a1),d1
+    not.l   d1
+    and.l   wave_ring_msb_mask(a0),d1
+    eor.l   d1,d0
+    moveq   #12,d1
+    lsr.l   d1,d0
+
+    ; ---------------------------------
+    ; waveform_output = d0
+    move.l  wave_wave(a0),a1
+    move.w  (a1,d0.l*2),d0
+
+    move.w  wave_no_pulse(a0),d1
+    or.w    wave_pulse_output(a0),d1
+    and.w   d1,d0
+    and.w   wave_no_noise_or_noise_output(a0),d0
+    move.w  d0,wave_waveform_output(a0)
+
+    ; ---------------------------------
+    * Noise pulse
+    moveq   #$c,d1
+    and     wave_waveform(a0),d1
+    cmp     #$c,d1
+    bne.b   .noNoisePulse
+
+    cmp.b   #CHIP_MODEL_MOS6581,wave_sid_model(a0)
+    beq.b   .m1
+
+    ; return (noise < 0xfc0) ? noise & (noise << 1) : 0xfc0;
+    cmp.w   #$fc0,d0
+    bhs.b   .m2
+    move    d0,d1
+    add     d1,d1
+    and     d1,d0
+    bra     .continue
+.m2 
+    move    #$fc0,d0
+    bra     .continue
+.m1
+    ;return (noise < 0xf00) ? 0x000 : noise & (noise<<1) & (noise<<2);
+    cmp.w   #$f00,d0
+    blo.b   .zero
+    move    d0,d1
+    add     d1,d1
+    move    d1,d2
+    add     d2,d2
+    and     d2,d1
+    and     d1,d0
+    bra     .continue
+.zero
+    moveq   #0,d0
+.continue
+    move    d0,wave_waveform_output(a0)
+.noNoisePulse
+    ; ---------------------------------
+    ; Triangle/Sawtooth output is delayed half cycle on 8580.
+    ; NOT PORTED
+    move   wave_waveform_output(a0),wave_osc3(a0) 
+
+    ; ---------------------------------
+    ; if ((waveform & 0x2) && (waveform & 0xd) && (sid_model == MOS6581)) {
+    moveq   #2,d1
+    and     wave_waveform(a0),d1
+    beq.b   .1
+    moveq   #$d,d1
+    and     wave_waveform(a0),d1
+    beq.b   .1
+    cmp.b   #CHIP_MODEL_MOS6581,wave_sid_model(a0)
+    bne.b   .1
+    ; accumulator &= (waveform_output << 12) | 0x7fffff;
+    moveq   #0,d1
+    moveq   #12,d2
+    move    wave_waveform_output(a0),d1
+    lsl.l   d2,d1
+    or.l    #$7fffff,d1
+    and.l   d1,wave_accumulator(a0)
+.1
+    ; ---------------------------------
+    ; if ((waveform > 0x8) && (!test) && (shift_pipeline != 1)) {
+    cmp.w   #8,wave_waveform(a0)
+    bls.b   .2
+    tst.b   wave_test(a0)
+    bne.b   .2
+    cmp.l   #1,wave_shift_pipeline(a0)
+    beq.b   .2
+    bsr     wave_write_shift_register
+.2
+    ; ---------------------------------
+    ; Age floating DAC input
+.noWaveform
+    tst.l   wave_floating_output_ttl(a0)
+    beq.b   .x
+    subq.l  #1,wave_floating_output_ttl(a0)
+    bne.b   .x
+    bsr     wave_wave_bitfade
+.x
+    moveq   #12,d1
+    move.l  wave_accumulator(a0),d0
+    lsr.l   d1,d0
+    cmp     wave_pw(a0),d0
+    bhs.b   .do
+    clr.w   wave_pulse_output(a0)
+    rts
+.do
+    move.w  #$0fff,wave_pulse_output(a0)
+    rts
+
+* in:
+*   a0 = object
+*   d0 = cycle_count delta_t
+* uses: 
+*  d0,d1,d2,d3,a0,a1
+wave_set_waveform_output:
+    move.l  d0,d3
+
+    tst.w   wave_waveform(a0)
+    beq     .noWaveform
+
+    ; ---------------------------------
+    ; ix = (accumulator ^ (~sync_source->accumulator & ring_msb_mask)) >> 12;
+    move.l  wave_accumulator(a0),d0
+    move.l  wave_sync_source(a0),a1
+    move.l  wave_accumulator(a1),d1
+    not.l   d1
+    and.l   wave_ring_msb_mask(a0),d1
+    eor.l   d1,d0
+    moveq   #12,d1
+    lsr.l   d1,d0
+
+    ; ---------------------------------
+    ; waveform_output = d0
+    move.l  wave_wave(a0),a1
+    move.w  (a1,d0.l*2),d0
+
+    move.w  wave_no_pulse(a0),d1
+    or.w    wave_pulse_output(a0),d1
+    and.w   d1,d0
+    and.w   wave_no_noise_or_noise_output(a0),d0
+    move.w  d0,wave_waveform_output(a0)
+
+    move    d0,wave_osc3(a0)
+
+    ; ---------------------------------
+    ; if ((waveaform & 0x2) && (waveform & 0xd) && (sid_model == MOS6581)) {
+    moveq   #2,d1
+    and     wave_waveform(a0),d1
+    beq.b   .1
+    moveq   #$d,d1
+    and     wave_waveform(a0),d1
+    beq.b   .1
+    cmp.b   #CHIP_MODEL_MOS6581,wave_sid_model(a0)
+    bne.b   .1
+    ; accumulator &= (waveform_output << 12) | 0x7fffff;
+    moveq   #0,d1
+    moveq   #12,d2
+    move    wave_waveform_output(a0),d1
+    lsl.l   d2,d1
+    or.l    #$7fffff,d1
+    and.l   d1,wave_accumulator(a0)
+.1
+    ; ---------------------------------
+    ; if (waveform > 0x8) && (!test)) {
+    cmp.w   #8,wave_waveform(a0)
+    bls.b   .2
+    tst.b   wave_test(a0)
+    bne.b   .2
+    push    d3
+    bsr     wave_write_shift_register
+    pop     d3
+.2
+    ; ---------------------------------
+    ; Age floating DAC input
+.noWaveform
+    tst.l   wave_floating_output_ttl(a0)
+    beq.b   .x
+    sub.l   d3,wave_floating_output_ttl(a0)
+    bpl.b   .x
+    clr.l   wave_floating_output_ttl(a0)
+    clr.w   wave_waveform_output(a0)
+    clr.w   wave_osc3(a0)
+.x
+    rts
+
 
 * in:
 *   a0 = object
@@ -196,14 +785,25 @@ wave_readOSC:
 * in:
 *   a0 = object
 wave_reset
-    clr.l   wave_accumulator(a0)
-    move.l  #$7ffff8,wave_shift_register(a0)
-    clr.w   wave_freq(a0)
+    clr.l   wave_freq(a0)
     clr.w   wave_pw(a0)
+    clr.b   wave_msb_rising(a0)
+    clr.w   wave_waveform(a0)
     clr.b   wave_test(a0)
     clr.b   wave_ring_mod(a0)
     clr.b   wave_sync(a0)
-    clr.b   wave_msb_rising(a0)
+    clr.l   wave_ring_msb_mask(a0)
+    move.w  #$fff,wave_no_noise(a0)
+    move.w  #$fff,wave_no_pulse(a0)
+    move.w  #$fff,wave_pulse_output(a0)
+    move.l  #$7ffffe,wave_shift_register(a0)
+    clr.l   wave_shift_register_reset(a0)
+    clr.l   wave_shift_pipeline(a0)
+    clr.w   wave_waveform_output(a0)
+    clr.w   wave_osc3(a0)
+    clr.l   wave_floating_output_ttl(a0)
+    clr.l   wave_accumulator(a0)
+    ; note: wave_accumulator not cleared
     rts
 
 
@@ -213,35 +813,47 @@ wave_reset
 * uses:
 *   d0-d6,a0
 wave_clock:
+    printt "todo todo"
+
+    ; ---------------------------------
+    ; test bit on
     tst.b   wave_test(a0)
-    beq     .go
+    beq     .noTest
+    tst.l   wave_shift_register_reset(a0)
+    beq.b   .t1
+    sub.l   d0,wave_shift_register_reset(a0)
+    bpl.b   .t1
+    move.l  #$7fffff,wave_shift_register(a0)
+    clr.l   wave_shift_register_reset(a0)
+    bsr     wave_set_noise_output
+.t1
+    move    #$fff,wave_pulse_output(a0)
     rts
-.go
+.noTest
     * calls: 3x
 
-    * d1 = accumulator_prev
-    move.l  wave_accumulator(a0),d1
-
-    * d3 = delta_accumulator
+   * d3 = delta_accumulator
     move    wave_freq(a0),d3
     mulu.w  d0,d3
-  
-    clr.b   wave_msb_rising(a0)
 
-    move.l  d1,d2
-    * d2 = accumulator
+    * d2 = accumulator_next
+    move.l  wave_accumulator(a0),d2
+    move.l  d2,d1
     add.l   d3,d2
     and.l   #$ffffff,d2
+
+    * d1 = accumulator_bits_set
+    not.l   d1
+    and.l   d2,d1
+
+    * accumulator = accumulator_next
     move.l  d2,wave_accumulator(a0)
+ 
+    ; Check if MSB is set high
+    and.l   #$800000,d1
+    sne     wave_msb_rising(a0)
 
-    ;btst    #23,d1      * previous MSB
-    and.l   #$800000,d1 * test previous MSB, pOEP|sOEP
-    bne     .noMsb
-    btst    #23,d2      * test current MSB, pOEP-until-last
-    beq     .noMsb
-    st      wave_msb_rising(a0)
-.noMsb
-
+    * d1 = shift period
     move.l  #$100000,d1
 
     * d0 = delta_t
@@ -257,17 +869,14 @@ wave_clock:
 
     * shift_period = delta_accumulator
     move.l  d3,d1
+
+    * d4 = accumulator - shift_period
     move.l  d2,d4
-
-    move.l  #$80000,d6  ; bit 19 mask 
-
     sub.l   d1,d4
 
- REM ; option 1
     cmp.l   #$80000,d1 
     bhi     .else
-    ;and.l   #$80000,d4
-    btst    #19,d4   ; this seems to win over and.l here
+    and.l   #$80000,d4
     bne     .break
     btst    #19,d2
     beq     .break
@@ -277,27 +886,34 @@ wave_clock:
     beq     .continue
     btst    #19,d2
     beq     .break
- EREM
- ;REM ; option 2
- ;possibly faster since Bcc and std intruction may pair in certain
- ;situations
-    cmp.l   d6,d1 
-    bhi     .else
-    and.l   d6,d4
-    bne     .break
-    and.l   d2,d6
-    beq     .break
-    bra     .continue
-.else
-    and.l   d6,d4
-    beq     .continue
-    and.l   d2,d6
-    beq     .break
- ;EREM
-
+ 
 .continue
-    * Shift the noise/random register.  
-    * bit0
+    ; todo protect registers
+    pushm   d1-d3
+    bsr     wave_clock_shift_register
+    popm    d1-d3
+
+    sub.l   d1,d3
+    bne     .loop
+
+.break
+
+    ; Calculate pulse high/low.
+    moveq   #12,d1
+    move.l  wave_accumulator(a0),d0
+    lsr.l   d1,d0
+    cmp     wave_pw(a0),d0
+    bhs.b   .do
+    clr.w   wave_pulse_output(a0)
+    rts
+.do
+    move.w  #$0fff,wave_pulse_output(a0)
+    rts
+
+* in:
+*   a0 = object
+wave_clock_shift_register:
+   * bit0
     move.l  wave_shift_register(a0),d4
     move.l  d4,d6
     swap    d4
@@ -310,13 +926,8 @@ wave_clock:
     and.l   #$7fffff,d6
     or.b    d5,d6
     move.l  d6,wave_shift_register(a0)
-
-    sub.l   d1,d3
-    bne     .loop
-
-.break
+    bsr     wave_set_noise_output
     rts
-
 
 * in:
 *   a0 = object
@@ -349,176 +960,17 @@ WAVE_SYNC macro
 * out:
 *   d0 = Waveform output 12 bits
 * uses: 
-*   d0-d7,a0,a1
+*   d0,a0,a1
 wave_output:
-    * calls: 3x
-
-    move.w  wave_waveform(a0),d0
-    move.w  .tab(pc,d0.w*2),d0
-    jmp     .tab(pc,d0.w)
-
-.tab
-    dc.w     wave_output____-.tab
-    dc.w     wave_output___T-.tab
-    dc.w     wave_output__S_-.tab
-    dc.w     wave_output__ST-.tab
-    dc.w     wave_output_P__-.tab
-    dc.w     wave_output_P_T-.tab
-    dc.w     wave_output_PS_-.tab
-    dc.w     wave_output_PST-.tab
-    dc.w     wave_outputN___-.tab
-    dc.w     wave_outputN__T-.tab
-    dc.w     wave_outputN_S_-.tab
-    dc.w     wave_outputN_ST-.tab
-    dc.w     wave_outputNP__-.tab
-    dc.w     wave_outputNP_T-.tab
-    dc.w     wave_outputNPS_-.tab
-    dc.w     wave_outputNPST-.tab
- 
-
-wave_output___T:
-    move.l  wave_accumulator(a0),d0
-    move.l  d0,d1
-    tst.b   wave_ring_mod(a0)
-    beq.b   .noRingMod
-    move.l  wave_sync_source(a0),a1
-    move.l  wave_accumulator(a1),d2
-    eor.l   d2,d1
-.noRingMod
-    moveq   #11,d3 * shift
-    and.l   #$800000,d1
-    beq     .noMsb
-    not.l   d0
-.noMsb
-    lsr.l   d3,d0
-    and     #$0fff,d0
-    rts
-
-wave_output__S_:
-;    move.l  wave_accumulator(a0),d0
-;    lsr.l   #8,d0
-;    lsr.w   #4,d0
-; = 3 cycles
-
-    moveq   #12,d1
-    move.l  wave_accumulator(a0),d0
-    lsr.l   d1,d0
-; = 2 cycles
-    rts
-
-wave_output__ST:
-    ; wave_output__S_ inlined
-    moveq   #12,d2 * shift
-    move.l  wave_accumulator(a0),d1
     moveq   #0,d0
-    lsr.l   d2,d1
-    move.l  wave_wave__ST(a0),a1
-    move.b  (a1,d1.w),d0
-    lsl.w   #4,d0
+    move.w  wave_waveform_output(a0),d0
+    move.l  wave_wave(a0),a1
+    move.w  (a1,d0.l*2),d0
     rts
-* out:
-*   d0 = $000 or $fff
-wave_output_P__:
-    tst.b   wave_test(a0)
-    bne.b   .do
-    moveq   #12,d2 * shift
-    move.l  wave_accumulator(a0),d0
-    lsr.l   d2,d0
-    cmp     wave_pw(a0),d0
-    bhs.b   .do
-    moveq   #0,d0
-    rts
-.do
-    move    #$0fff,d0
-    rts
-wave_output_P_T:
-    bsr     wave_output___T
-    lsr.w   #1,d0
-    move.l  wave_wave_P_T(a0),a1
-    move.b  (a1,d0.w),d1
-    lsl     #4,d1
-    bsr     wave_output_P__
-    and     d1,d0
-    rts
-wave_output_PS_:
-    ; wave_output__S_ inlined
-    moveq   #12,d2 * shift
-    move.l  wave_accumulator(a0),d0
-    lsr.l   d2,d0
-    move.l  wave_wave_PS_(a0),a1
-    move.b  (a1,d0.w),d1
-    
-    lsl.w   #4,d1
-    bsr     wave_output_P__
-    and     d1,d0
-    rts
-wave_output_PST:
-    ; wave_output__S_ inlined
-    moveq   #12,d2 * shift
-    move.l  wave_accumulator(a0),d0  
-    lsr.l   d2,d0
-    move.l  wave_wave_PST(a0),a1
-    move.b  (a1,d0.w),d1
-    lsl.w   #4,d1
-    bsr     wave_output_P__
-    and     d1,d0
-    rts
-
-wave_outputN___:
-    moveq   #0,d0
-    move.l  wave_shift_register(a0),d1
-
-    move.l  d1,d2
-    move.l  d1,d3
-    andi.l  #$400000,d2
-    move.l  d1,d4
-    andi.l  #$100000,d3
-    move.l  d1,d5
-    andi.l  #$010000,d4
-    move.l  d1,d6
-    andi.w  #$002000,d5
-    move.l  d1,d7
-    andi.w  #$000800,d6
-    andi.w  #$000080,d7
-
-    lsr.l   #8,d2 
-    lsr.l   #8,d3
-    lsr.w   #3,d2   
-    lsr.w   #2,d3
-    or      d2,d0 
-    lsr.l   #7,d4
-    or      d3,d0 
-    lsr.w   #5,d5
-    or      d4,d0 
-    lsr.w   #4,d6
-    or      d5,d0 
-    lsr.w   #1,d7
-    or      d6,d0 
-    move.l  d1,d2
-    or      d7,d0 
-    and.w   #$000010,d1
-    and.w   #$000004,d2
-    lsl.w   #1,d1
-    lsl.w   #2,d2
-    or.w    d1,d0
-    or.w    d2,d0
-    rts
-
-wave_output____:
-wave_outputN__T:
-wave_outputN_S_:
-wave_outputN_ST:
-wave_outputNP__:
-wave_outputNP_T:
-wave_outputNPS_:
-wave_outputNPST:
-    moveq   #0,d0
-    rts
-
 
 ******************************************************************************
 *
-* Voice
+* Voice - reSID v0.16
 *
 ******************************************************************************
 
@@ -917,7 +1369,7 @@ exponential_counter_period_table:
 
 ******************************************************************************
 *
-* Filter
+* Wave - reSID 0.16
 *
 ******************************************************************************
 
@@ -1436,7 +1888,7 @@ filter_output:
 
 ******************************************************************************
 *
-* External filter
+* External filter - reSID 0.16
 *
 ******************************************************************************
 
@@ -1640,6 +2092,8 @@ sid_constructor:
     lea     Voice3,a0
     lea     Voice2,a1
     bsr     voice_set_sync_source
+
+    bsr     wave_generate_model
     rts
 
 * in:
@@ -1771,7 +2225,7 @@ sid_output16:
 *   d0 = byte value to write
 *   d1 = SID register offset
 * uses:
-*   d0,d1,d2,a0,a1
+*   d0,d1,d2,d3,d4,a0,a1
 sid_write:
     and     #$1f,d1
     move.w  .tab(pc,d1.w*2),d1
@@ -2187,6 +2641,18 @@ sid_clock:
 
 .loopExit
 
+    ; Calculate waveform output
+    move.l  sid_voice1(a5),a0
+    move.l  voice_wave(a0),a0
+    move.l  (sp),d0      * restore delta_t
+    bsr     wave_set_waveform_output
+    lea     wave_SIZEOF(a0),a0   
+    move.l  (sp),d0      * restore delta_t
+    bsr     wave_set_waveform_output
+    lea     wave_SIZEOF(a0),a0   
+    move.l  (sp),d0      * restore delta_t
+    bsr     wave_set_waveform_output
+
      ; Clock filter
     move.l  sid_voice3(a5),a2
     VOICE_OUT
@@ -2205,6 +2671,8 @@ sid_clock:
     move.l  sid_filter(a5),a0
     bsr     filter_clock
     bsr     filter_output
+
+    asr.l   #3,d0
 
     move.l  sid_extfilt(a5),a0
     tst.b   extfilter_enabled(a0)
@@ -2759,6 +3227,12 @@ Envelope2   ds.b envelope_SIZEOF
 Envelope3   ds.b envelope_SIZEOF
 Filter      ds.b filter_SIZEOF
 ExtFilter   ds.b extfilter_SIZEOF
+
+; Generated waveform data
+wave_noise_mask  ds.w    1<<12
+wave_triangle    ds.w    1<<12
+wave_sawtooth    ds.w    1<<12
+wave_pulse_mask  ds.w    1<<12
 
 	section	reSID_data,data
 
