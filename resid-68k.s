@@ -2117,11 +2117,12 @@ sid_clock:
     beq     .cx
 
     move.l  wave_accumulator(a0),d1
-    move.l  #$1000000,d2
-    btst    #23,d1      * andi.l #$800000 
-    bne.b   .a
     move.l  #$800000,d2
+    btst    #23,d1      * andi.l #$800000 
+    beq.b   .a
+    add.l   d2,d2
 .a  sub.l   d1,d2
+
     * d2 = delta_accumulator
 
     * The lowest note C-0 freq value is $115.
@@ -2131,30 +2132,38 @@ sid_clock:
     * the 32-bit is 38(1/0) on 68060.
     divu.w  wave_freq(a0),d2
     bvc.s   .shortDivOk     ; branch if overflow clear
-
-    ; fallback in case of overflow
+    
+    ; This is very unlikely.
+    ; Fallback to 32-bit div in case of an overflow
     moveq   #0,d3
     move    wave_freq(a0),d3
     divul.l d3,d3:d2
     * d2 = delta_t_next = delta_accumulator / freq
     * d3 = remainder (ie. modulo)
     tst.l   d3
-    bra.b   .c
+    beq.b   .e
+    addq.l  #1,d2
+.e
+    cmp.l   a3,d2
+    bhs.b   .ee
+    move.l  d2,a3
+.ee
+    bra.b   .cx
 
 .shortDivOk
     * d2.w = delta_t_next = delta_accumulator / freq
-    move.l  d2,d1
-    swap    d1
-    * d1.w = remainder
-    ext.l   d2
-    tst.w   d1
-.c   
-    beq.b   .b
-    addq.l  #1,d2
-.b
-    cmp.l   a3,d2
-    bge.b   .cx
-    move.l  d2,a3
+    * Convert unsigned 16-bit quotient into unsigned 32-bit
+    moveq   #0,d1
+    move.w  d2,d1
+    * Test if remainder is zero
+    clr.w   d2
+    tst.l   d2
+    beq.b   .f
+    addq.l  #1,d1
+.f
+    cmp.l   a3,d1
+    bhs.b   .cx
+    move.l  d1,a3
 .cx
     ; next wave
     lea     wave_SIZEOF(a0),a0
