@@ -3242,12 +3242,12 @@ wave_pulse_mask  ds.w    1<<12
     include "filter_f0_data.s"
 
     ; Waveform data
-wave6581__ST:    incbin "wave6581__ST.dat"
-wave6581_P_T:    incbin "wave6581_P_T.dat"
-wave6581_PS_:    incbin "wave6581_PS_.dat"
-wave6581_PST:    incbin "wave6581_PST.dat"
-wave8580__ST:    incbin "wave8580__ST.dat"
-wave8580_P_T:    incbin "wave8580_P_T.dat"
-wave8580_PS_:    incbin "wave8580_PS_.dat"
-wave8580_PST:    incbin "wave8580_PST.dat"
+wave6581__ST:    include "wave6581__ST.i"
+wave6581_P_T:    include "wave6581_P_T.i"
+wave6581_PS_:    include "wave6581_PS_.i"
+wave6581_PST:    include "wave6581_PST.i"
+wave8580__ST:    include "wave8580__ST.i"
+wave8580_P_T:    include "wave8580_P_T.i"
+wave8580_PS_:    include "wave8580_PS_.i"
+wave8580_PST:    include "wave8580_PST.i"
 
