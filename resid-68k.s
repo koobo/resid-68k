@@ -140,22 +140,23 @@ wave_generate_model:
     lea     wave_sawtooth,a2
     lea     wave_pulse_mask,a3
 .loop
+
+    * noise
+    move.w  #$fff,(a0)+
+
+    * triangle
+
     * if MSB is set, d2 will be -1, 0 otherwise
     move.l  d0,d2
     and.l   #$800000,d2
     sne     d2
     extb    d2
 
-    * noise
-    move.w  #$fff,(a0)+
-
-    * triangle
-    move.l  d0,d3
-    eor.l   d2,d3
-    lsr.l   #8,d3
-    lsr.l   #3,d3
-    and.w   #$ffe,d3
-    move.w  d3,(a1)+
+    eor.l   d0,d2
+    lsr.l   #8,d2
+    lsr.l   #3,d2
+    and.w   #$ffe,d2
+    move.w  d2,(a1)+
 
     * sawtooth
     move.l  d0,d3
@@ -310,28 +311,24 @@ wave_writeCONTROL_REG:
     move.l  d1,wave_ring_msb_mask(a0)
 
     ;  no_noise = waveform & 0x8 ? 0x000 : 0xfff;
-    ; set 0 if bit 8 is set
     moveq   #8,d2
+    moveq   #0,d1
     and     d3,d2
-    * set to ff if d2 is zero 
-    seq     d2
-    * ff -> ffff
-    ext     d2
-    * ffff -> fff
-    lsr     #4,d2
-    move    d2,wave_no_noise(a0)
+    bne.b   .z1
+    move    #$fff,d1
+.z1 move    d1,wave_no_noise(a0)
 
     ; no_noise_or_noise_output = no_noise | noise_output;
-    or.w    wave_noise_output(a0),d2
-    move.w  d2,wave_no_noise_or_noise_output(a0)
+    or.w    wave_noise_output(a0),d1
+    move.w  d1,wave_no_noise_or_noise_output(a0)
 
     ;  no_pulse = waveform & 0x4 ? 0x000 : 0xfff;
     moveq   #4,d2
+    moveq   #0,d1
     and     d3,d2
-    seq     d2
-    ext     d2
-    lsr     #4,d2
-    move    d2,wave_no_pulse(a0)
+    bne.b   .z2
+    move    #$fff,d1
+.z2 move    d1,wave_no_pulse(a0)
 
     * if (!test_prev && test) {
     tst.b   wave_test_prev(a0)
@@ -502,7 +499,7 @@ wave_write_shift_register:
     lsr.w   #1,d1
     or.w    d1,d2
 
-    moveq   #$010,d1
+    moveq   #$020,d1
     and.w   d0,d1
     lsr.w   #3,d1
     or.w    d1,d2
@@ -512,9 +509,11 @@ wave_write_shift_register:
     lsr.w   #4,d1
     or.w    d1,d2
 
+    ; shift_register &= ...
     and.l   d2,wave_shift_register(a0)
+    ; noise_output &= waveform_output
     and.w   d0,wave_noise_output(a0)
-    
+    ; no_noise_or_noise_output = no_noise | noise_output
     move.w  wave_no_noise(a0),d0
     or.w    wave_noise_output(a0),d0
     move.w  d0,wave_no_noise_or_noise_output(a0)
@@ -528,49 +527,50 @@ wave_set_noise_output:
     move.l  wave_shift_register(a0),d0
     moveq   #0,d2
 
-    move.l  d0,d1
-    and.l   #$100000,d1
+    move.l  #$100000,d1
+    and.l   d0,d1
     lsr.l   #8,d1
     lsr.l   #1,d1
     or.l    d1,d2
 
-    move.l  d0,d1
-    and.l   #$040000,d1
+    move.l  #$040000,d1
+    and.l   d0,d1
     lsr.l   #8,d1
     or.l    d1,d2
 
-    move.w  d0,d1
-    and.w   #$004000,d1
-    lsr.w   #5,d1
-    or.w    d1,d2
+    move.l  #$004000,d1
+    and.l   d0,d1
+    lsr.l   #5,d1
+    or.l    d1,d2
 
-    move.w  d0,d1
-    and.w   #$000800,d1
-    lsr.w   #3,d1
-    or.w    d1,d2
-    move.w  d0,d1
+    move.l  #$000800,d1
+    and.l   d0,d1
+    lsr.l   #3,d1
+    or.l    d1,d2
 
-    move.w  d0,d1
-    and.w   #$000200,d1
-    lsr.w   #2,d1
-    or.w    d1,d2
+    move.l  #$000200,d1
+    and.l   d0,d1
+    lsr.l   #2,d1
+    or.l    d1,d2
 
-    move.w  d0,d1
-    and.w   #$000020,d1
-    lsl.w   #1,d1
-    or.w    d1,d2
+    move.l  #$000020,d1
+    and.l   d0,d1
+    lsl.l   #1,d1
+    or.l    d1,d2
 
-    move.w  d0,d1
-    and.w   #$000004,d1
-    lsl.w   #3,d1
-    or.w    d1,d2
+    move.l  #$000004,d1
+    and.l   d0,d1
+    lsl.l   #3,d1
+    or.l    d1,d2
 
-    move.w  d0,d1
-    and.w   #$000001,d1
-    lsl.w   #4,d1
-    or.w    d1,d2
+    move.l  #$000001,d1
+    and.l   d0,d1
+    lsl.l   #4,d1
+    or.l    d1,d2
 
+    ; noise output = ...
     move.w  d2,wave_noise_output(a0)
+    ; no_noise_or_noise_output = no_noise | noise_output
     or.w    wave_no_noise(a0),d2
     move.w  d2,wave_no_noise_or_noise_output(a0)
     rts
@@ -668,14 +668,15 @@ wave_set_waveform_output_single:
 .1
     ; ---------------------------------
     ; if ((waveform > 0x8) && (!test) && (shift_pipeline != 1)) {
-    cmp.w   #8,wave_waveform(a0)
-    bls.b   .2
-    tst.b   wave_test(a0)
-    bne.b   .2
-    cmp.l   #1,wave_shift_pipeline(a0)
-    beq.b   .2
-    bsr     wave_write_shift_register
-.2
+    ; NOTE: shift_pipeline used only for single cycle clocking?
+;    cmp.w   #8,wave_waveform(a0)
+;    bls.b   .2
+;    tst.b   wave_test(a0)
+;    bne.b   .2
+;    cmp.l   #1,wave_shift_pipeline(a0)
+;    beq.b   .2
+;    bsr     wave_write_shift_register
+;.2
     ; ---------------------------------
     ; Age floating DAC input
 .noWaveform
@@ -961,12 +962,26 @@ WAVE_SYNC macro
 *   d0 = Waveform output 12 bits
 * uses: 
 *   d0,a0,a1
+
+;WAVE_OUT macro
+;    move.w  wave_waveform_output(a0),\1
+;    move.l  wave_wave(a0),a1
+;    move.w  (a1,\1.w*2),\1
+;    endm
+
+WAVE_OUT macro
+    move.w  wave_waveform_output(a0),\1
+    endm
+
 wave_output:
-    moveq   #0,d0
-    move.w  wave_waveform_output(a0),d0
-    move.l  wave_wave(a0),a1
-    move.w  (a1,d0.l*2),d0
+;    * wave tables are 1<<12=4096 bytes long
+;    move.w  wave_waveform_output(a0),d0
+;    move.l  wave_wave(a0),a1
+;    move.w  (a1,d0.w*2),d0
+    WAVE_OUT d0
     rts
+
+
 
 ******************************************************************************
 *
@@ -1050,18 +1065,18 @@ voice_reset:
 
 VOICE_OUT macro
     move.l  voice_wave(a2),a0
-    bsr     wave_output
+    WAVE_OUT \1
     * d0 = 12-bit
-    sub.w   voice_wave_zero(a2),d0
+    sub.w   voice_wave_zero(a2),\1
     * envelope_output inlined:
     move.l  voice_envelope(a2),a1
-    muls.w  envelope_counterHi(a1),d0
+    muls.w  envelope_counterHi(a1),\1
     * d0 = 20-bit
-    add.l   voice_voice_DC(a2),d0
+    add.l   voice_voice_DC(a2),\1
     endm
 
 voice_output:
-    VOICE_OUT
+    VOICE_OUT d0
     rts
 
 
@@ -2658,16 +2673,18 @@ sid_clock:
     move.l  (sp),d0      * restore delta_t
     bsr     wave_set_waveform_output
 
+    printt "TODO: voice out here can be interleaved"
+
      ; Clock filter
     move.l  sid_voice3(a5),a2
-    VOICE_OUT
+    VOICE_OUT d0
     move.l  d0,a3
     * Assume voice objects are stored one after another
     lea     -voice_SIZEOF(a2),a2
-    VOICE_OUT
+    VOICE_OUT d0
     move.l  d0,a4
     lea     -voice_SIZEOF(a2),a2
-    VOICE_OUT
+    VOICE_OUT d0
     move.l  d0,d1
     move.l  a4,d2
     move.l  a3,d3
@@ -2676,8 +2693,6 @@ sid_clock:
     move.l  sid_filter(a5),a0
     bsr     filter_clock
     bsr     filter_output
-
-    ;asr.l   #3,d0
 
     move.l  sid_extfilt(a5),a0
     tst.b   extfilter_enabled(a0)
@@ -2688,7 +2703,7 @@ sid_clock:
     rts
 .2
     ; Clock external filter
-    move.l  d0,d1       * input for the filter
+    move.l  d0,d1       * input for the filter  
     pop     d0          * restore delta_t
     bra     extfilter_clock
   
