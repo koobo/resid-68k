@@ -2618,13 +2618,18 @@ sid_clock:
 
     ; clock oscillators
     move.l  sid_voice1(a5),a0
-    move.l  a3,d0
+
     move.l  voice_wave(a0),a0
-    ; wave_clock does not clobber d0
+    ; WRONG: wave_clock does not clobber d0
+    move.l  a3,d0
     bsr     wave_clock  
+
     lea     wave_SIZEOF(a0),a0   
+    move.l  a3,d0
     bsr     wave_clock
+
     lea     wave_SIZEOF(a0),a0   
+    move.l  a3,d0
     bsr     wave_clock
 
     ; synchronize oscillators
@@ -2672,7 +2677,7 @@ sid_clock:
     bsr     filter_clock
     bsr     filter_output
 
-    asr.l   #3,d0
+    ;asr.l   #3,d0
 
     move.l  sid_extfilt(a5),a0
     tst.b   extfilter_enabled(a0)
