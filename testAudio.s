@@ -820,13 +820,13 @@ katakisEnd:
 
 playDump
  
-    lea     regDump,a5
+   lea     regDump,a5
     lea     regDumpEnd,a6
 
- REM
-    lea		katakisStart,a5
+ ;REM
+   lea		katakisStart,a5
     lea		katakisEnd,a6
- EREM
+ ;EREM
     
     * vblank timer, set start time
     ;moveq   #0,d7
@@ -843,7 +843,7 @@ playDump
     move.b  2(a5),d1 * addr
     move.b  3(a5),d0 * data
     
-    ;exg	    d0,d1    * swapped with katakis dump!
+    exg	    d0,d1    * swapped with katakis dump!
 
     lea     Sid,a0
     jsr     sid_write
