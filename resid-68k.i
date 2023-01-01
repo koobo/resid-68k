@@ -95,10 +95,10 @@ FIXP_MASK = $ffff
         UBYTE   filter_voice3off
         UBYTE   filter_vol
         UBYTE   filter_pad1
-        UBYTE   filter_pad2
-        UBYTE   filter_pad3
         UWORD   filter_hp_bp_lp
         UWORD   filter_fc
+        UWORD   filter_pad2
+        ULONG   filter_volScaled      * scaled with main volume
         ULONG   filter_mixer_DC
         ULONG   filter_Vhp
         ULONG   filter_Vbp

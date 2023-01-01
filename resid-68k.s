@@ -930,6 +930,7 @@ filter_constructor:
     clr.b   filter_voice3off(a0)
     clr.w   filter_hp_bp_lp(a0)
     clr.b   filter_vol(a0)
+    clr.l   filter_volScaled(a0)
     clr.l   filter_Vhp(a0)
     clr.l   filter_Vbp(a0)
     clr.l   filter_Vlp(a0)
@@ -990,6 +991,7 @@ filter_reset:
     clr.b   filter_voice3off(a0)
     clr.w   filter_hp_bp_lp(a0)
     clr.b   filter_vol(a0)
+    clr.l   filter_volScaled(a0)
     clr.l   filter_Vhp(a0)
     clr.l   filter_Vbp(a0)
     clr.l   filter_Vlp(a0)
@@ -1042,18 +1044,35 @@ filter_writeRES_FILT:
     
 
 * in:
-*    a0 = object
+*    a0 = sid object
+*    a1 = filter object
 *    d0 = mode_vol
 filter_writeMODE_VOL:
     move.b  d0,d1
-    smi     filter_voice3off(a0)
+    smi     filter_voice3off(a1)
     lsr.b   #4,d1
-    and     #$f,d0
     and     #7,d1
-    move.b  d0,filter_vol(a0)
-    move.w  d1,filter_hp_bp_lp(a0)
-    rts
+    move.w  d1,filter_hp_bp_lp(a1)
+   
+    and     #$f,d0
+    move.b  d0,filter_vol(a1)
     
+    mulu    sid_volume(a0),d0
+    lsr     #6,d0
+    move.l  d0,filter_volScaled(a1)
+    rts
+
+* in:
+*    a0 = filter object
+*    d0 = volume
+filter_set_volume:
+    moveq   #0,d1
+    move.b  filter_vol(a0),d1
+    mulu    d1,d0
+    lsr     #6,d0
+    move.l  d0,filter_volScaled(a0)
+    rts
+
 * in:
 *    a0 = object
 * uses:
@@ -1377,11 +1396,9 @@ filter_output:
 
     tst.b   filter_enabled(a0)
     bne.b   .1
-    moveq   #0,d1
-    move.b  filter_vol(a0),d1
     move.l  filter_Vnf(a0),d0
     add.l   filter_mixer_DC(a0),d0
-    muls.l  d1,d0
+    muls.l  filter_volScaled(a0),d0
     rts
 .1  
     move.l  filter_Vnf(a0),d0
@@ -1427,10 +1444,8 @@ filter_output:
     add.l   filter_Vhp(a0),d0
     
 .break
-    moveq   #0,d1
     add.l   filter_mixer_DC(a0),d0
-    move.b  filter_vol(a0),d1
-    muls.l  d1,d0
+    muls.l  filter_volScaled(a0),d0
     rts
 
 
@@ -1697,6 +1712,13 @@ sid_enable_external_filter:
 .enabled
     rts
 
+* in:
+*   a0 = object
+*   d0 = volume 0..64
+sid_set_volume:
+    move    d0,sid_volume(a0)
+    move.l  sid_filter(a0),a0
+    bra     filter_set_volume
 
 * in:
 *   a0 = object
@@ -1925,7 +1947,7 @@ sid_write:
     move.l  sid_filter(a0),a0
     bra     filter_writeRES_FILT
 .w18:
-    move.l  sid_filter(a0),a0
+    move.l  sid_filter(a0),a1
     bra     filter_writeMODE_VOL
 
 
@@ -2390,8 +2412,8 @@ sid_clock_fast8:
     asr.l   d4,d6   * FP shift + 16->8 bit shift
     CLAMP8  d6
     * Volume scaling
-    mulu    sid_volume(a5),d6
-    lsr.w   #6,d6
+    ;mulu    sid_volume(a5),d6
+    ;lsr.w   #6,d6
 
     * store one byte at d3
     move.b  d6,(a1,d3.l)    * chip write
@@ -2473,8 +2495,8 @@ sid_clock_fast14:
     asr.l   d4,d6   * FP shift
     CLAMP16 d6
     * Volume scaling
-    muls    sid_volume(a5),d6
-    asr.l   #6,d6
+    ;muls    sid_volume(a5),d6
+    ;asr.l   #6,d6
 
     * store low 6 bits
     lsr.b   #2,d6
@@ -2574,8 +2596,8 @@ sid_clock_oversample14:
     asr.l   d4,d7   * FP shift
     CLAMP16 d7
     * Volume scaling
-    muls    sid_volume(a5),d7
-    asr.l   #6,d7
+    ;muls    sid_volume(a5),d7
+    ;asr.l   #6,d7
 
     * store low 6 bits
     lsr.b   #2,d7
@@ -2707,8 +2729,8 @@ sid_clock_interpolate14:
 
     CLAMP16 d7
     * Volume scaling
-    muls    sid_volume(a5),d7
-    asr.l   #6,d7
+    ;muls    sid_volume(a5),d7
+    ;asr.l   #6,d7
 
     * store low 6 bits
     lsr.b   #2,d7
