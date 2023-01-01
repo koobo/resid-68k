@@ -144,6 +144,25 @@ FIXP_MASK = $ffff
         UBYTE   sid_sampling_method
     LABEL sid_SIZEOF ; = 56
 
+    * Main data block.
+    * Sid object is assumed to be the first.
+    * Voice, Wave and Envelope objects should be one after another,
+    * the order is assumed in sid_clock.
+    STRUCTURE   resid,0
+        STRUCT  resid_sid,sid_SIZEOF
+        STRUCT  resid_voice1,voice_SIZEOF
+        STRUCT  resid_voice2,voice_SIZEOF
+        STRUCT  resid_voice3,voice_SIZEOF
+        STRUCT  resid_wave1,wave_SIZEOF
+        STRUCT  resid_wave2,wave_SIZEOF
+        STRUCT  resid_wave3,wave_SIZEOF
+        STRUCT  resid_envelope1,envelope_SIZEOF
+        STRUCT  resid_envelope2,envelope_SIZEOF
+        STRUCT  resid_envelope3,envelope_SIZEOF
+        STRUCT  resid_filter,filter_SIZEOF
+        STRUCT  resid_extfilter,extfilter_SIZEOF
+    LABEL resid_SIZEOF
+
            ENDIF
 
            

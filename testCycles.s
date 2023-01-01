@@ -497,6 +497,10 @@ clockEnd                ds.b    EV_SIZE
 
     include     "resid-68k.s"
 
+    section bss,bss_p
+
+Sid     ds.b    resid_SIZEOF
+
 
     section out,data_c
 

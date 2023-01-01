@@ -1591,32 +1591,46 @@ extfilter_output:
 sid_constructor:
 
     * Set object pointers
-    lea     Voice1,a1
-    lea     Voice2,a2
-    lea     Voice3,a3
-    move.l  #Envelope1,voice_envelope(a1)
-    move.l  #Envelope2,voice_envelope(a2)
-    move.l  #Envelope3,voice_envelope(a3)
-    move.l  #Wave1,voice_wave(a1)
-    move.l  #Wave2,voice_wave(a2)
-    move.l  #Wave3,voice_wave(a3)
+    lea     resid_voice1(a0),a1
+    lea     resid_voice2(a0),a2
+    lea     resid_voice3(a0),a3
+
+    pea     resid_envelope1(a0)
+    move.l  (sp)+,voice_envelope(a1)
+    pea     resid_envelope2(a0)
+    move.l  (sp)+,voice_envelope(a2)
+    pea     resid_envelope3(a0)
+    move.l  (sp)+,voice_envelope(a3)
+
+    pea     resid_wave1(a0)    
+    move.l  (sp)+,voice_wave(a1)
+    pea     resid_wave2(a0)    
+    move.l  (sp)+,voice_wave(a2)
+    pea     resid_wave3(a0)    
+    move.l  (sp)+,voice_wave(a3)
+
     move.l  a1,sid_voice1(a0)
     move.l  a2,sid_voice2(a0)
     move.l  a3,sid_voice3(a0)
-    move.l  #Filter,sid_filter(a0)
-    move.l  #ExtFilter,sid_extfilt(a0)
+
+    pea     resid_filter(a0)
+    move.l  (sp)+,sid_filter(a0)
+
+    pea     resid_extfilter(a0)
+    move.l  (sp)+,sid_extfilt(a0)
 
     * ... and construct with defaults
     push    a0
-    lea     Voice1,a0
+    move.l  a0,a4
+    lea     resid_voice1(a4),a0
     bsr     voice_constructor
-    lea     Voice2,a0
+    lea     resid_voice2(a4),a0
     bsr     voice_constructor
-    lea     Voice3,a0
+    lea     resid_voice3(a4),a0
     bsr     voice_constructor
-    lea     Filter,a0
+    lea     resid_filter(a4),a0
     bsr     filter_constructor
-    lea     ExtFilter,a0
+    lea     resid_extfilter(a4),a0
     bsr     extfilter_constructor
     pop     a0
 
@@ -1629,16 +1643,16 @@ sid_constructor:
     move.l  #44100/2,d2
     bsr     sid_set_sampling_parameters
 
-    lea     Voice1,a0
-    lea     Voice3,a1
+    lea     resid_voice1(a4),a0
+    lea     resid_voice3(a4),a1
     bsr     voice_set_sync_source
 
-    lea     Voice2,a0
-    lea     Voice1,a1
+    lea     resid_voice2(a4),a0
+    lea     resid_voice1(a4),a1
     bsr     voice_set_sync_source
 
-    lea     Voice3,a0
-    lea     Voice2,a1
+    lea     resid_voice3(a4),a0
+    lea     resid_voice2(a4),a1
     bsr     voice_set_sync_source
     rts
 
@@ -2081,8 +2095,9 @@ sid_clock:
     move.l  sid_voice1(a5),a0
     move.l  voice_envelope(a0),a0
     bsr     envelope_clock    
- 
-    * assume envelope objects are stored one after another
+    printt "TODO: replace bsr with bra+jmp"
+
+   * assume envelope objects are stored one after another
     lea     envelope_SIZEOF(a0),a0
     move.l  a3,d0
     bsr     envelope_clock
@@ -2749,25 +2764,6 @@ sid_clock_interpolate14:
     * bytes written
     move.l  d3,d0
     rts
-
-
-    section reSID_bss,bss_p
-
-    cnop    0,4
-Sid         ds.b sid_SIZEOF
-* Voice, Wave and Envelope objects should be one after another,
-* the order is assumed in sid_clock.
-Voice1      ds.b voice_SIZEOF
-Voice2      ds.b voice_SIZEOF
-Voice3      ds.b voice_SIZEOF
-Wave1       ds.b wave_SIZEOF
-Wave2       ds.b wave_SIZEOF
-Wave3       ds.b wave_SIZEOF
-Envelope1   ds.b envelope_SIZEOF
-Envelope2   ds.b envelope_SIZEOF
-Envelope3   ds.b envelope_SIZEOF
-Filter      ds.b filter_SIZEOF
-ExtFilter   ds.b extfilter_SIZEOF
 
 	section	reSID_data,data
 

@@ -876,9 +876,11 @@ regDumpEnd
 
     section bss1,bss
 
+Sid                 ds.b    resid_SIZEOF
 DOSBase             ds.l    1
 workerTaskStack     ds.b    4096
 workerTaskStruct    ds.b    TC_SIZE
+
     section bss2,bss_c
 
 buffer1  ds.b	10000
