@@ -209,13 +209,15 @@ wave_reset
 
 * in:
 *   a0 = object
+*   a2 = return address
 *   d0 = cycle_count delta_t
 * uses:
 *   d0-d6,a0
 wave_clock:
     tst.b   wave_test(a0)
     beq     .go
-    rts
+    ;rts
+    jmp     (a2)
 .go
     * calls: 3x
 
@@ -315,7 +317,8 @@ wave_clock:
     bne     .loop
 
 .break
-    rts
+    jmp     (a2)
+    ;rts
 
 
 * in:
@@ -737,20 +740,20 @@ envelope_output:
 * in:
 *   a0 = object
 *   d0 = cycle_count delta_t
+*   a2 = return address
 * uses:
-*   d0-d7,a0,a1
+*   d0-d7,a0,a1,a2
 * note:
 *   call counts from frame $b of Advanced Chemistry (calls per output sample)
 envelope_clock:
-    moveq   #0,d5
-    moveq   #0,d2
-    moveq   #0,d7
 
     * Preload stuff for the loop
-    * Load in memory order
     move.l  envelope_rate_counter(a0),d4
+    moveq   #0,d5
     move.l  envelope_rate_period(a0),d1
+    moveq   #0,d2
     move.b  envelope_counter(a0),d5
+    moveq   #0,d7
     move.b  envelope_exponential_counter(a0),d3
     move.l  d1,d6
     move.b  envelope_sustain(a0),d7
@@ -857,7 +860,8 @@ envelope_clock:
     move.b  d3,envelope_exponential_counter(a0)
     move.l  d4,envelope_rate_counter(a0)
     move.l  d6,envelope_rate_period(a0)
-    rts
+    ;rts
+    jmp     (a2)
 
 envelope_sustain_level:
   dc.b $00
@@ -1146,6 +1150,7 @@ filter_set_Q:
 
 * in:
 *    a0 = object
+*    a4 = return address
 *    d0 = cycle_count delta_t
 *    d1 = voice1 sample
 *    d2 = voice2 sample
@@ -1176,7 +1181,8 @@ filter_clock:
     clr.l   filter_Vhp(a0)    
     clr.l   filter_Vbp(a0)    
     clr.l   filter_Vlp(a0)    
-    rts
+    ;rts
+    jmp     (a4)
 .3
     move.b  filter_filt(a0),d5
     move.w  (.tab,pc,d5.w*2),d5
@@ -1383,10 +1389,12 @@ filter_clock:
     move.l  d4,filter_Vbp(a0)
     move.l  a3,filter_Vlp(a0)
 
-    rts
+    ;rts
+    jmp     (a4)
 
 * in:
 *    a0 = object
+*    a4 = return address
 * out:
 *    d0 = filter output 20 bits
 * uses:
@@ -1399,7 +1407,8 @@ filter_output:
     move.l  filter_Vnf(a0),d0
     add.l   filter_mixer_DC(a0),d0
     muls.l  filter_volScaled(a0),d0
-    rts
+    ;rts
+    jmp     (a4)
 .1  
     move.l  filter_Vnf(a0),d0
 
@@ -1446,7 +1455,8 @@ filter_output:
 .break
     add.l   filter_mixer_DC(a0),d0
     muls.l  filter_volScaled(a0),d0
-    rts
+;    rts
+    jmp     (a4)
 
 
 ******************************************************************************
@@ -2116,17 +2126,25 @@ sid_clock:
  
     move.l  sid_voice1(a5),a0
     move.l  voice_envelope(a0),a0
-    bsr     envelope_clock    
-    printt "TODO: replace bsr with bra+jmp"
+    lea     .env1(pc),a2
+;    bsr      envelope_clock    
+    bra      envelope_clock    
+.env1
 
    * assume envelope objects are stored one after another
     lea     envelope_SIZEOF(a0),a0
     move.l  a3,d0
-    bsr     envelope_clock
- 
+    lea     .env2-.env1(a2),a2
+;    bsr      envelope_clock    
+    bra      envelope_clock    
+.env2
+
     lea     envelope_SIZEOF(a0),a0
     move.l  a3,d0
-    bsr     envelope_clock
+    lea     .env3-.env2(a2),a2
+;    bsr      envelope_clock    
+    bra      envelope_clock    
+.env3
 
     move.l  a3,d7
     * d7 = delta_t_osc
@@ -2213,11 +2231,20 @@ sid_clock:
     move.l  a3,d0
     move.l  voice_wave(a0),a0
     ; wave_clock does not clobber d0
-    bsr     wave_clock  
+    lea     .wav1(pc),a2
+;    bsr     wave_clock  
+    bra     wave_clock
+.wav1
     lea     wave_SIZEOF(a0),a0   
-    bsr     wave_clock
+    lea     .wav2-.wav1(a2),a2
+;    bsr     wave_clock  
+    bra     wave_clock
+.wav2
     lea     wave_SIZEOF(a0),a0   
-    bsr     wave_clock
+    lea     .wav3-.wav2(a2),a2
+;    bsr     wave_clock  
+    bra     wave_clock
+.wav3
 
     ; synchronize oscillators
     move.l  sid_voice1(a5),a0
@@ -2249,9 +2276,13 @@ sid_clock:
 
     move.l  (sp),d0      * restore delta_t
     move.l  sid_filter(a5),a0
-    bsr     filter_clock
-    bsr     filter_output
-
+    lea     .f1(pc),a4
+    bra     filter_clock
+.f1
+    ;lea     .f2(pc),a2
+    addq.l  #.f2-.f1,a4
+    bra     filter_output
+.f2
     move.l  sid_extfilt(a5),a0
     tst.b   extfilter_enabled(a0)
     bne.b   .2
@@ -2486,6 +2517,32 @@ sid_clock_fast14:
     move.l  d2,d0
     bsr     sid_clock
     popm    d0/d1/d3/a1/a2/a4
+
+
+    * 68030 cycles
+    * muls.l: 44
+    * move:   2
+    * sub:    2
+    * asl:    4
+
+    * 68040 cycles:
+    * muls.l  16/20
+    * move:   1,2?
+    * sub:    1,2?
+    * asl:    4
+
+    * Mul with 91:
+    * 64+32-4-1 = 91
+   ; move.l  extfilter_Vo(a0),d0
+   ; move.l  d0,d1
+   ; asl.l   #5,d1
+   ; move.l  d1,d2
+   ; add.l   d1,d1
+   ; add.l   d1,d2
+   ; sub.l   d0,d2
+   ; asl.l   #2,d0
+   ; sub.l   d0,d2
+
 
     ; Inline output generation
     move.l  sid_extfilt(a5),a0
