@@ -184,14 +184,6 @@ wave_writeCONTROL_REG:
     move.b  d0,wave_test(a0)
     rts
 
-* in:
-*   a0 = object
-* out:
-*   d0 = output
-wave_readOSC:
-    bsr     wave_output
-    lsr     #4,d0
-    rts
 
 * in:
 *   a0 = object
@@ -352,7 +344,7 @@ WAVE_SYNC macro
 * out:
 *   d0 = Waveform output 12 bits
 * uses: 
-*   d0-d7,a0,a1
+*   d0-d4,a0,a1
 wave_output:
     * calls: 3x
 
@@ -468,44 +460,48 @@ wave_output_PST:
     rts
 
 wave_outputN___:
-    moveq   #0,d0
     move.l  wave_shift_register(a0),d1
 
     move.l  d1,d2
-    move.l  d1,d3
-    andi.l  #$400000,d2
-    move.l  d1,d4
-    andi.l  #$100000,d3
-    move.l  d1,d5
-    andi.l  #$010000,d4
-    move.l  d1,d6
-    andi.w  #$002000,d5
-    move.l  d1,d7
-    andi.w  #$000800,d6
-    andi.w  #$000080,d7
-
-    lsr.l   #8,d2 
-    lsr.l   #8,d3
-    lsr.w   #3,d2   
-    lsr.w   #2,d3
-    or      d2,d0 
-    lsr.l   #7,d4
-    or      d3,d0 
-    lsr.w   #5,d5
-    or      d4,d0 
-    lsr.w   #4,d6
-    or      d5,d0 
-    lsr.w   #1,d7
-    or      d6,d0 
-    move.l  d1,d2
-    or      d7,d0 
-    and.w   #$000010,d1
-    and.w   #$000004,d2
-    lsl.w   #1,d1
-    lsl.w   #2,d2
-    or.w    d1,d0
+    move.l  d1,d0
+    and.l   #$100000,d2
+    and.l   #$400000,d0
+    lsr.l   #8,d0
+    lsr.l   #8,d2
+    lsr.w   #3,d0
+    lsr.w   #2,d2
     or.w    d2,d0
-    rts
+
+    move.l  d1,d2
+    move.w  d1,d3
+    and.l   #$010000,d2
+    and.w   #$002000,d3
+    lsr.l   #7,d2
+    lsr.w   #5,d3
+    or.w    d2,d0
+    ;or.w    d3,d0
+
+    move.w  d1,d2
+    or.w    d3,d0
+    move.w  d1,d4
+    and.w   #$000800,d2
+    and.w   #$000080,d4
+    lsr.w   #4,d2
+    lsr.w   #1,d4
+    or.w    d2,d0
+    ;or.w    d4,d0
+
+    move.w  d1,d3
+    or.w    d4,d0
+    and.w   #$000004,d1
+    and.w   #$000010,d3
+    lsl.w   #2,d1
+    lsl.w   #1,d3
+    or.w    d1,d0
+    or.w    d3,d0
+    rts ; 33
+
+
 
 wave_output____:
 wave_outputN__T:
@@ -601,7 +597,9 @@ voice_reset:
 
 VOICE_OUT macro
     move.l  voice_wave(a2),a0
+;    lea     .vo\1(pc),a3
     bsr     wave_output
+;.vo\1
     * d0 = 12-bit
     sub.w   voice_wave_zero(a2),d0
     * envelope_output inlined:
@@ -2262,17 +2260,17 @@ sid_clock:
 
      ; Clock filter
     move.l  sid_voice3(a5),a2
-    VOICE_OUT
-    move.l  d0,a3
+    VOICE_OUT 3
+    move.l  d0,d5
     * Assume voice objects are stored one after another
     lea     -voice_SIZEOF(a2),a2
-    VOICE_OUT
-    move.l  d0,a4
+    VOICE_OUT 2
+    move.l  d0,d6
     lea     -voice_SIZEOF(a2),a2
-    VOICE_OUT
-    move.l  d0,d1
-    move.l  a4,d2
-    move.l  a3,d3
+    VOICE_OUT 1
+    move.l  d0,d1   * voice 1
+    move.l  d6,d2   * voice 2
+    move.l  d5,d3   * voice 3
 
     move.l  (sp),d0      * restore delta_t
     move.l  sid_filter(a5),a0
