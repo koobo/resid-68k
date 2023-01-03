@@ -341,6 +341,7 @@ WAVE_SYNC macro
 
 * in:
 *   a0 = object
+*   a3 = return address
 * out:
 *   d0 = Waveform output 12 bits
 * uses: 
@@ -387,6 +388,24 @@ wave_output___T:
 .noMsb
     lsr.l   d3,d0
     and     #$0fff,d0
+    ;rts
+    jmp     (a3)
+wave_output___Tsub:
+    move.l  wave_accumulator(a0),d0
+    move.l  d0,d1
+    tst.b   wave_ring_mod(a0)
+    beq.b   .noRingMod
+    move.l  wave_sync_source(a0),a1
+    move.l  wave_accumulator(a1),d2
+    eor.l   d2,d1
+.noRingMod
+    moveq   #11,d3 * shift
+    and.l   #$800000,d1
+    beq     .noMsb
+    not.l   d0
+.noMsb
+    lsr.l   d3,d0
+    and     #$0fff,d0
     rts
 
 wave_output__S_:
@@ -399,7 +418,8 @@ wave_output__S_:
     move.l  wave_accumulator(a0),d0
     lsr.l   d1,d0
 ; = 2 cycles
-    rts
+    ;rts
+    jmp     (a3)
 
 wave_output__ST:
     ; wave_output__S_ inlined
@@ -410,10 +430,26 @@ wave_output__ST:
     move.l  wave_wave__ST(a0),a1
     move.b  (a1,d1.w),d0
     lsl.w   #4,d0
-    rts
+    ;rts
+    jmp     (a3)
 * out:
 *   d0 = $000 or $fff
 wave_output_P__:
+    tst.b   wave_test(a0)
+    bne.b   .do
+    moveq   #12,d2 * shift
+    move.l  wave_accumulator(a0),d0
+    lsr.l   d2,d0
+    cmp     wave_pw(a0),d0
+    bhs.b   .do
+    moveq   #0,d0
+    ;rts
+    jmp     (a3)
+.do
+    move    #$0fff,d0
+    ;rts
+    jmp     (a3)
+wave_output_P__sub:
     tst.b   wave_test(a0)
     bne.b   .do
     moveq   #12,d2 * shift
@@ -427,14 +463,15 @@ wave_output_P__:
     move    #$0fff,d0
     rts
 wave_output_P_T:
-    bsr     wave_output___T
+    bsr     wave_output___Tsub
     lsr.w   #1,d0
     move.l  wave_wave_P_T(a0),a1
     move.b  (a1,d0.w),d1
     lsl     #4,d1
-    bsr     wave_output_P__
+    bsr     wave_output_P__sub
     and     d1,d0
-    rts
+    ;rts
+    jmp     (a3)
 wave_output_PS_:
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
@@ -444,9 +481,10 @@ wave_output_PS_:
     move.b  (a1,d0.w),d1
     
     lsl.w   #4,d1
-    bsr     wave_output_P__
+    bsr     wave_output_P__sub
     and     d1,d0
-    rts
+    ;rts
+    jmp     (a3)
 wave_output_PST:
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
@@ -455,9 +493,10 @@ wave_output_PST:
     move.l  wave_wave_PST(a0),a1
     move.b  (a1,d0.w),d1
     lsl.w   #4,d1
-    bsr     wave_output_P__
+    bsr     wave_output_P__sub
     and     d1,d0
-    rts
+    ;rts
+    jmp     (a3)
 
 wave_outputN___:
     move.l  wave_shift_register(a0),d1
@@ -499,7 +538,8 @@ wave_outputN___:
     lsl.w   #1,d3
     or.w    d1,d0
     or.w    d3,d0
-    rts ; 33
+    ;rts
+    jmp     (a3)
 
 
 
@@ -512,7 +552,8 @@ wave_outputNP_T:
 wave_outputNPS_:
 wave_outputNPST:
     moveq   #0,d0
-    rts
+    ;rts
+    jmp     (a3)
 
 
 ******************************************************************************
@@ -597,9 +638,9 @@ voice_reset:
 
 VOICE_OUT macro
     move.l  voice_wave(a2),a0
-;    lea     .vo\1(pc),a3
-    bsr     wave_output
-;.vo\1
+    lea     .vo\1(pc),a3
+    bra     wave_output
+.vo\1
     * d0 = 12-bit
     sub.w   voice_wave_zero(a2),d0
     * envelope_output inlined:
@@ -1148,7 +1189,6 @@ filter_set_Q:
 
 * in:
 *    a0 = object
-*    a4 = return address
 *    d0 = cycle_count delta_t
 *    d1 = voice1 sample
 *    d2 = voice2 sample
@@ -1180,7 +1220,7 @@ filter_clock:
     clr.l   filter_Vbp(a0)    
     clr.l   filter_Vlp(a0)    
     ;rts
-    jmp     (a4)
+    bra     filter_output
 .3
     move.b  filter_filt(a0),d5
     move.w  (.tab,pc,d5.w*2),d5
@@ -1388,11 +1428,10 @@ filter_clock:
     move.l  a3,filter_Vlp(a0)
 
     ;rts
-    jmp     (a4)
+    ; ... fall through to filter_output
 
 * in:
 *    a0 = object
-*    a4 = return address
 * out:
 *    d0 = filter output 20 bits
 * uses:
@@ -1406,7 +1445,7 @@ filter_output:
     add.l   filter_mixer_DC(a0),d0
     muls.l  filter_volScaled(a0),d0
     ;rts
-    jmp     (a4)
+    bra     filter_output_return
 .1  
     move.l  filter_Vnf(a0),d0
 
@@ -1454,7 +1493,7 @@ filter_output:
     add.l   filter_mixer_DC(a0),d0
     muls.l  filter_volScaled(a0),d0
 ;    rts
-    jmp     (a4)
+    bra     filter_output_return
 
 
 ******************************************************************************
@@ -2274,13 +2313,8 @@ sid_clock:
 
     move.l  (sp),d0      * restore delta_t
     move.l  sid_filter(a5),a0
-    lea     .f1(pc),a4
-    bra     filter_clock
-.f1
-    ;lea     .f2(pc),a2
-    addq.l  #.f2-.f1,a4
-    bra     filter_output
-.f2
+    bra     filter_clock ; + filter_output
+filter_output_return:
     move.l  sid_extfilt(a5),a0
     tst.b   extfilter_enabled(a0)
     bne.b   .2
