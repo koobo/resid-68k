@@ -2365,9 +2365,9 @@ sid_clock_fast16:
     
 .break
     * run remaining d0 cycles
-    pushm   d0/d3/a5
+    pushm   d0/d3
     bsr     sid_clock
-    popm    d0/d3/a5
+    popm    d0/d3
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
@@ -2454,9 +2454,9 @@ sid_clock_fast8:
     
 .break
     * run remaining d0 cycles
-    pushm   d0/d3
+    pushm   d0/d3/a4
     bsr     sid_clock
-    popm    d0/d3
+    popm    d0/d3/a4
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
@@ -2567,9 +2567,9 @@ sid_clock_fast14:
     
 .break
     * run remaining d0 cycles
-    pushm   d0/d3
+    pushm   d0/d3/a4
     bsr     sid_clock
-    popm    d0/d3
+    popm    d0/d3/a4
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
@@ -2596,6 +2596,9 @@ sid_clock_fast14:
 * uses:
 *   d0-a6
 sid_clock_oversample14:
+
+    * NOTE: a4 free
+
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
@@ -2829,9 +2832,9 @@ sid_clock_interpolate14:
  EREM
     * Option B
     * run remaining d0 cycles
-    pushm   d0/d3
+    pushm   d0/d3/a4
     bsr     sid_clock
-    popm    d0/d3
+    popm    d0/d3/a4
  
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
@@ -2843,6 +2846,7 @@ sid_clock_interpolate14:
     * bytes written
     move.l  d3,d0
     rts
+
 
 	section	reSID_data,data
 
