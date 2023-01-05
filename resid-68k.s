@@ -505,19 +505,20 @@ wave_outputN___:
     move.l  d1,d0
     and.l   #$100000,d2
     and.l   #$400000,d0
-    lsr.l   #8,d0
     lsr.l   #8,d2
-    lsr.w   #3,d0
+    lsr.l   #8,d0
     lsr.w   #2,d2
-    or.w    d2,d0
+    lsr.w   #3,d0
+    ;or.w    d2,d0
 
-    move.l  d1,d2
-    move.w  d1,d3
-    and.l   #$010000,d2
-    and.w   #$002000,d3
-    lsr.l   #7,d2
-    lsr.w   #5,d3
+    move.l  d1,d4
     or.w    d2,d0
+    move.w  d1,d3
+    and.l   #$010000,d4
+    and.w   #$002000,d3
+    lsr.l   #7,d4
+    lsr.w   #5,d3
+    or.w    d4,d0
     ;or.w    d3,d0
 
     move.w  d1,d2
