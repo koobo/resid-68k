@@ -2551,30 +2551,15 @@ sid_clock_fast14:
     bsr     sid_clock
     popm    d0/d1/d3/a1/a2/a4
 
-
-    * 68030 cycles
-    * muls.l: 44
-    * move:   2
-    * sub:    2
-    * asl:    4
-
-    * 68040 cycles:
-    * muls.l  16/20
-    * move:   1,2?
-    * sub:    1,2?
-    * asl:    4
-
-    * Mul with 91:
-    * 64+32-4-1 = 91
-   ; move.l  extfilter_Vo(a0),d0
-   ; move.l  d0,d1
-   ; asl.l   #5,d1
-   ; move.l  d1,d2
-   ; add.l   d1,d1
-   ; add.l   d1,d2
-   ; sub.l   d0,d2
-   ; asl.l   #2,d0
-   ; sub.l   d0,d2
+;    68030:
+;    move.l  extfilter_Vo(a0),d4
+;    * Mul by 96 with 1<<5+1<<6
+;    asl.l   #5,d4   * 6
+;    move.l  d4,d6   * 2
+;    add.l   d6,d6   * 2
+;    add.l   d4,d6   * 2 
+;    moveq   #10,d4  * 2
+;    asr.l   d4,d6   * 8 = 20 vs. 44 muls.l
 
 
     ; Inline output generation
