@@ -292,6 +292,7 @@ wave_clock:
 .continue
     * Shift the noise/random register.  
     * bit0
+ REM ; option 1
     move.l  wave_shift_register(a0),d4
     move.l  d4,d6
     swap    d4
@@ -304,6 +305,17 @@ wave_clock:
     and.l   #$7fffff,d6
     or.b    d5,d6
     move.l  d6,wave_shift_register(a0)
+ EREM
+    ; option 2
+    move.l  wave_shift_register(a0),d4
+    move.l  d4,d5
+    lsl.l   #5,d5 * move bit 17 to position 22
+    eor.l   d4,d5
+    moveq   #10,d6   
+    and.l   #$3fffff,d4 * clear top bit
+    lsl.l   d6,d5 * move bit 22 into X
+    addx.l  d4,d4 * shift and or bit 0
+    move.l  d4,wave_shift_register(a0)
 
     sub.l   d1,d3
     bne     .loop
