@@ -213,6 +213,7 @@ wave_clock:
 .go
     * calls: 3x
 
+ REM ; option 1
     * d1 = accumulator_prev
     move.l  wave_accumulator(a0),d1
 
@@ -235,6 +236,32 @@ wave_clock:
     beq     .noMsb
     st      wave_msb_rising(a0)
 .noMsb
+ EREM 
+    ; --------------------------------- 
+; option 2 - resid 1.0
+
+   * d3 = delta_accumulator
+    move    wave_freq(a0),d3
+    mulu.w  d0,d3
+
+    * d2 = accumulator_next
+    move.l  wave_accumulator(a0),d2
+    move.l  d2,d1
+    add.l   d3,d2
+    and.l   #$ffffff,d2
+
+    * d1 = accumulator_bits_set
+    not.l   d1
+    and.l   d2,d1
+
+    * accumulator = accumulator_next
+    move.l  d2,wave_accumulator(a0)
+ 
+    ; Check if MSB is set high
+    and.l   #$800000,d1
+    sne     wave_msb_rising(a0)
+
+    ; --------------------------------- 
 
     move.l  #$100000,d1
 
