@@ -2347,8 +2347,6 @@ sid_clock_fast16:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
-    move.l  sid_sample_offset(a5),d5
-    
     move.l  sid_sample_offset(a5),a4
     move.l  sid_cycles_per_sample(a5),a6
 .loop
@@ -2430,7 +2428,6 @@ sid_clock_fast8:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
-    move.l  sid_sample_offset(a5),d5
     move.l  sid_sample_offset(a5),a4
     move.l  sid_cycles_per_sample(a5),a6
 .loop
@@ -2520,7 +2517,6 @@ sid_clock_fast14:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
-    move.l  sid_sample_offset(a5),d5
     move.l  sid_sample_offset(a5),a4
     move.l  sid_cycles_per_sample(a5),a6
 .loop
