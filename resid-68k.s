@@ -2022,7 +2022,7 @@ sid_set_sampling_method:
     beq     .go
 
     move.l  #3,sid_oversample(a0)
-    move.l  #30,sid_oversampleScale(a0)
+    move.l  #31,sid_oversampleScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE3x14,d1
     beq     .go
 
