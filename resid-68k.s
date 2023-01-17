@@ -1440,22 +1440,21 @@ filter_clock:
 filter_output:
     * calls: 1x
 
-    tst.b   filter_enabled(a0)
-    bne.b   .1
     move.l  filter_Vnf(a0),d0
     add.l   filter_mixer_DC(a0),d0
+
+    tst.b   filter_enabled(a0)
+    bne.b   .1
     muls.l  filter_volScaled(a0),d0
     ;rts
     bra     filter_output_return
 .1  
-    move.l  filter_Vnf(a0),d0
-
     move.w  filter_hp_bp_lp(a0),d1
     move.w  .tab(pc,d1.w*2),d1
     jmp     .tab(pc,d1)
 
 .tab
-    dc.w    .break-.tab
+    dc.w    .f0-.tab
     dc.w    .f1-.tab
     dc.w    .f2-.tab
     dc.w    .f3-.tab
@@ -1466,34 +1465,37 @@ filter_output:
 
 .f1
     add.l   filter_Vlp(a0),d0
-    bra     .break
+.f0
+    muls.l  filter_volScaled(a0),d0
+    bra     filter_output_return
 .f2
     add.l   filter_Vbp(a0),d0
-    bra     .break
+    muls.l  filter_volScaled(a0),d0
+    bra     filter_output_return
 .f3
     add.l   filter_Vlp(a0),d0
     add.l   filter_Vbp(a0),d0
-    bra     .break
+    muls.l  filter_volScaled(a0),d0
+    bra     filter_output_return
 .f4
     add.l   filter_Vhp(a0),d0
-    bra     .break
+    muls.l  filter_volScaled(a0),d0
+    bra     filter_output_return
 .f5
     add.l   filter_Vlp(a0),d0
     add.l   filter_Vhp(a0),d0
-    bra     .break
+    muls.l  filter_volScaled(a0),d0
+    bra     filter_output_return
 .f6
     add.l   filter_Vbp(a0),d0
     add.l   filter_Vhp(a0),d0
-    bra     .break
+    muls.l  filter_volScaled(a0),d0
+    bra     filter_output_return
 .f7
     add.l   filter_Vlp(a0),d0
     add.l   filter_Vbp(a0),d0
     add.l   filter_Vhp(a0),d0
-    
-.break
-    add.l   filter_mixer_DC(a0),d0
     muls.l  filter_volScaled(a0),d0
-;    rts
     bra     filter_output_return
 
 
