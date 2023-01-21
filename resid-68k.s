@@ -208,7 +208,6 @@ wave_reset
 wave_clock:
     tst.b   wave_test(a0)
     beq     .go
-    ;rts
     jmp     (a2)
 .go
     * calls: 3x
@@ -349,8 +348,59 @@ wave_clock:
 
 .break
     jmp     (a2)
-    ;rts
+    
+* in:
+*   a0 = object
+*   a2 = return address
+*   d0 = cycle_count delta_t
+* uses:
+*   d0-d6,a0
+ REM
+wave_clock_single:
+    tst.b   wave_test(a0)
+    beq     .go
+.x  jmp     (a2)
+.go
+    move    #$f00,$dff180
+    move    d0,d6
+    subq    #1,d6
+    bmi     .x
 
+    move.l  wave_accumulator(a0),d1
+    moveq   #0,d2
+    move.w  wave_freq(a0),d2
+.loop
+    move.l  d1,d3
+    add.l   d2,d1
+    and.l   #$ffffff,d1
+    * d1 = acc next
+    * d3 = acc 
+
+    not.l   d3
+    and.l   d1,d3
+    * d3 = accumulator_bits_Set
+
+    btst    #23,d3    
+    sne     wave_msb_rising(a0)
+
+    btst    #19,d3
+    beq     .a
+
+    ; clock shift register
+    move.l  wave_shift_register(a0),d4
+    move.l  d4,d5
+    lsl.l   #5,d5 * move bit 17 to position 22
+    eor.l   d4,d5
+    moveq   #10,d3   
+    and.l   #$3fffff,d4 * clear top bit
+    lsl.l   d3,d5 * move bit 22 into X
+    addx.l  d4,d4 * shift and or bit 0
+    move.l  d4,wave_shift_register(a0)
+.a
+    dbf     d6,.loop
+    move.l  d1,wave_accumulator(a0)
+    jmp     (a2)
+ EREM
 
 * in:
 *   a0 = object
