@@ -202,13 +202,16 @@ wave_reset
 * in:
 *   a0 = object
 *   a2 = return address
-*   d0 = cycle_count delta_t
+*   d0 = cycle_count delta_t, preserved
 * uses:
 *   d0-d6,a0
 wave_clock:
     tst.b   wave_test(a0)
     beq     .go
     jmp     (a2)
+
+    * align for 060
+    cnop    0,4
 .go
     * calls: 3x
 
@@ -724,7 +727,7 @@ voice_reset:
 *    d0 = Amplitude modulated waveform output.
 *         Ideal range [-2048*255, 2047*255].
 * uses:
-*    d0-d7,a0,a1,a2
+*    d0-d4,a0,a1,a2
 
 VOICE_OUT macro
     move.l  voice_wave(a2),a0
@@ -909,12 +912,13 @@ envelope_clock:
     and.l   #$7fff,d4
     bra     .x
 
+    cnop    0,4
 .2
     * calls: 11x
     
     moveq   #0,d4   * envelope_rate_counter
     sub.l   d1,d0   * delta_t -= rate_step
-
+     
     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
     beq     .yesAttack
 
@@ -946,9 +950,9 @@ envelope_clock:
     addq.b  #1,d5
     cmp.b   #$ff,d5
     bne     .break1
-    move.b  envelope_decay(a0),d2
     move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
-    move.l  envelope_rate_counter_period(pc,d2.w*4),d6
+    move.b  envelope_decay(a0),d2
+    move.l  envelope_rate_counter_period(pc,d2.w*4),d6 * pOEP-only (pc-relative)
     bra     .break1
 
 .notAttack
@@ -956,7 +960,7 @@ envelope_clock:
     bne     .notDS
     * calls: 7x
     * This seems to be good for the 060:
-    cmp.b   envelope_sustain_level(pc,d7.w),d5 
+    cmp.b   envelope_sustain_level(pc,d7.w),d5 * pOEP-only (pc-relative)
     beq     .break1
     * calls: 1x
     * ... fall through ...
@@ -970,7 +974,7 @@ envelope_clock:
     ;;; switch #2 (envelope_counter) replaced with a table 
 
     * Values not in switch scope are null
-    move.b  exponential_counter_period_table(pc,d5.w),d2
+    move.b  exponential_counter_period_table(pc,d5.w),d2 * pOEP-only (pc-relative)
     beq.b   .continueLoop
     move.b  d2,envelope_exponential_counter_period(a0)
     * case 0x00:
@@ -1641,7 +1645,7 @@ extfilter_set_chip_model
 *   d0 = cycle_count delta_t
 *   d1 = sample Vi
 * uses:
-*   d0-d7,a0,a1,a2,a3,a4
+*   d0-d7,a0,a1,a2,a3
 extfilter_clock:
     tst.b   extfilter_enabled(a0)
     bne     .1
@@ -1650,6 +1654,9 @@ extfilter_clock:
     sub.l   extfilter_mixer_DC(a0),d1
     move.l  d1,extfilter_Vo(a0)
     rts
+
+    * This aligns the loop below optimally for 060
+    cnop    0,4
 .1
     move.l  d1,a1
 
@@ -1658,12 +1665,11 @@ extfilter_clock:
     asr.l   #5,d3 * mul 8, asr 8
     asl.l   #3,d4 * mul 8
 
-    move.l  extfilter_Vlp(a0),a4
+    move.l  extfilter_Vlp(a0),d6
     moveq   #8,d2
     move.l  extfilter_Vhp(a0),a3
     moveq   #20,d1  * shift
-    moveq   #12,d6  * another shift
-  
+   
     * d2 = delta_t_flt
     * a1 = Vi
     
@@ -1703,7 +1709,7 @@ extfilter_clock:
 ;    add.l   d5,a4
 
     * The above interleaved:
-
+ REM ; option 1
     move.l  a4,d7
     sub.l   a3,d7
     move.l  d7,a2
@@ -1717,9 +1723,27 @@ extfilter_clock:
     add.l   d5,a4 * 1 pOEP
     sub.l   d2,d0 * 0 sOEP
     bne     .loop
+ EREM
+
+ ; option 2 - similar speed but less regs
+    move.l  d6,d7
+    sub.l   a3,d7
+    move.l  d7,a2
+    muls.l  d4,d7 * 2 pOEP only
+    move.l  a1,d5 * 1 pOEP 
+    asr.l   d1,d7 * 0 sOEP
+    sub.l   d6,d5 * 1 pOEP
+    add.l   d7,a3 * 0 sOEP
+    muls.l  d3,d5 * 2 pOEP only
+    moveq   #12,d7 *1 pOEP
+    asr.l   d7,d5 * 0 sOEP, move.l ,Rx
+    add.l   d5,d6 * 1 pOEP
+    sub.l   d2,d0 * 0 sOEP
+    bne     .loop
+
 .x
     move.l  a2,extfilter_Vo(a0)
-    move.l  a4,extfilter_Vlp(a0)
+    move.l  d6,extfilter_Vlp(a0)
     move.l  a3,extfilter_Vhp(a0)
     rts
 
@@ -2233,7 +2257,7 @@ sid_set_sampling_parameters_paula:
 *   a5 = object
 *   d0 = cycle_count delta_t
 * uses:
-*   d0-d7,a0-a5
+*   d0-d7,a0-a4
 *   a5 preserved
 * notes:
 *   clock cycles per one call with different sampling modes
@@ -2639,21 +2663,18 @@ sid_clock_fast14:
     popm    d0/d1/d3/a1/a2/a4
 
 ;    68030:
+;    * Mul by 96 and >> 10
 ;    move.l  extfilter_Vo(a0),d4
-;    * Mul by 96 with 1<<5+1<<6
-;    asl.l   #5,d4   * 6
-;    move.l  d4,d6   * 2
-;    add.l   d6,d6   * 2
-;    add.l   d4,d6   * 2 
-;    moveq   #10,d4  * 2
-;    asr.l   d4,d6   * 8 = 20 vs. 44 muls.l
-
+;    move.l  d4,d6
+;    add.l   d4,d6
+;    add.l   d4,d6
+;    asr.l   #5,d6    
 
     ; Inline output generation
     move.l  sid_extfilt(a5),a0
     moveq   #91,d6
-    moveq   #10,d4  * FP 10
     muls.l  extfilter_Vo(a0),d6
+    moveq   #10,d4  * FP 10
     asr.l   d4,d6   * FP shift
     CLAMP16 d6
     * Volume scaling
