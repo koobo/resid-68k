@@ -2257,7 +2257,7 @@ sid_set_sampling_parameters_paula:
 *   a5 = object
 *   d0 = cycle_count delta_t
 * uses:
-*   d0-d7,a0-a4
+*   d0-d7,a0-a3
 *   a5 preserved
 * notes:
 *   clock cycles per one call with different sampling modes
@@ -2722,12 +2722,12 @@ sid_clock_fast14:
 * uses:
 *   d0-a6
 sid_clock_oversample14:
-
-    printt  "TODO: a4 is free"
     
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
+
+    move.l  sid_sample_offset(a5),a4
 
     * Multiply cycles needed
     mulu.l  sid_oversample(a5),d0
@@ -2740,7 +2740,7 @@ sid_clock_oversample14:
 .innerLoop
     ; ---------------------------------
     * d5 = next_sample_offset
-    move.l  sid_sample_offset(a5),d5
+    move.l  a4,d5
     add.l   sid_cycles_per_sample(a5),d5
     add.l   #1<<(FIXP_SHIFT-1),d5
 
@@ -2756,7 +2756,7 @@ sid_clock_oversample14:
 
     and.l   #FIXP_MASK,d5
     sub.l   #1<<(FIXP_SHIFT-1),d5
-    move.l  d5,sid_sample_offset(a5)
+    move.l  d5,a4
     sub.l   d2,d0
 
     pushm   d0/d7
@@ -2807,8 +2807,9 @@ sid_clock_oversample14:
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
-    sub.l   d0,sid_sample_offset(a5)
+    sub.l   d0,a4
 .x
+    move.l  a4,sid_sample_offset(a5)
   
     * samples written
     move.l  d3,d0
