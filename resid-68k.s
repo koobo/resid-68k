@@ -2484,11 +2484,11 @@ sid_clock_fast16:
     cmp.l   d1,d3
     bge     .x     
 
-    pushm   d0/d1/d3/d5/a1/a4
+    pushm   d0/d1/d3/d5/a1
     move.l  d2,d0
     bsr     sid_clock
-    popm    d0/d1/d3/d5/a1/a4
-
+    popm    d0/d1/d3/d5/a1
+    
     sub.l   d2,d0
     move.l  d5,d6
     and.l   #FIXP_MASK,d6
@@ -2500,8 +2500,8 @@ sid_clock_fast16:
     ;extfilter_output inlined
     moveq   #91,d6
     muls.l  extfilter_Vo(a0),d6
-    asr.l   #8,d6   * FP 10 shift
-    asr.l   #2,d6
+    moveq   #10,d4
+    asr.l   d4,d6   * FP 10 shift
     CLAMP16  d6
 
     * store one sample d3
@@ -2574,10 +2574,10 @@ sid_clock_fast8:
     * delta_t -= delta_t_sample
     sub.l   d2,d0
     
-    pushm   d0/d1/d3/a1/a4 * 5 regs
+    pushm   d0/d1/d3/a1 * 4 regs
     move.l  d2,d0
     bsr     sid_clock
-    popm    d0/d1/d3/a1/a4
+    popm    d0/d1/d3/a1
 
     ; Inline output generation
     ;extfilter_output inlined
@@ -2599,9 +2599,9 @@ sid_clock_fast8:
     
 .break
     * run remaining d0 cycles
-    pushm   d0/d3/a4
+    pushm   d0/d3
     bsr     sid_clock
-    popm    d0/d3/a4
+    popm    d0/d3
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
@@ -2657,10 +2657,10 @@ sid_clock_fast14:
     move.l  d5,a4
     sub.l   d2,d0
 
-    pushm   d0/d1/d3/a1/a2/a4 * 6 regs
+    pushm   d0/d1/d3/a1/a2 * 5 regs
     move.l  d2,d0
     bsr     sid_clock
-    popm    d0/d1/d3/a1/a2/a4
+    popm    d0/d1/d3/a1/a2
 
 ;    68030:
 ;    * Mul by 96 and >> 10
@@ -2693,9 +2693,9 @@ sid_clock_fast14:
     
 .break
     * run remaining d0 cycles
-    pushm   d0/d3/a4
+    pushm   d0/d3
     bsr     sid_clock
-    popm    d0/d3/a4
+    popm    d0/d3
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
@@ -2723,8 +2723,8 @@ sid_clock_fast14:
 *   d0-a6
 sid_clock_oversample14:
 
-    * NOTE: a4 free
-
+    printt  "TODO: a4 is free"
+    
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
@@ -2873,7 +2873,7 @@ sid_clock_interpolate14:
     move.l  d2,a6
     sub.l   d6,a6
 
-    pushm   d0/d1/d3/d5/a1/a2/a4 * 7 regs
+    pushm   d0/d1/d3/d5/a1/a2 * 6 regs
 
     move.l  d6,d0       * d6 cycles, first part
     bsr     sid_clock
@@ -2892,7 +2892,7 @@ sid_clock_interpolate14:
     bsr     sid_clock
    
   
-    popm    d0/d1/d3/d5/a1/a2/a4
+    popm    d0/d1/d3/d5/a1/a2
     
 
     moveq   #10,d6      * FP
@@ -2958,10 +2958,10 @@ sid_clock_interpolate14:
  EREM
     * Option B
     * run remaining d0 cycles
-    pushm   d0/d3/a4
+    pushm   d0/d3
     bsr     sid_clock
-    popm    d0/d3/a4
- 
+    popm    d0/d3
+
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
     ;sub.l   d0,sid_sample_offset(a5)
