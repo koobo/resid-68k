@@ -2648,14 +2648,13 @@ sid_clock_fast8:
 *   d0-a6
 sid_clock_fast14:
     move.l  a0,a5
-    * d3 = s
-    moveq   #0,d3
+    * a6 = s
+    sub.l   a6,a6
     move.l  sid_sample_offset(a5),a4
-    move.l  sid_cycles_per_sample(a5),a6
 .loop
     * d5 = next_sample_offset
     move.l  a4,d5
-    add.l   a6,d5
+    add.l   sid_cycles_per_sample(a5),d5
     add.l   #1<<(FIXP_SHIFT-1),d5
 
     * d2 = delta_t_sample
@@ -2666,7 +2665,7 @@ sid_clock_fast14:
     * Loop termination conditions:
     * buffer overflow check
     * if (s >= n) 
-    cmp.l   d1,d3
+    cmp.l   d1,a6
     bge     .x     
     * if (delta_t_sample > delta_t)
     cmp.l   d0,d2
@@ -2677,18 +2676,10 @@ sid_clock_fast14:
     move.l  d5,a4
     sub.l   d2,d0
 
-    pushm   d0/d1/d3/a1/a2 * 5 regs
+    pushm   d0/d1/a1/a2 * 4 regs
     move.l  d2,d0
     bsr     sid_clock
-    popm    d0/d1/d3/a1/a2
-
-;    68030:
-;    * Mul by 96 and >> 10
-;    move.l  extfilter_Vo(a0),d4
-;    move.l  d4,d6
-;    add.l   d4,d6
-;    add.l   d4,d6
-;    asr.l   #5,d6    
+    popm    d0/d1/a1/a2
 
     ; Inline output generation
     move.l  sid_extfilt(a5),a0
@@ -2697,34 +2688,32 @@ sid_clock_fast14:
     moveq   #10,d4  * FP 10
     asr.l   d4,d6   * FP shift
     CLAMP16 d6
-    * Volume scaling
-    ;muls    sid_volume(a5),d6
-    ;asr.l   #6,d6
-
+    
     * store low 6 bits
     lsr.b   #2,d6
-    move.b  d6,(a2,d3.l)     * chip write
+    move.b  d6,(a2,a6.l)     * chip write
     ror.w   #8,d6
     * store high 8 bits
-    addq.l  #1,d3
-    move.b  d6,-1(a1,d3.l)   * chip write, stall
+    addq.l  #1,a6
+    move.b  d6,-1(a1,a6.l)   * chip write, stall
 
     bra     .loop
     
 .break
     * run remaining d0 cycles
-    pushm   d0/d3
+    push    d0
     bsr     sid_clock
-    popm    d0/d3
+    pop     d0
 
-    swap    d0
-    clr.w   d0      * delta_t<<FIXP_SHIFT
+    * delta_t<<FIXP_SHIFT
+    moveq   #FIXP_SHIFT,d1
+    lsl.l   d1,d0
     sub.l   d0,a4
 .x
     move.l  a4,sid_sample_offset(a5)
   
     * samples written
-    move.l  d3,d0
+    move.l  a6,d0
     rts
 
 * A variant more suitable for the 030
