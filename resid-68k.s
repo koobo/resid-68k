@@ -161,7 +161,12 @@ wave_writeCONTROL_REG:
     moveq   #0,d1
     move.b  d0,d1
     lsr.b   #4,d1
-    move.w  d1,wave_waveform(a0)
+
+    ; Store wave generator routine address
+    ;move.w  d1,wave_waveform(a0)
+    lea     wave_output\.tab(pc),a1
+    add.w   (a1,d1.w*2),a1
+    move.l  a1,wave_get_output(a0)
 
     moveq   #$04,d2
     and.b  d0,d2
@@ -196,6 +201,8 @@ wave_reset
     clr.b   wave_ring_mod(a0)
     clr.b   wave_sync(a0)
     clr.b   wave_msb_rising(a0)
+    pea     wave_output____(pc)
+    move.l  (sp)+,wave_get_output(a0)
     rts
 
 
@@ -732,7 +739,10 @@ voice_reset:
 VOICE_OUT macro
     move.l  voice_wave(a2),a0
     lea     .vo\1(pc),a3
-    bra     wave_output
+    ;bra     wave_output
+    * Shortcut:
+    move.l  wave_get_output(a0),a1
+    jmp     (a1)
 .vo\1
     * d0 = 12-bit
     sub.w   voice_wave_zero(a2),d0
