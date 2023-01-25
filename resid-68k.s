@@ -2727,6 +2727,83 @@ sid_clock_fast14:
     move.l  d3,d0
     rts
 
+* A variant more suitable for the 030
+sid_clock_fast14_030:
+    move.l  a0,a5
+    * d3 = s
+    sub.l   a6,a6
+    move.l  sid_sample_offset(a5),a4
+.loop
+    * d5 = next_sample_offset
+    move.l  a4,d5
+    add.l   sid_cycles_per_sample(a5),d5
+    add.l   #1<<(FIXP_SHIFT-1),d5
+
+    * d2 = delta_t_sample
+    ;moveq   #FIXP_SHIFT,d4
+    ;move.l  d5,d2
+    ;asr.l   d4,d2       * >>FIXP_SHIFT
+    
+    swap    d5
+    move    d5,d2
+
+    * Loop termination conditions:
+    * buffer overflow check
+    * if (s >= n) 
+    ;cmp.l   d1,a6
+    ;bge     .x     
+    
+    * if (delta_t_sample > delta_t)
+    cmp.w   d0,d5
+    bgt     .break
+
+    ;and.l   #FIXP_MASK,d5
+    sub.w   d5,d0
+    clr.w   d5
+    swap    d5
+    sub.l   #1<<(FIXP_SHIFT-1),d5
+    move.l  d5,a4
+
+    pushm   d0/d1/a1/a2 * 4 regs
+    move.w  d2,d0
+    * todo: make sid_clock not use .l for cycles
+    bsr     sid_clock
+    popm    d0/d1/a1/a2
+
+;    * Mul by 96 and >> 10
+    move.l  extfilter_Vo(a0),d4
+    move.l  d4,d6
+    add.l   d4,d6
+    add.l   d4,d6
+    asr.l   #5,d6   
+
+    * store low 6 bits
+    lsr.b   #2,d6
+    move.b  d6,(a2,a6.l)     * chip write
+    ror.w   #8,d6
+    * store high 8 bits
+    addq.l  #1,a6
+    move.b  d6,-1(a1,a6.l)   * chip write, stall
+
+    bra     .loop
+    
+.break
+    * run remaining d0 cycles
+    push    d0
+    bsr     sid_clock
+    pop     d0
+    
+    swap    d0
+    clr.w   d0      * delta_t<<FIXP_SHIFT
+    sub.l   d0,a4
+.x
+    move.l  a4,sid_sample_offset(a5)
+  
+    * samples written
+    move.l  a6,d0
+    rts
+
+
 
 
 * Clock by oversampling and averaging the samples.
