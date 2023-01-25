@@ -930,20 +930,21 @@ envelope_clock:
     sub.l   d1,d0   * delta_t -= rate_step
      
     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
-    beq     .yesAttack
+    bne     .notAttack
 
     * calls: 7x
 
-    addq.b  #1,d3
-    cmp.b   envelope_exponential_counter_period(a0),d3
-    bne     .continueLoop
+    ; addq.b  #1,d3
+    ; cmp.b   envelope_exponential_counter_period(a0),d3
+    ; bne     .continueLoop
 
-    * Duplicate this bit to avoid unnecessary ATTACK state 
-    * check below
-    moveq   #0,d3   * exponential_counter
-    tst.b   envelope_hold_zero(a0)
-    bne     .continueLoop
-    bra     .notAttack
+
+    ; * Duplicate this bit to avoid unnecessary ATTACK state 
+    ; * check below
+    ; moveq   #0,d3   * exponential_counter
+    ; tst.b   envelope_hold_zero(a0)
+    ; bne     .continueLoop
+    ; bra     .notAttack
 
 .yesAttack
     * calls: 3x
@@ -966,10 +967,19 @@ envelope_clock:
     bra     .break1
 
 .notAttack
+
+    addq.b  #1,d3
+    cmp.b   envelope_exponential_counter_period(a0),d3
+    bne     .continueLoop
+
+    moveq   #0,d3   * exponential_counter
+    tst.b   envelope_hold_zero(a0)
+    bne     .continueLoop
+   
     cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     bne     .notDS
+
     * calls: 7x
-    * This seems to be good for the 060:
     cmp.b   envelope_sustain_level(pc,d7.w),d5 * pOEP-only (pc-relative)
     beq     .break1
     * calls: 1x
