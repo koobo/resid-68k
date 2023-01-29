@@ -74,12 +74,12 @@ sid_main:
     moveq   #1-1,d7
 loop
     * output for high byte
-    lea     output,a1
+    lea     output1,a1
     * output for low byte
-    lea     output,a2
+    lea     output2,a2
     move.l  cyclesPerFrame,d0
     muls.l  #20,d0  * 20 * 5ms = 100 ms
-    move.l  #100000,d1 * buffer limit
+    move.l  #10000,d1 * buffer limit
     lea     Sid,a0
     movem.l a4/d7,-(sp)
     jsr     (a4)    * call clock function
@@ -277,8 +277,8 @@ cyclesPerFrame dc.l 0
 
 .getD1Bytes
     lea     Sid,a0
-    lea     output,a1
-    move.l  #100000,d0  * cycles (upper limit)
+    lea     output1,a1
+    move.l  #10000,d0  * cycles (upper limit)
  ;   move.l  #1000,d1 * buffer limit
 ;    move.l  #1000,d1   * get this many bytes
     jsr     sid_clock_fast8
@@ -502,7 +502,8 @@ clockEnd                ds.b    EV_SIZE
 Sid     ds.b    resid_SIZEOF
 
 
-    section out,data_c
+    section out,bss_c
 
 
-output	ds.b	100000
+output1	ds.b	10000
+output2	ds.b	10000
