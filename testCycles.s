@@ -375,10 +375,17 @@ pokeSound2:
 .w  lea Sid,a0
     bra sid_write
 
+* In:
+*   d0 = measurement
 print:
-    move.l  4.w,a6
+    divu.w  #100,d0
+    move.l  d0,d1
+    ext.l   d0
+    swap    d1
+    ext.l   d1
 
     lea     result(pc),a0
+    move.l  4.w,a6
     bsr     desmsg
 
     lea	dosname(pc),a1
@@ -410,9 +417,9 @@ putc	move.b	d0,(a3)+
 
 desbuf  ds.b    256
 
-result      dc.b    "Result: %ld ms",10,0
+result      dc.b    "Result: %ld.%02.2ld ms",10,0
 dosname		dc.b	"dos.library",0
-
+ even
 
 ***************************************************************************
 *
@@ -469,9 +476,6 @@ stopMeasure
     * D0 will be 709379 for PAL.
 	move.l	d0,d2
 	; d2 = ticks/s
-	divu	#1000,d2
-	; d2 = ticks/10ms
-	ext.l	d2
 	
 	; Calculate diff between start and stop times
 	; in 64-bits
@@ -480,11 +484,12 @@ stopMeasure
 	move.l	EV_HI+clockStart,d3
 	sub.l	EV_LO+clockStart,d1
 	subx.l	d3,d0
+    mulu.l  #100000,d0:d1
 
 	; Turn the diff into millisecs
 	; Divide d0:d1 by d2
 	divu.l  d2,d0:d1
-   ; d0:d1 is now d0:d1/d2
+    ; d0:d1 is now d0:d1/d2
 	; take the lower 32-bits
 	move.l	d1,d0
 	rts
