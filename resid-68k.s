@@ -1111,6 +1111,7 @@ envelope_clock:
     move.b  envelope_exponential_counter(a0),d3
     moveq   #0,d2
     move.b  envelope_counter(a0),d5
+    lea     exponential_counter_period_table(pc),a1
  
     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
     beq     .loopAttackDo
@@ -1162,7 +1163,7 @@ envelope_clock:
 .break1Release
 
     * Values not in switch scope are null
-    move.b  exponential_counter_period_table(pc,d5.w),d2 * pOEP-only (pc-relative)
+    move.b  (a1,d5.w),d2 
     beq.b   .continueLoopRelease
     move.b  d2,envelope_exponential_counter_period(a0)
     * case 0x00:
@@ -1183,7 +1184,6 @@ envelope_clock:
     clr.l   envelope_rate_counter(a0)
     move.l  d6,envelope_rate_period(a0)  
     jmp     (a2)
-
 
 
 
@@ -1246,7 +1246,7 @@ envelope_clock:
 .break1Attack
 
     * Values not in switch scope are null
-    move.b  exponential_counter_period_table(pc,d5.w),d2 * pOEP-only (pc-relative)
+    move.b  (a1,d5.w),d2 
     beq.b   .continueLoopAttack
     move.b  d2,envelope_exponential_counter_period(a0)
 
@@ -1294,7 +1294,6 @@ envelope_clock:
     move.b  envelope_sustain_level(pc,d7.w),d7
 
 .2DecaySustain
-    * calls: 11x
     
     ;moveq   #0,d4   * envelope_rate_counter
     sub.l   d1,d0   * delta_t -= rate_step
@@ -1308,15 +1307,13 @@ envelope_clock:
     bne     .continueLoopDecaySustain
 
 .notAttackDecaySustain
-    * calls: 7x
-    * This seems to be good for the 060:
     cmp.b   d7,d5
     beq     .break1DecaySustain
     subq.b  #1,d5
 .break1DecaySustain
 
     * Values not in switch scope are null
-    move.b  exponential_counter_period_table(pc,d5.w),d2 * pOEP-only (pc-relative)
+    move.b  (a1,d5.w),d2 
     beq.b   .continueLoopDecaySustain
     move.b  d2,envelope_exponential_counter_period(a0)
     * case 0x00:
