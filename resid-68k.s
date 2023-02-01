@@ -1131,8 +1131,7 @@ envelope_clock:
 
     cmp.l   d1,d0
     bhs.b   .2Release
-    
-    * calls: 2x
+
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
@@ -1151,7 +1150,6 @@ envelope_clock:
     bne     .continueLoopRelease
  
     subq.b  #1,d5
-.break1Release
 
     * Values not in switch scope are null
     move.b  (a1,d5.w),d2 
@@ -1182,12 +1180,9 @@ envelope_clock:
 **************************************
 
 .loopAttack
-    * calls: 14x
-
     cmp.l   d1,d0
     bhs.b   .2attack
-    * calls: 2x
-
+ 
     move.b  d5,envelope_counter(a0)
     clr.b    envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
@@ -1196,17 +1191,18 @@ envelope_clock:
 
 .loopAttackDo
     moveq   #0,d3
-
+    
 .2attack
 
     sub.l   d1,d0   * delta_t -= rate_step
-     
-    tst.b   envelope_hold_zero(a0)
-    bne     .continueLoopAttack
+
+    ; Hold zero is cleared when entering attack state, no need to check here
 
     addq.b  #1,d5
     cmp.b   #$ff,d5
     bne     .break1Attack
+
+    ; Switch to the decay-sustain state
 
     move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     move.b  envelope_decay(a0),d2
@@ -1233,7 +1229,7 @@ envelope_clock:
     bne     .loopAttack
 .xAttack
     move.b  d5,envelope_counter(a0)
-    clr.b    envelope_exponential_counter(a0)
+    clr.b   envelope_exponential_counter(a0)
     clr.l   envelope_rate_counter(a0)
     jmp     (a2)
 
@@ -1272,10 +1268,10 @@ envelope_clock:
     tst.b   envelope_hold_zero(a0)
     bne     .continueLoopDecaySustain
 
-.notAttackDecaySustain
     cmp.b   d7,d5
     beq     .break1DecaySustain
     subq.b  #1,d5
+
 .break1DecaySustain
 
     * Values not in switch scope are null
