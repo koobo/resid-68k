@@ -1111,6 +1111,7 @@ envelope_clock:
     moveq   #0,d2
     move.b  envelope_counter(a0),d5
     lea     exponential_counter_period_table(pc),a1
+    move.b  envelope_exponential_counter_period(a0),d4
  
     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
     beq     .loopAttackDo
@@ -1141,7 +1142,8 @@ envelope_clock:
     sub.l   d1,d0   * delta_t -= rate_step
     
     addq.b  #1,d3
-    cmp.b   envelope_exponential_counter_period(a0),d3
+    ;cmp.b   envelope_exponential_counter_period(a0),d3
+    cmp.b   d4,d3
     bne     .continueLoopRelease
 
     moveq   #0,d3   * exponential_counter
@@ -1155,6 +1157,7 @@ envelope_clock:
     move.b  (a1,d5.w),d2 
     beq.b   .continueLoopRelease
     move.b  d2,envelope_exponential_counter_period(a0)
+    move.b  d2,d4
     * case 0x00:
     tst.b   d5
     bne.b   .continueLoopRelease
@@ -1221,6 +1224,7 @@ envelope_clock:
     move.b  (a1,d5.w),d2 
     beq.b   .continueLoopAttack
     move.b  d2,envelope_exponential_counter_period(a0)
+    move.b  d2,d4
 
 .continueLoopAttack
     * rate_step = rate_period
@@ -1260,7 +1264,8 @@ envelope_clock:
     sub.l   d1,d0   * delta_t -= rate_step
      
     addq.b  #1,d3
-    cmp.b   envelope_exponential_counter_period(a0),d3
+    ;cmp.b   envelope_exponential_counter_period(a0),d3
+    cmp.b   d4,d3
     bne     .continueLoopDecaySustain
 
     moveq   #0,d3   * exponential_counter
@@ -1277,6 +1282,7 @@ envelope_clock:
     move.b  (a1,d5.w),d2 
     beq.b   .continueLoopDecaySustain
     move.b  d2,envelope_exponential_counter_period(a0)
+    move.b  d2,d4
     * case 0x00:
     tst.b   d5
     bne.b   .continueLoopDecaySustain
