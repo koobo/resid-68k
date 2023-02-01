@@ -1106,7 +1106,6 @@ envelope_clock:
     jmp     (a2)
 
 .2
-    ;move.l  envelope_rate_counter(a0),d4
     moveq   #0,d5
     move.b  envelope_exponential_counter(a0),d3
     moveq   #0,d2
@@ -1131,24 +1130,14 @@ envelope_clock:
 
     cmp.l   d1,d0
     bhs.b   .2Release
-;    * calls: 2x
-;    add.l   d0,d4
-;    tst.w   d4
-;    bpl     .xRelease
-;    addq.l  #1,d4
-;    and.l   #$7fff,d4
-   ; bra     .xRelease
-
+    
+    * calls: 2x
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
-    move.l  d6,envelope_rate_period(a0)  
     jmp     (a2)
 
-
-
 .2Release
-    ;moveq   #0,d4   * envelope_rate_counter
     sub.l   d1,d0   * delta_t -= rate_step
     
     addq.b  #1,d3
@@ -1180,9 +1169,7 @@ envelope_clock:
 .xRelease
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
-    ;move.l  d4,envelope_rate_counter(a0)
     clr.l   envelope_rate_counter(a0)
-    move.l  d6,envelope_rate_period(a0)  
     jmp     (a2)
 
 
@@ -1197,19 +1184,10 @@ envelope_clock:
     cmp.l   d1,d0
     bhs.b   .2attack
     * calls: 2x
-  ;  add.l   d0,d4
-  ;  tst.w   d4
-  ;  bpl     .xAttack
-  ;  addq.l  #1,d4
-  ;  and.l   #$7fff,d4
- ;   bra     .xAttack
 
     move.b  d5,envelope_counter(a0)
-    ;move.b  d3,envelope_exponential_counter(a0)
-    ;move.b  d3,envelope_exponential_counter(a0)
     clr.b    envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
-    ;move.l  d6,envelope_rate_period(a0)  
     jmp     (a2)
 
 
@@ -1217,15 +1195,9 @@ envelope_clock:
     moveq   #0,d3
 
 .2attack
-    * calls: 11x
-    
-    ;moveq   #0,d4   * envelope_rate_counter
+
     sub.l   d1,d0   * delta_t -= rate_step
      
-.yesAttackAttack
-    * calls: 3x
-
-    ;;;moveq   #0,d3   * exponential_counter
     tst.b   envelope_hold_zero(a0)
     bne     .continueLoopAttack
 
@@ -1257,11 +1229,8 @@ envelope_clock:
     bne     .loopAttack
 .xAttack
     move.b  d5,envelope_counter(a0)
-   ; move.b  d3,envelope_exponential_counter(a0)
     clr.b    envelope_exponential_counter(a0)
-    ;move.l  d4,envelope_rate_counter(a0)
     clr.l   envelope_rate_counter(a0)
-    ;move.l  d6,envelope_rate_period(a0)  
     jmp     (a2)
 
 
@@ -1274,14 +1243,7 @@ envelope_clock:
 
     cmp.l   d1,d0
     bhs.b   .2DecaySustain
-  ;  * calls: 2x
-  ;  add.l   d0,d4
-  ;  tst.w   d4
-  ;  bpl     .xDecaySustain
-  ;  addq.l  #1,d4
-  ;  and.l   #$7fff,d4
- ;   bra     .xDecaySustain
-
+ 
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
@@ -1295,7 +1257,6 @@ envelope_clock:
 
 .2DecaySustain
     
-    ;moveq   #0,d4   * envelope_rate_counter
     sub.l   d1,d0   * delta_t -= rate_step
      
     addq.b  #1,d3
@@ -1330,7 +1291,6 @@ envelope_clock:
 .xDecaySustain
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
-    ;move.l  d4,envelope_rate_counter(a0)
     clr.l   envelope_rate_counter(a0)
     move.l  d6,envelope_rate_period(a0)  
     jmp     (a2)
