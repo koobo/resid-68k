@@ -2528,7 +2528,6 @@ sid_clock:
     move.l  sid_voice1(a5),a0
     move.l  voice_envelope(a0),a0
     lea     .env1(pc),a2
-;    bsr      envelope_clock    
     bra      envelope_clock    
 .env1
 
@@ -2536,21 +2535,19 @@ sid_clock:
     lea     envelope_SIZEOF(a0),a0
     move.l  a3,d0
     lea     .env2-.env1(a2),a2
-;    bsr      envelope_clock    
     bra      envelope_clock    
 .env2
 
     lea     envelope_SIZEOF(a0),a0
     move.l  a3,d0
     lea     .env3-.env2(a2),a2
-;    bsr      envelope_clock    
     bra      envelope_clock    
 .env3
 
     move.l  a3,d7
-    * d7 = delta_t_osc
+    * d7 = delta_t_osc = delta_t
 .loop
-    * a3 = delta_t_min
+    * a3 = delta_t_min = delta_t_osc
     move.l  d7,a3
 
     ; Find minimum number of cycles to an oscillator accumulator MSB toggle.
@@ -2619,63 +2616,60 @@ sid_clock:
 .f
     cmp.l   a3,d1
     bhs.b   .cx
+    ; a3 = delta_t_min = delta_t_next
     move.l  d1,a3
 .cx
     ; next wave
     lea     wave_SIZEOF(a0),a0
-    dbra    d6,.cycleCheck
+    dbf     d6,.cycleCheck
 
 .continue
-
-    ; clock oscillators
-    move.l  sid_voice1(a5),a0
+    ; a0 = wave3 + wave_SIZEOF
+    ; clock oscillators with delta_t_min
+    lea     -wave_SIZEOF(a0),a0   
     move.l  a3,d0
-    move.l  voice_wave(a0),a0
     ; wave_clock does not clobber d0
     lea     .wav1(pc),a2
-;    bsr     wave_clock  
-    bra     wave_clock
+    bra     wave_clock  ; wave 3
 .wav1
-    lea     wave_SIZEOF(a0),a0   
+    lea     -wave_SIZEOF(a0),a0   
     lea     .wav2-.wav1(a2),a2
-;    bsr     wave_clock  
-    bra     wave_clock
+    bra     wave_clock  ; wave 2
 .wav2
-    lea     wave_SIZEOF(a0),a0   
+    lea     -wave_SIZEOF(a0),a0   
     lea     .wav3-.wav2(a2),a2
-;    bsr     wave_clock  
-    bra     wave_clock
+    bra     wave_clock  ; wave 1
 .wav3
 
+    * a0 = wave1
     ; synchronize oscillators
-    move.l  sid_voice1(a5),a0
-    move.l  voice_wave(a0),a0
     WAVE_SYNC 1
     lea     wave_SIZEOF(a0),a0   
     WAVE_SYNC 2
     lea     wave_SIZEOF(a0),a0   
     WAVE_SYNC 3
     
+    * delta_t_osc -= delta_t_min
     sub.l   a3,d7
     bne     .loop
 
 .loopExit
-
      ; Clock filter
+     ; Get input
     move.l  sid_voice3(a5),a2
     VOICE_OUT 3
-    move.l  d0,d5
     * Assume voice objects are stored one after another
     lea     -voice_SIZEOF(a2),a2
+    move.l  d0,d5
     VOICE_OUT 2
-    move.l  d0,d6
     lea     -voice_SIZEOF(a2),a2
+    move.l  d0,d6
     VOICE_OUT 1
-    move.l  d0,d1   * voice 1
-    move.l  d6,d2   * voice 2
     move.l  d5,d3   * voice 3
-
-    move.l  (sp),d0      * restore delta_t
+    move.l  d6,d2   * voice 2
+    move.l  d0,d1   * voice 1
+    move.l  (sp),d0 * restore delta_t
+    
     move.l  sid_filter(a5),a0
     bra     filter_clock ; + filter_output
 filter_output_return:
