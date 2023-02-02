@@ -77,13 +77,13 @@ FIXP_MASK = $ffff
         ULONG   envelope_rate_period
         UBYTE   envelope_counterHi
         UBYTE   envelope_counter
-        UBYTE   envelope_pad
+        UBYTE   envelope_sustain_level
         UBYTE   envelope_exponential_counter
         UBYTE   envelope_exponential_counter_period
         UBYTE   envelope_hold_zero
         UBYTE   envelope_attack
         UBYTE   envelope_decay
-        UBYTE   envelope_sustain
+        UBYTE   envelope_sustain    ; not used
         UBYTE   envelope_release
         UBYTE   envelope_gate
         UBYTE   envelope_state

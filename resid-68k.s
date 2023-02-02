@@ -1017,9 +1017,12 @@ envelope_writeATTACK_DECAY:
 *    a0 = object
 *    d0 = sustain_release
 envelope_writeSUSTAIN_RELEASE:
+    moveq   #0,d1
     move.b  d0,d1
     lsr.b   #4,d1
-    move.b  d1,envelope_sustain(a0)
+    ;move.b  d1,envelope_sustain(a0)
+    move.b  envelope_sustain_levels(pc,d1.w),envelope_sustain_level(a0)
+
     and     #$f,d0
     move.b  d0,envelope_release(a0)
     cmp.b   #envelope_state_RELEASE,envelope_state(a0)
@@ -1028,6 +1031,25 @@ envelope_writeSUSTAIN_RELEASE:
     move.l  (a1,d0.w*4),envelope_rate_period(a0)
 .1
     rts
+
+
+envelope_sustain_levels:
+  dc.b $00
+  dc.b $11
+  dc.b $22
+  dc.b $33
+  dc.b $44
+  dc.b $55
+  dc.b $66
+  dc.b $77
+  dc.b $88
+  dc.b $99
+  dc.b $aa
+  dc.b $bb
+  dc.b $cc
+  dc.b $dd
+  dc.b $ee
+  dc.b $ff
 
 * in:
 *    a0 = object
@@ -1328,8 +1350,7 @@ envelope_clock:
 .loopDecaySustainDo
     COUNT   C_ENV24
 
-    move.b  envelope_sustain(a0),d2
-    move.b  .envelope_sustain_level(pc,d2.w),d7
+    move.b  envelope_sustain_level(a0),d7
 
 .2DecaySustain
     COUNT   C_ENV25    
@@ -1453,8 +1474,7 @@ envelope_clock:
     move.l  envelope_rate_counter_period(pc,d2.w*4),d6 * pOEP-only (pc-relative)
 
     * Needed in decay sustain
-    move.b  envelope_sustain(a0),d2
-    move.b  .envelope_sustain_level(pc,d2.w),d7
+    move.b  envelope_sustain_level(a0),d7
     bra     .break1DecaySustain
     
 .break1Attack
