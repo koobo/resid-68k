@@ -80,6 +80,140 @@ CLAMP16 macro
 .\@2
     endm
 
+COUNTERS=1
+
+ ifne COUNTERS
+C_start
+C_CLK1   dc.l    0
+        dc.l    "CLK1"
+C_CLK2   dc.l    0
+        dc.l    "CLK2"
+C_CLK3   dc.l    0
+        dc.l    "CLK3"
+C_CLK4   dc.l    0
+        dc.l    "CLK4"
+C_WAV1   dc.l    0
+        dc.l    "WAV1"
+C_WAV2   dc.l    0
+        dc.l    "WAV2"
+C_WAV3   dc.l    0
+        dc.l    "WAV3"
+C_WAV4   dc.l    0
+        dc.l    "WAV4"
+C_WO1    dc.l    0
+        dc.l    "WO1 "
+C_WO2    dc.l    0
+        dc.l    "WO2 "
+C_WO3    dc.l    0
+        dc.l    "WO3 "
+C_WO4    dc.l    0
+        dc.l    "WO4 "
+C_WO5    dc.l    0
+        dc.l    "WO5 "
+C_WO6    dc.l    0
+        dc.l    "WO6 "
+C_WO7    dc.l    0
+        dc.l    "WO7 "
+C_WO8    dc.l    0
+        dc.l    "WO8 "
+C_WO9    dc.l    0
+        dc.l    "WO9 "
+C_EFLT1  dc.l    0
+        dc.l    "EFL1"
+C_EFLT2  dc.l    0
+        dc.l    "EFL2"
+C_FLT1   dc.l    0
+        dc.l    "FLT1"
+C_FLT2   dc.l    0
+        dc.l    "FLT2"
+C_ENV1   dc.l    0
+        dc.l    "EN01"
+C_ENV2   dc.l    0
+        dc.l    "EN02"
+C_ENV3   dc.l    0
+        dc.l    "EN03"
+C_ENV4   dc.l    0
+        dc.l    "EN04"
+C_ENV5   dc.l    0
+        dc.l    "EN05"
+C_ENV6   dc.l    0
+        dc.l    "EN06"
+C_ENV7   dc.l    0
+        dc.l    "EN07"
+C_ENV8   dc.l    0
+        dc.l    "EN08"
+C_ENV9   dc.l    0
+        dc.l    "EN09"
+C_ENV10  dc.l    0
+        dc.l    "EN10"
+C_ENV11  dc.l    0
+        dc.l    "EN11"
+C_ENV12  dc.l    0
+        dc.l    "EN12"
+C_ENV13  dc.l    0
+        dc.l    "EN13"
+C_ENV14  dc.l    0
+        dc.l    "EN14"
+C_ENV15  dc.l    0
+        dc.l    "EN15"
+C_ENV16  dc.l    0
+        dc.l    "EN16"
+C_ENV17  dc.l    0
+        dc.l    "EN17"
+C_ENV18  dc.l    0
+        dc.l    "EN18"
+C_ENV19  dc.l    0
+        dc.l    "EN19"
+C_ENV20  dc.l    0
+        dc.l    "EN20"
+C_ENV21  dc.l    0
+        dc.l    "EN21"
+C_ENV22  dc.l    0
+        dc.l    "EN22"
+C_ENV23  dc.l    0
+        dc.l    "EN23"
+C_ENV24  dc.l    0
+        dc.l    "EN24"
+C_ENV25  dc.l    0
+        dc.l    "EN25"
+C_ENV26  dc.l    0
+        dc.l    "EN26"
+C_ENV27  dc.l    0
+        dc.l    "EN27"
+C_ENV28  dc.l    0
+        dc.l    "EN28"
+C_ENV29  dc.l    0
+        dc.l    "EN29"
+C_ENV30  dc.l    0
+        dc.l    "EN30"
+C_ENV31  dc.l    0
+        dc.l    "EN31"
+C_end
+
+reset_counters:
+    lea C_start,a0
+    move    #(C_end-C_start)/8-1,d0
+.l  clr.l   (a0)+
+    addq    #4,a0
+    dbf d0,.l
+    rts
+
+sid_get_counters:
+    lea     C_start,a2
+    move    #(C_end-C_start)/8-1,d2
+    move.l  C_CLK1,d3
+    rts
+
+    endif
+
+COUNT macro
+    addq.l  #1,\1
+    endm
+    
+
+
+
+
 ******************************************************************************
 *
 * Wave
@@ -215,6 +349,8 @@ wave_reset
 wave_clock:
     tst.b   wave_test(a0)
     beq     .go
+    COUNT   C_WAV4
+
     jmp     (a2)
 
     * align for 060
@@ -248,6 +384,7 @@ wave_clock:
  EREM 
     ; --------------------------------- 
 ; option 2 - resid 1.0
+    COUNT   C_WAV1
 
    * d3 = delta_accumulator
     move    wave_freq(a0),d3
@@ -282,7 +419,9 @@ wave_clock:
 .loop
     cmp.l   d1,d3
     bhs.b   .continue
-    
+
+    COUNT   C_WAV2
+
     * calls: 3x
 
     * shift_period = delta_accumulator
@@ -326,6 +465,7 @@ wave_clock:
  ;EREM
 
 .continue
+    COUNT   C_WAV3
     * Shift the noise/random register.  
     * bit0
  REM ; option 1
@@ -472,10 +612,13 @@ wave_output:
  
 
 wave_output___T:
+    COUNT   C_WO1
     move.l  wave_accumulator(a0),d0
     move.l  d0,d1
     tst.b   wave_ring_mod(a0)
     beq.b   .noRingMod
+    COUNT   C_WO9
+
     move.l  wave_sync_source(a0),a1
     move.l  wave_accumulator(a1),d2
     eor.l   d2,d1
@@ -508,6 +651,7 @@ wave_output___Tsub:
     rts
 
 wave_output__S_:
+    COUNT   C_WO2
 ;    move.l  wave_accumulator(a0),d0
 ;    lsr.l   #8,d0
 ;    lsr.w   #4,d0
@@ -521,6 +665,8 @@ wave_output__S_:
     jmp     (a3)
 
 wave_output__ST:
+    COUNT   C_WO3
+
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d1
@@ -534,6 +680,8 @@ wave_output__ST:
 * out:
 *   d0 = $000 or $fff
 wave_output_P__:
+    COUNT   C_WO4
+
     tst.b   wave_test(a0)
     bne.b   .do
     moveq   #12,d2 * shift
@@ -562,6 +710,8 @@ wave_output_P__sub:
     move    #$0fff,d0
     rts
 wave_output_P_T:
+    COUNT   C_WO5
+
     bsr     wave_output___Tsub
     lsr.w   #1,d0
     move.l  wave_wave_P_T(a0),a1
@@ -572,6 +722,8 @@ wave_output_P_T:
     ;rts
     jmp     (a3)
 wave_output_PS_:
+    COUNT   C_WO6
+
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0
@@ -585,6 +737,8 @@ wave_output_PS_:
     ;rts
     jmp     (a3)
 wave_output_PST:
+    COUNT   C_WO7
+
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0  
@@ -598,6 +752,8 @@ wave_output_PST:
     jmp     (a3)
 
 wave_outputN___:
+    COUNT   C_WO8
+
     move.l  wave_shift_register(a0),d1
 
     move.l  d1,d2
@@ -878,7 +1034,7 @@ envelope_output:
     rts
 
 
-
+* ORIGINAL ENVELOPE_CLOCK
 * in:
 *   a0 = object
 *   d0 = cycle_count delta_t
@@ -887,152 +1043,134 @@ envelope_output:
 *   d0-d7,a0,a1,a2
 * note:
 *   call counts from frame $b of Advanced Chemistry (calls per output sample)
-envelope_clock_orig:
-;envelope_clock:
+; envelope_clock:
 
-    * Preload stuff for the loop
-    moveq   #0,d5
-    move.l  envelope_rate_period(a0),d1
-    moveq   #0,d2
-    move.b  envelope_counter(a0),d5
-    moveq   #0,d7
-    move.b  envelope_exponential_counter(a0),d3
-    move.l  d1,d6
-    move.b  envelope_sustain(a0),d7
+;     * Preload stuff for the loop
+;     moveq   #0,d5
+;     move.l  envelope_rate_period(a0),d1
+;     moveq   #0,d2
+;     move.b  envelope_counter(a0),d5
+;     moveq   #0,d7
+;     move.b  envelope_exponential_counter(a0),d3
+;     move.l  d1,d6
+;     move.b  envelope_sustain(a0),d7
 
-    sub.l   envelope_rate_counter(a0),d1
-    bgt     .overZero
-    add.l   #$7fff,d1
-.overZero
-    * d1 = rate step
-    * d6 = envelope_rate_period
+;     sub.l   envelope_rate_counter(a0),d1
+;     bgt     .overZero
+;     add.l   #$7fff,d1
+; .overZero
+;     * d1 = rate step
+;     * d6 = envelope_rate_period
     
     
 
-    cmp.l   d1,d0
-    bhs.b   .2
-;    * calls: 2x
+;     cmp.l   d1,d0
+;     bhs.b   .2
+; ;    * calls: 2x
 
-    add.l   envelope_rate_counter(a0),d0
-    tst.w   d0
-    bpl.b   .x0
-    addq.l  #1,d0
-    and.l   #$7fff,d0
-.x0
-    move.l  d0,envelope_rate_counter(a0)
-    jmp     (a2)
+;     add.l   envelope_rate_counter(a0),d0
+;     tst.w   d0
+;     bpl.b   .x0
+;     addq.l  #1,d0
+;     and.l   #$7fff,d0
+; .x0
+;     move.l  d0,envelope_rate_counter(a0)
+;     jmp     (a2)
 
-    cnop    0,4
+;     cnop    0,4
 
-.loop   
-    * calls: 14x
+; .loop   
+;     * calls: 14x
 
-    cmp.l   d1,d0
-    bhs.b   .2
+;     cmp.l   d1,d0
+;     bhs.b   .2
 
-    move    #$0f0,$dff180
-    move.b  d5,envelope_counter(a0)
-    move.b  d3,envelope_exponential_counter(a0)
-    move.l  d0,envelope_rate_counter(a0)
-    move.l  d6,envelope_rate_period(a0)
-    jmp     (a2)
-
-
-.2
-    cmp.b   #envelope_state_ATTACK,envelope_state(a0)
-    bne     .notAttack
+;     move    #$0f0,$dff180
+;     move.b  d5,envelope_counter(a0)
+;     move.b  d3,envelope_exponential_counter(a0)
+;     move.l  d0,envelope_rate_counter(a0)
+;     move.l  d6,envelope_rate_period(a0)
+;     jmp     (a2)
 
 
-.yesAttack
-    * calls: 3x
+; .2
+;     cmp.b   #envelope_state_ATTACK,envelope_state(a0)
+;     bne     .notAttack
 
-    moveq   #0,d3   * exponential_counter
-    tst.b   envelope_hold_zero(a0)
-    bne     .continueLoop
 
-    ;;; switch #1
+; .yesAttack
+;     * calls: 3x
 
-    * Due to the above check the state is ATTACK here
+;     moveq   #0,d3   * exponential_counter
+;     tst.b   envelope_hold_zero(a0)
+;     bne     .continueLoop
 
-    * calls: 3x
-    addq.b  #1,d5
-    cmp.b   #$ff,d5
-    bne     .break1
-    move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
-    move.b  envelope_decay(a0),d2
-    move.l  envelope_rate_counter_period(pc,d2.w*4),d6 * pOEP-only (pc-relative)
-    bra     .break1
+;     ;;; switch #1
 
-.notAttack
+;     * Due to the above check the state is ATTACK here
 
-    addq.b  #1,d3
-    cmp.b   envelope_exponential_counter_period(a0),d3
-    bne     .continueLoop
+;     * calls: 3x
+;     addq.b  #1,d5
+;     cmp.b   #$ff,d5
+;     bne     .break1
+;     move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
+;     move.b  envelope_decay(a0),d2
+;     move.l  envelope_rate_counter_period(pc,d2.w*4),d6 * pOEP-only (pc-relative)
+;     bra     .break1
 
-    moveq   #0,d3   * exponential_counter
-    tst.b   envelope_hold_zero(a0)
-    bne     .continueLoop
+; .notAttack
+
+;     addq.b  #1,d3
+;     cmp.b   envelope_exponential_counter_period(a0),d3
+;     bne     .continueLoop
+
+;     moveq   #0,d3   * exponential_counter
+;     tst.b   envelope_hold_zero(a0)
+;     bne     .continueLoop
    
-    cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
-    bne     .notDS
+;     cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
+;     bne     .notDS
 
-    * calls: 7x
-    cmp.b   envelope_sustain_level(pc,d7.w),d5 * pOEP-only (pc-relative)
-    beq     .break1
-    * calls: 1x
-    * ... fall through ...
-.notDS
-    ; The remaining one is RELEASE.
-    * calls: 1x
-    subq.b  #1,d5
-.break1
-    * calls: 11x
+;     * calls: 7x
+;     cmp.b   envelope_sustain_level(pc,d7.w),d5 * pOEP-only (pc-relative)
+;     beq     .break1
+;     * calls: 1x
+;     * ... fall through ...
+; .notDS
+;     ; The remaining one is RELEASE.
+;     * calls: 1x
+;     subq.b  #1,d5
+; .break1
+;     * calls: 11x
     
-    ;;; switch #2 (envelope_counter) replaced with a table 
+;     ;;; switch #2 (envelope_counter) replaced with a table 
 
-    * Values not in switch scope are null
-    move.b  exponential_counter_period_table(pc,d5.w),d2 * pOEP-only (pc-relative)
-    beq.b   .continueLoop
-    move.b  d2,envelope_exponential_counter_period(a0)
-    * case 0x00:
-    tst.b   d5
-    bne.b   .continueLoop
-    * When the envelope counter is changed to zero, it is frozen at zero.
-    st      envelope_hold_zero(a0)
+;     * Values not in switch scope are null
+;     move.b  exponential_counter_period_table(pc,d5.w),d2 * pOEP-only (pc-relative)
+;     beq.b   .continueLoop
+;     move.b  d2,envelope_exponential_counter_period(a0)
+;     * case 0x00:
+;     tst.b   d5
+;     bne.b   .continueLoop
+;     * When the envelope counter is changed to zero, it is frozen at zero.
+;     st      envelope_hold_zero(a0)
 
-.continueLoop
-    * rate_step = rate_period
-    sub.l   d1,d0   * delta_t -= rate_step
+; .continueLoop
+;     * rate_step = rate_period
+;     sub.l   d1,d0   * delta_t -= rate_step
   
-    move.l  d6,d1
-    tst.l   d0
-    bne     .loop
-.x
-    move.b  d5,envelope_counter(a0)
-    move.b  d3,envelope_exponential_counter(a0)
-   ; move.l  d4,envelope_rate_counter(a0)
-    clr.l   envelope_rate_counter(a0)
-    move.l  d6,envelope_rate_period(a0)
-    ;rts
-    jmp     (a2)
+;     move.l  d6,d1
+;     tst.l   d0
+;     bne     .loop
+; .x
+;     move.b  d5,envelope_counter(a0)
+;     move.b  d3,envelope_exponential_counter(a0)
+;    ; move.l  d4,envelope_rate_counter(a0)
+;     clr.l   envelope_rate_counter(a0)
+;     move.l  d6,envelope_rate_period(a0)
+;     ;rts
+;     jmp     (a2)
 
-envelope_sustain_level:
-  dc.b $00
-  dc.b $11
-  dc.b $22
-  dc.b $33
-  dc.b $44
-  dc.b $55
-  dc.b $66
-  dc.b $77
-  dc.b $88
-  dc.b $99
-  dc.b $aa
-  dc.b $bb
-  dc.b $cc
-  dc.b $dd
-  dc.b $ee
-  dc.b $ff
 
     cnop    0,4
 envelope_rate_counter_period:
@@ -1082,6 +1220,8 @@ exponential_counter_period_table:
 *   call counts from frame $b of Advanced Chemistry (calls per output sample)
 envelope_clock:
 
+    COUNT   C_ENV1
+
     * Preload stuff for the loop
     move.l  envelope_rate_period(a0),d1
     move.l  d1,d6
@@ -1089,23 +1229,28 @@ envelope_clock:
     sub.l   envelope_rate_counter(a0),d1
     bgt     .overZero
     add.l   #$7fff,d1
+    COUNT   C_ENV2
 .overZero
     * d1 = rate step
     * d6 = envelope_rate_period
     
     cmp.l   d1,d0
     bhs.b   .2
+    COUNT   C_ENV3
 
     add.l   envelope_rate_counter(a0),d0
     tst.w   d0
     bpl.b   .x0
     addq.l  #1,d0
     and.l   #$7fff,d0
+    COUNT   C_ENV4
 .x0
     move.l  d0,envelope_rate_counter(a0)
     jmp     (a2)
 
 .2
+    COUNT   C_ENV5
+
     moveq   #0,d5
     move.b  envelope_exponential_counter(a0),d3
     moveq   #0,d2
@@ -1126,11 +1271,14 @@ envelope_clock:
 * RELEASE
 **************************************
 .loopReleaseDo
+    COUNT   C_ENV6
     
 .loopRelease
 
     cmp.l   d1,d0
     bhs.b   .2Release
+
+    COUNT   C_ENV7
 
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
@@ -1138,6 +1286,8 @@ envelope_clock:
     jmp     (a2)
 
 .2Release
+    COUNT   C_ENV8
+
     sub.l   d1,d0   * delta_t -= rate_step
     
     addq.b  #1,d3
@@ -1145,20 +1295,27 @@ envelope_clock:
     cmp.b   d4,d3
     bne     .continueLoopRelease
 
+    COUNT   C_ENV9
+
     moveq   #0,d3   * exponential_counter
     tst.b   envelope_hold_zero(a0)
     bne     .continueLoopRelease
  
+    COUNT   C_ENV10
+
     subq.b  #1,d5
 
     * Values not in switch scope are null
     move.b  (a1,d5.w),d2 
     beq.b   .continueLoopRelease
+    COUNT   C_ENV11
+
     move.b  d2,envelope_exponential_counter_period(a0)
     move.b  d2,d4
     * case 0x00:
     tst.b   d5
     bne.b   .continueLoopRelease
+    COUNT   C_ENV12
     * When the envelope counter is changed to zero, it is frozen at zero.
     st      envelope_hold_zero(a0)
 
@@ -1167,7 +1324,9 @@ envelope_clock:
     move.l  d6,d1
     tst.l   d0
     bne     .loopRelease
-.xRelease
+
+    COUNT   C_ENV13
+
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
     clr.l   envelope_rate_counter(a0)
@@ -1180,9 +1339,13 @@ envelope_clock:
 **************************************
 
 .loopAttack
+    COUNT   C_ENV14
+
     cmp.l   d1,d0
     bhs.b   .2attack
- 
+
+    COUNT   C_ENV15
+
     move.b  d5,envelope_counter(a0)
     clr.b    envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
@@ -1190,9 +1353,12 @@ envelope_clock:
 
 
 .loopAttackDo
+    COUNT   C_ENV16
+
     moveq   #0,d3
     
 .2attack
+    COUNT   C_ENV17
 
     sub.l   d1,d0   * delta_t -= rate_step
 
@@ -1202,6 +1368,8 @@ envelope_clock:
     cmp.b   #$ff,d5
     bne     .break1Attack
 
+    COUNT   C_ENV18
+
     ; Switch to the decay-sustain state
 
     move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
@@ -1209,25 +1377,28 @@ envelope_clock:
     move.l  envelope_rate_counter_period(pc,d2.w*4),d6 * pOEP-only (pc-relative)
 
     * Needed in decay sustain
-    moveq   #0,d7
-    move.b  envelope_sustain(a0),d7
-    move.b  envelope_sustain_level(pc,d7.w),d7
+    move.b  envelope_sustain(a0),d2
+    move.b  .envelope_sustain_level(pc,d2.w),d7
     bra     .break1DecaySustain
     
 .break1Attack
+    COUNT   C_ENV19
 
     * Values not in switch scope are null
     move.b  (a1,d5.w),d2 
     beq.b   .continueLoopAttack
     move.b  d2,envelope_exponential_counter_period(a0)
     move.b  d2,d4
+    COUNT   C_ENV20
 
 .continueLoopAttack
     * rate_step = rate_period
     move.l  d6,d1
     tst.l   d0
     bne     .loopAttack
-.xAttack
+
+    COUNT   C_ENV21
+
     move.b  d5,envelope_counter(a0)
     clr.b   envelope_exponential_counter(a0)
     clr.l   envelope_rate_counter(a0)
@@ -1239,11 +1410,33 @@ envelope_clock:
 * DECAY SUSTAIN
 **************************************
     
+.envelope_sustain_level:
+  dc.b $00
+  dc.b $11
+  dc.b $22
+  dc.b $33
+  dc.b $44
+  dc.b $55
+  dc.b $66
+  dc.b $77
+  dc.b $88
+  dc.b $99
+  dc.b $aa
+  dc.b $bb
+  dc.b $cc
+  dc.b $dd
+  dc.b $ee
+  dc.b $ff
+
+
 .loopDecaySustain
+    COUNT   C_ENV22
 
     cmp.l   d1,d0
     bhs.b   .2DecaySustain
  
+    COUNT   C_ENV23
+
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
@@ -1251,12 +1444,13 @@ envelope_clock:
     jmp     (a2)
 
 .loopDecaySustainDo
-    moveq   #0,d7
-    move.b  envelope_sustain(a0),d7
-    move.b  envelope_sustain_level(pc,d7.w),d7
+    COUNT   C_ENV24
+
+    move.b  envelope_sustain(a0),d2
+    move.b  .envelope_sustain_level(pc,d2.w),d7
 
 .2DecaySustain
-    
+    COUNT   C_ENV25    
     sub.l   d1,d0   * delta_t -= rate_step
      
     addq.b  #1,d3
@@ -1264,19 +1458,30 @@ envelope_clock:
     cmp.b   d4,d3
     bne     .continueLoopDecaySustain
 
+    COUNT   C_ENV26
+
     moveq   #0,d3   * exponential_counter
+
+    ; TODO: this test is likely unnecessary
     tst.b   envelope_hold_zero(a0)
     bne     .continueLoopDecaySustain
+
+    COUNT   C_ENV27
 
     cmp.b   d7,d5
     beq     .break1DecaySustain
     subq.b  #1,d5
+
+    COUNT   C_ENV28
 
 .break1DecaySustain
 
     * Values not in switch scope are null
     move.b  (a1,d5.w),d2 
     beq.b   .continueLoopDecaySustain
+
+    COUNT   C_ENV29
+
     move.b  d2,envelope_exponential_counter_period(a0)
     move.b  d2,d4
     * case 0x00:
@@ -1285,20 +1490,21 @@ envelope_clock:
     * When the envelope counter is changed to zero, it is frozen at zero.
     st      envelope_hold_zero(a0)
 
+    COUNT   C_ENV30
+
 .continueLoopDecaySustain
     * rate_step = rate_period
     move.l  d6,d1
     tst.l   d0
     bne     .loopDecaySustain
-.xDecaySustain
+
+    COUNT   C_ENV31
+
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
     clr.l   envelope_rate_counter(a0)
     move.l  d6,envelope_rate_period(a0)  
     jmp     (a2)
-
-
-
 
 
 
@@ -1694,6 +1900,8 @@ filter_clock:
 .loop
     * calls: 6x
 
+    COUNT   C_FLT1
+
     cmp.l   d1,d0
     bhs.b   .4
     move.l  d0,d1
@@ -1701,6 +1909,7 @@ filter_clock:
     move.l  filter_w0_ceil_dt(a0),d2
     muls.l  d1,d2
     asr.l   #6,d2
+    COUNT   C_FLT2
 .4  
 ;    * dVlp
 ;    move.l  d4,d7
@@ -1924,6 +2133,8 @@ extfilter_clock:
     * a1 = Vi
     
 .loop
+    COUNT   C_EFLT1
+
     * calls: 6x
 
     cmp.l   d2,d0
@@ -1935,6 +2146,7 @@ extfilter_clock:
     move.l  extfilter_w0hp(a0),d4
     muls.l  d2,d4
     asr.l   #8,d3
+    COUNT   C_EFLT2
 .2
 ;    ; d7 = Vi - Vlp
 ;    move.l  a4,d7
@@ -2169,6 +2381,10 @@ sid_reset:
     bsr     filter_reset
     move.l  sid_extfilt(a5),a0
     bsr     extfilter_reset
+
+ if COUNTERS
+    bsr     reset_counters
+ endif
     rts
 
 * in:
@@ -2522,6 +2738,7 @@ sid_clock:
     bgt     .1
     rts
 .1
+    COUNT   C_CLK1
     * calls: 1x, once per output sample in fast
 
     move.l  d0,a3
@@ -2549,6 +2766,7 @@ sid_clock:
     move.l  a3,d7
     * d7 = delta_t_osc = delta_t
 .loop
+    COUNT   C_CLK2
     * a3 = delta_t_min = delta_t_osc
     move.l  d7,a3
 
@@ -2571,6 +2789,8 @@ sid_clock:
     tst.b   wave_sync(a1)
     beq     .cx
 
+    COUNT   C_CLK3
+
     move.l  wave_accumulator(a0),d1
     move.l  #$800000,d2
     btst    #23,d1      * andi.l #$800000 
@@ -2588,6 +2808,8 @@ sid_clock:
     divu.w  wave_freq(a0),d2
     bvc.s   .shortDivOk     ; branch if overflow clear
     
+    COUNT   C_CLK4
+
     ; This is very unlikely.
     ; Fallback to 32-bit div in case of an overflow
     moveq   #0,d3
