@@ -56,7 +56,8 @@ HALF8            = RANGE8>>1
 RANGE16          = 1<<16
 HALF16           = RANGE16>>1
 
-EXPERIMENTAL_ENVELOPE_CLOCK = 0
+EXPERIMENTAL_ENVELOPE_CLOCK = 1
+
 
 CLAMP8 macro
     cmp.w   #HALF8,\1
