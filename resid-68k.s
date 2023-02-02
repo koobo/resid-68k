@@ -81,7 +81,12 @@ CLAMP16 macro
     endm
 
 
+ ifnd COUNTERS
+COUNTERS = 0
+ endif
+
  ifne COUNTERS
+    printt "COUNTERS enabled"
 C_start
 C_CLK1   dc.l    0
         dc.l    "CLK1"
