@@ -1435,7 +1435,7 @@ envelope_clock:
 .loopAttackDo
     COUNT   C_ENV16
 
-    moveq   #0,d3
+    ;;moveq   #0,d3 - envelope_exponential_counter
     
 .2attack
     COUNT   C_ENV17
