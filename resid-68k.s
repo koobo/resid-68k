@@ -1404,21 +1404,21 @@ envelope_clock:
 * DECAY SUSTAIN
 **************************************
     
-.loopDecaySustain
-    COUNT   C_ENV22
-
-    * TODO: move this to the end of the loop
-    cmp.l   d1,d0
-    bhs.b   .2DecaySustain
- 
-    COUNT   C_ENV23
-
-    move.b  d5,envelope_counter(a0)
-    move.b  d3,envelope_exponential_counter(a0)
-    move.l  d0,envelope_rate_counter(a0)
-    move.l  d6,envelope_rate_period(a0)  
-    jmp     (a2)
-
+;.loopDecaySustain
+;    COUNT   C_ENV22
+;
+;    * TODO: move this to the end of the loop
+;    cmp.l   d1,d0
+;    bhs.b   .2DecaySustain
+; 
+;    COUNT   C_ENV23
+;
+;    move.b  d5,envelope_counter(a0)
+;    move.b  d3,envelope_exponential_counter(a0)
+;    move.l  d0,envelope_rate_counter(a0)
+;    move.l  d6,envelope_rate_period(a0)  
+;    jmp     (a2)
+;
 .loopDecaySustainDo
     COUNT   C_ENV24
 
@@ -1470,16 +1470,28 @@ envelope_clock:
 .continueLoopDecaySustain
     * rate_step = rate_period
     move.l  d6,d1
-    tst.l   d0
-    bne     .loopDecaySustain
 
-    COUNT   C_ENV32
+    cmp.l   d1,d0
+    bhs.b   .2DecaySustain
+ 
+    COUNT   C_ENV23
 
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
-    clr.l   envelope_rate_counter(a0)
+    move.l  d0,envelope_rate_counter(a0)
     move.l  d6,envelope_rate_period(a0)  
     jmp     (a2)
+;
+;    tst.l   d0
+;    bne     .loopDecaySustain
+;
+;    COUNT   C_ENV32
+;
+;    move.b  d5,envelope_counter(a0)
+;    move.b  d3,envelope_exponential_counter(a0)
+;    clr.l   envelope_rate_counter(a0)
+;    move.l  d6,envelope_rate_period(a0)  
+;    jmp     (a2)
 
 
 
