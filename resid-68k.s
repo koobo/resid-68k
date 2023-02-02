@@ -1222,7 +1222,7 @@ envelope_clock:
     move.l  d1,d6
 
     sub.l   envelope_rate_counter(a0),d1
-    bgt     .overZero
+    bgt.b   .overZero
     add.l   #$7fff,d1
     COUNT   C_ENV2
 .overZero
@@ -1289,13 +1289,13 @@ envelope_clock:
     addq.b  #1,d3
     ;cmp.b   envelope_exponential_counter_period(a0),d3
     cmp.b   d4,d3
-    bne     .continueLoopRelease
+    bne.b   .continueLoopRelease
 
     COUNT   C_ENV9
 
     moveq   #0,d3   * exponential_counter
     tst.b   envelope_hold_zero(a0)
-    bne     .continueLoopRelease
+    bne.b   .continueLoopRelease
  
     COUNT   C_ENV10
 
@@ -1319,7 +1319,7 @@ envelope_clock:
     * rate_step = rate_period
     move.l  d6,d1
     tst.l   d0
-    bne     .loopRelease
+    bne.b   .loopRelease
 
     COUNT   C_ENV13
 
@@ -1359,19 +1359,19 @@ envelope_clock:
     addq.b  #1,d3
     ;cmp.b   envelope_exponential_counter_period(a0),d3
     cmp.b   d4,d3
-    bne     .continueLoopDecaySustain
+    bne.b   .continueLoopDecaySustain
 
     COUNT   C_ENV26
 
     moveq   #0,d3   * exponential_counter
 
     tst.b   envelope_hold_zero(a0)
-    bne     .continueLoopDecaySustain
+    bne.b   .continueLoopDecaySustain
 
     COUNT   C_ENV27
 
     cmp.b   d7,d5
-    beq     .break1DecaySustain
+    beq.b   .break1DecaySustain
     subq.b  #1,d5
 
     COUNT   C_ENV28
@@ -1410,23 +1410,6 @@ envelope_clock:
     jmp     (a2)
 
 
-.envelope_sustain_level:
-  dc.b $00
-  dc.b $11
-  dc.b $22
-  dc.b $33
-  dc.b $44
-  dc.b $55
-  dc.b $66
-  dc.b $77
-  dc.b $88
-  dc.b $99
-  dc.b $aa
-  dc.b $bb
-  dc.b $cc
-  dc.b $dd
-  dc.b $ee
-  dc.b $ff
 
 
 
@@ -1491,7 +1474,7 @@ envelope_clock:
     * rate_step = rate_period
     move.l  d6,d1
     tst.l   d0
-    bne     .loopAttack
+    bne.b   .loopAttack
 
     COUNT   C_ENV21
 
