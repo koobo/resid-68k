@@ -1177,44 +1177,6 @@ envelope_output:
 ;     ;rts
 ;     jmp     (a2)
 
-
-    cnop    0,4
-envelope_rate_counter_period:
-  dc.l      9
-  dc.l     32
-  dc.l     63
-  dc.l     95
-  dc.l    149
-  dc.l    220
-  dc.l    267
-  dc.l    313
-  dc.l    392
-  dc.l    977
-  dc.l   1954
-  dc.l   3126
-  dc.l   3907
-  dc.l  11720
-  dc.l  19532
-  dc.l  31251
- 
-
-exponential_counter_period_table:
-.0   dc.b    1      * index= 0
-     dcb.b   6-0-1,0
-.6   dc.b    30     *        6
-     dcb.b   14-6-1,0
-.14  dc.b    16     * 0xe  = 14
-     dcb.b   26-14-1,0
-.26  dc.b    8      * 0x1a = 26
-     dcb.b   54-26-1,0
-.54  dc.b    4      * 0x36 = 54
-     dcb.b   93-54-1,0
-.93  dc.b    2      * 0x5d = 93
-     dcb.b   255-93-1,0
-.255 dc.b    1      * 0xff = 255
-     even
-
-
 * EXPERIMENTAL ENVELOPE CLOCK
 * in:
 *   a0 = object
@@ -1263,11 +1225,12 @@ envelope_clock:
     move.b  envelope_counter(a0),d5
     lea     exponential_counter_period_table(pc),a1
     move.b  envelope_exponential_counter_period(a0),d4
- 
-    cmp.b   #envelope_state_ATTACK,envelope_state(a0)
-    beq     .loopAttackDo
+
+    ; Decay-sustain is the most common case
     cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
     beq     .loopDecaySustainDo
+    cmp.b   #envelope_state_ATTACK,envelope_state(a0)
+    beq     .loopAttackDo
     ;cmp.b   #envelope_state_RELEASE,envelope_state(a0)
     ;beq     .loopReleaseDo
     ;rts
@@ -1337,6 +1300,108 @@ envelope_clock:
     move.b  d3,envelope_exponential_counter(a0)
     clr.l   envelope_rate_counter(a0)
     jmp     (a2)
+
+
+**************************************
+* DECAY SUSTAIN
+**************************************
+    
+.loopDecaySustain
+    COUNT   C_ENV22
+
+    cmp.l   d1,d0
+    bhs.b   .2DecaySustain
+ 
+    COUNT   C_ENV23
+
+    move.b  d5,envelope_counter(a0)
+    move.b  d3,envelope_exponential_counter(a0)
+    move.l  d0,envelope_rate_counter(a0)
+    move.l  d6,envelope_rate_period(a0)  
+    jmp     (a2)
+
+.loopDecaySustainDo
+    COUNT   C_ENV24
+
+    move.b  envelope_sustain(a0),d2
+    move.b  .envelope_sustain_level(pc,d2.w),d7
+
+.2DecaySustain
+    COUNT   C_ENV25    
+    sub.l   d1,d0   * delta_t -= rate_step
+     
+    addq.b  #1,d3
+    ;cmp.b   envelope_exponential_counter_period(a0),d3
+    cmp.b   d4,d3
+    bne     .continueLoopDecaySustain
+
+    COUNT   C_ENV26
+
+    moveq   #0,d3   * exponential_counter
+
+    tst.b   envelope_hold_zero(a0)
+    bne     .continueLoopDecaySustain
+
+    COUNT   C_ENV27
+
+    cmp.b   d7,d5
+    beq     .break1DecaySustain
+    subq.b  #1,d5
+
+    COUNT   C_ENV28
+
+.break1DecaySustain
+    COUNT   C_ENV29
+
+    * Values not in switch scope are null
+    move.b  (a1,d5.w),d2 
+    beq.b   .continueLoopDecaySustain
+
+    COUNT   C_ENV30
+
+    move.b  d2,envelope_exponential_counter_period(a0)
+    move.b  d2,d4
+    * case 0x00:
+    tst.b   d5
+    bne.b   .continueLoopDecaySustain
+    * When the envelope counter is changed to zero, it is frozen at zero.
+    st      envelope_hold_zero(a0)
+
+    COUNT   C_ENV31
+
+.continueLoopDecaySustain
+    * rate_step = rate_period
+    move.l  d6,d1
+    tst.l   d0
+    bne     .loopDecaySustain
+
+    COUNT   C_ENV32
+
+    move.b  d5,envelope_counter(a0)
+    move.b  d3,envelope_exponential_counter(a0)
+    clr.l   envelope_rate_counter(a0)
+    move.l  d6,envelope_rate_period(a0)  
+    jmp     (a2)
+
+
+.envelope_sustain_level:
+  dc.b $00
+  dc.b $11
+  dc.b $22
+  dc.b $33
+  dc.b $44
+  dc.b $55
+  dc.b $66
+  dc.b $77
+  dc.b $88
+  dc.b $99
+  dc.b $aa
+  dc.b $bb
+  dc.b $cc
+  dc.b $dd
+  dc.b $ee
+  dc.b $ff
+
 
 
 
@@ -1412,105 +1477,43 @@ envelope_clock:
 
 
 
-**************************************
-* DECAY SUSTAIN
-**************************************
-    
-.envelope_sustain_level:
-  dc.b $00
-  dc.b $11
-  dc.b $22
-  dc.b $33
-  dc.b $44
-  dc.b $55
-  dc.b $66
-  dc.b $77
-  dc.b $88
-  dc.b $99
-  dc.b $aa
-  dc.b $bb
-  dc.b $cc
-  dc.b $dd
-  dc.b $ee
-  dc.b $ff
 
-
-.loopDecaySustain
-    COUNT   C_ENV22
-
-    cmp.l   d1,d0
-    bhs.b   .2DecaySustain
+    cnop    0,4
+envelope_rate_counter_period:
+  dc.l      9
+  dc.l     32
+  dc.l     63
+  dc.l     95
+  dc.l    149
+  dc.l    220
+  dc.l    267
+  dc.l    313
+  dc.l    392
+  dc.l    977
+  dc.l   1954
+  dc.l   3126
+  dc.l   3907
+  dc.l  11720
+  dc.l  19532
+  dc.l  31251
  
-    COUNT   C_ENV23
 
-    move.b  d5,envelope_counter(a0)
-    move.b  d3,envelope_exponential_counter(a0)
-    move.l  d0,envelope_rate_counter(a0)
-    move.l  d6,envelope_rate_period(a0)  
-    jmp     (a2)
+exponential_counter_period_table:
+.0   dc.b    1      * index= 0
+     dcb.b   6-0-1,0
+.6   dc.b    30     *        6
+     dcb.b   14-6-1,0
+.14  dc.b    16     * 0xe  = 14
+     dcb.b   26-14-1,0
+.26  dc.b    8      * 0x1a = 26
+     dcb.b   54-26-1,0
+.54  dc.b    4      * 0x36 = 54
+     dcb.b   93-54-1,0
+.93  dc.b    2      * 0x5d = 93
+     dcb.b   255-93-1,0
+.255 dc.b    1      * 0xff = 255
+     even
 
-.loopDecaySustainDo
-    COUNT   C_ENV24
-
-    move.b  envelope_sustain(a0),d2
-    move.b  .envelope_sustain_level(pc,d2.w),d7
-
-.2DecaySustain
-    COUNT   C_ENV25    
-    sub.l   d1,d0   * delta_t -= rate_step
-     
-    addq.b  #1,d3
-    ;cmp.b   envelope_exponential_counter_period(a0),d3
-    cmp.b   d4,d3
-    bne     .continueLoopDecaySustain
-
-    COUNT   C_ENV26
-
-    moveq   #0,d3   * exponential_counter
-
-    ; TODO: this test is likely unnecessary
-    tst.b   envelope_hold_zero(a0)
-    bne     .continueLoopDecaySustain
-
-    COUNT   C_ENV27
-
-    cmp.b   d7,d5
-    beq     .break1DecaySustain
-    subq.b  #1,d5
-
-    COUNT   C_ENV28
-
-.break1DecaySustain
-
-    * Values not in switch scope are null
-    move.b  (a1,d5.w),d2 
-    beq.b   .continueLoopDecaySustain
-
-    COUNT   C_ENV29
-
-    move.b  d2,envelope_exponential_counter_period(a0)
-    move.b  d2,d4
-    * case 0x00:
-    tst.b   d5
-    bne.b   .continueLoopDecaySustain
-    * When the envelope counter is changed to zero, it is frozen at zero.
-    st      envelope_hold_zero(a0)
-
-    COUNT   C_ENV30
-
-.continueLoopDecaySustain
-    * rate_step = rate_period
-    move.l  d6,d1
-    tst.l   d0
-    bne     .loopDecaySustain
-
-    COUNT   C_ENV31
-
-    move.b  d5,envelope_counter(a0)
-    move.b  d3,envelope_exponential_counter(a0)
-    clr.l   envelope_rate_counter(a0)
-    move.l  d6,envelope_rate_period(a0)  
-    jmp     (a2)
 
 
 

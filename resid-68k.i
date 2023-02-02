@@ -40,8 +40,8 @@ FIXP_MASK = $ffff
     EITEM   SAMPLING_METHOD_SAMPLE_RESAMPLE_FAST
     
     ENUM
-    EITEM envelope_state_ATTACK
     EITEM envelope_state_DECAY_SUSTAIN
+    EITEM envelope_state_ATTACK
     EITEM envelope_state_RELEASE
 
     STRUCTURE   voice,0
