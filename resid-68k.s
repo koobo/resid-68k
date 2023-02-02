@@ -80,7 +80,6 @@ CLAMP16 macro
 .\@2
     endm
 
-COUNTERS=1
 
  ifne COUNTERS
 C_start
@@ -118,6 +117,8 @@ C_WO8    dc.l    0
         dc.l    "WO8 "
 C_WO9    dc.l    0
         dc.l    "WO9 "
+C_W10    dc.l    0
+        dc.l    "W10 "
 C_EFLT1  dc.l    0
         dc.l    "EFL1"
 C_EFLT2  dc.l    0
@@ -188,6 +189,8 @@ C_ENV30  dc.l    0
         dc.l    "EN30"
 C_ENV31  dc.l    0
         dc.l    "EN31"
+C_ENV32  dc.l    0
+        dc.l    "EN32"
 C_end
 
 reset_counters:
@@ -207,7 +210,9 @@ sid_get_counters:
     endif
 
 COUNT macro
+    if COUNTERS
     addq.l  #1,\1
+    endif
     endm
     
 
@@ -617,7 +622,7 @@ wave_output___T:
     move.l  d0,d1
     tst.b   wave_ring_mod(a0)
     beq.b   .noRingMod
-    COUNT   C_WO9
+    COUNT   C_W10
 
     move.l  wave_sync_source(a0),a1
     move.l  wave_accumulator(a1),d2
@@ -684,6 +689,7 @@ wave_output_P__:
 
     tst.b   wave_test(a0)
     bne.b   .do
+    COUNT   C_WO5
     moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0
     lsr.l   d2,d0
@@ -710,7 +716,7 @@ wave_output_P__sub:
     move    #$0fff,d0
     rts
 wave_output_P_T:
-    COUNT   C_WO5
+    COUNT   C_WO6
 
     bsr     wave_output___Tsub
     lsr.w   #1,d0
@@ -722,7 +728,7 @@ wave_output_P_T:
     ;rts
     jmp     (a3)
 wave_output_PS_:
-    COUNT   C_WO6
+    COUNT   C_WO7
 
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
@@ -737,7 +743,7 @@ wave_output_PS_:
     ;rts
     jmp     (a3)
 wave_output_PST:
-    COUNT   C_WO7
+    COUNT   C_WO8
 
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
@@ -752,7 +758,7 @@ wave_output_PST:
     jmp     (a3)
 
 wave_outputN___:
-    COUNT   C_WO8
+    COUNT   C_WO9
 
     move.l  wave_shift_register(a0),d1
 
