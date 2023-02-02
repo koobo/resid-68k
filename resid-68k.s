@@ -1501,22 +1501,24 @@ envelope_clock:
 * ATTACK
 **************************************
 
-.loopAttack
-    COUNT   C_ENV14
-
-    cmp.l   d1,d0
-    bhs.b   .2attack
-
-    COUNT   C_ENV15
-
-    move.b  d5,envelope_counter(a0)
-    clr.b    envelope_exponential_counter(a0)
-    move.l  d0,envelope_rate_counter(a0)
-    jmp     (a2)
-
+;.loopAttack
+;    COUNT   C_ENV14
+;
+;    cmp.l   d1,d0
+;    bhs.b   .2attack
+;
+;    COUNT   C_ENV15
+;
+;    move.b  d5,envelope_counter(a0)
+;    clr.b    envelope_exponential_counter(a0)
+;    move.l  d0,envelope_rate_counter(a0)
+;    jmp     (a2)
+;
 
 .loopAttackDo
     COUNT   C_ENV16
+
+
 
     ;;moveq   #0,d3 - envelope_exponential_counter
     
@@ -1556,14 +1558,15 @@ envelope_clock:
 .continueLoopAttack
     * rate_step = rate_period
     move.l  d6,d1
-    tst.l   d0
-    bne.b   .loopAttack
 
-    COUNT   C_ENV21
+    cmp.l   d1,d0
+    bhs.b   .2attack
+
+    COUNT   C_ENV15
 
     move.b  d5,envelope_counter(a0)
-    clr.b   envelope_exponential_counter(a0)
-    clr.l   envelope_rate_counter(a0)
+    clr.b    envelope_exponential_counter(a0)
+    move.l  d0,envelope_rate_counter(a0)
     jmp     (a2)
 
 
