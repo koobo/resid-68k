@@ -1406,6 +1406,7 @@ envelope_clock:
 .loopDecaySustain
     COUNT   C_ENV22
 
+    * TODO: move this to the end of the loop
     cmp.l   d1,d0
     bhs.b   .2DecaySustain
  
