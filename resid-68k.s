@@ -524,7 +524,6 @@ wave_clock_single:
     beq     .go
 .x  jmp     (a2)
 .go
-    move    #$f00,$dff180
     move    d0,d6
     subq    #1,d6
     bmi     .x
@@ -1342,15 +1341,6 @@ envelope_clock:
     
 .loopRelease
 
-    cmp.l   d1,d0
-    bhs.b   .2Release
-
-    COUNT   C_ENV7
-
-    move.b  d5,envelope_counter(a0)
-    move.b  d3,envelope_exponential_counter(a0)
-    move.l  d0,envelope_rate_counter(a0)
-    jmp     (a2)
 
 .2Release
     COUNT   C_ENV8
@@ -1389,14 +1379,15 @@ envelope_clock:
 .continueLoopRelease
     * rate_step = rate_period
     move.l  d6,d1
-    tst.l   d0
-    bne.b   .loopRelease
 
-    COUNT   C_ENV13
+    cmp.l   d1,d0
+    bhs.b   .2Release
+
+    COUNT   C_ENV7
 
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
-    clr.l   envelope_rate_counter(a0)
+    move.l  d0,envelope_rate_counter(a0)
     jmp     (a2)
 
 
