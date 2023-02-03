@@ -91,135 +91,146 @@ COUNTERS = 0
  ifne COUNTERS
     printt "COUNTERS enabled"
 C_start
-C_CLK1   dc.l    0
+C_CLK1   dc.l    0,0
         dc.l    "CLK1"
-C_CLK2   dc.l    0
+C_CLK2   dc.l    0,0
         dc.l    "CLK2"
-C_CLK3   dc.l    0
+C_CLK3   dc.l    0,0
         dc.l    "CLK3"
-C_CLK4   dc.l    0
+C_CLK4   dc.l    0,0
         dc.l    "CLK4"
-C_WAV1   dc.l    0
+C_WAV1   dc.l    0,0
         dc.l    "WAV1"
-C_WAV2   dc.l    0
+C_WAV2   dc.l    0,0
         dc.l    "WAV2"
-C_WAV3   dc.l    0
+C_WAV3   dc.l    0,0
         dc.l    "WAV3"
-C_WAV4   dc.l    0
+C_WAV4   dc.l    0,0
         dc.l    "WAV4"
-C_WO1    dc.l    0
+C_WO1    dc.l    0,0
         dc.l    "WO1 "
-C_WO2    dc.l    0
+C_WO2    dc.l    0,0
         dc.l    "WO2 "
-C_WO3    dc.l    0
+C_WO3    dc.l    0,0
         dc.l    "WO3 "
-C_WO4    dc.l    0
+C_WO4    dc.l    0,0
         dc.l    "WO4 "
-C_WO5    dc.l    0
+C_WO5    dc.l    0,0
         dc.l    "WO5 "
-C_WO6    dc.l    0
+C_WO6    dc.l    0,0
         dc.l    "WO6 "
-C_WO7    dc.l    0
+C_WO7    dc.l    0,0
         dc.l    "WO7 "
-C_WO8    dc.l    0
+C_WO8    dc.l    0,0
         dc.l    "WO8 "
-C_WO9    dc.l    0
+C_WO9    dc.l    0,0
         dc.l    "WO9 "
-C_W10    dc.l    0
+C_W10    dc.l    0,0
         dc.l    "W10 "
-C_EFLT1  dc.l    0
+C_EFLT1  dc.l    0,0
         dc.l    "EFL1"
-C_EFLT2  dc.l    0
+C_EFLT2  dc.l    0,0
         dc.l    "EFL2"
-C_FLT1   dc.l    0
+C_FLT1   dc.l    0,0
         dc.l    "FLT1"
-C_FLT2   dc.l    0
+C_FLT2   dc.l    0,0
         dc.l    "FLT2"
-C_ENV1   dc.l    0
+C_ENV1   dc.l    0,0
         dc.l    "EN01"
-C_ENV2   dc.l    0
+C_ENV2   dc.l    0,0
         dc.l    "EN02"
-C_ENV3   dc.l    0
+C_ENV3   dc.l    0,0
         dc.l    "EN03"
-C_ENV4   dc.l    0
+C_ENV4   dc.l    0,0
         dc.l    "EN04"
-C_ENV5   dc.l    0
+C_ENV5   dc.l    0,0
         dc.l    "EN05"
-C_ENV6   dc.l    0
+C_ENV6   dc.l    0,0
         dc.l    "EN06"
-C_ENV7   dc.l    0
+C_ENV7   dc.l    0,0
         dc.l    "EN07"
-C_ENV8   dc.l    0
+C_ENV8   dc.l    0,0
         dc.l    "EN08"
-C_ENV9   dc.l    0
+C_ENV9   dc.l    0,0
         dc.l    "EN09"
-C_ENV10  dc.l    0
+C_ENV10  dc.l    0,0
         dc.l    "EN10"
-C_ENV11  dc.l    0
+C_ENV11  dc.l    0,0
         dc.l    "EN11"
-C_ENV12  dc.l    0
+C_ENV12  dc.l    0,0
         dc.l    "EN12"
-C_ENV13  dc.l    0
+C_ENV13  dc.l    0,0
         dc.l    "EN13"
-C_ENV14  dc.l    0
+C_ENV14  dc.l    0,0
         dc.l    "EN14"
-C_ENV15  dc.l    0
+C_ENV15  dc.l    0,0
         dc.l    "EN15"
-C_ENV16  dc.l    0
+C_ENV16  dc.l    0,0
         dc.l    "EN16"
-C_ENV17  dc.l    0
+C_ENV17  dc.l    0,0
         dc.l    "EN17"
-C_ENV18  dc.l    0
+C_ENV18  dc.l    0,0
         dc.l    "EN18"
-C_ENV19  dc.l    0
+C_ENV19  dc.l    0,0
         dc.l    "EN19"
-C_ENV20  dc.l    0
+C_ENV20  dc.l    0,0
         dc.l    "EN20"
-C_ENV21  dc.l    0
+C_ENV21  dc.l    0,0
         dc.l    "EN21"
-C_ENV22  dc.l    0
+C_ENV22  dc.l    0,0
         dc.l    "EN22"
-C_ENV23  dc.l    0
+C_ENV23  dc.l    0,0
         dc.l    "EN23"
-C_ENV24  dc.l    0
+C_ENV24  dc.l    0,0
         dc.l    "EN24"
-C_ENV25  dc.l    0
+C_ENV25  dc.l    0,0
         dc.l    "EN25"
-C_ENV26  dc.l    0
+C_ENV26  dc.l    0,0
         dc.l    "EN26"
-C_ENV27  dc.l    0
+C_ENV27  dc.l    0,0
         dc.l    "EN27"
-C_ENV28  dc.l    0
+C_ENV28  dc.l    0,0
         dc.l    "EN28"
-C_ENV29  dc.l    0
+C_ENV29  dc.l    0,0
         dc.l    "EN29"
-C_ENV30  dc.l    0
+C_ENV30  dc.l    0,0
         dc.l    "EN30"
-C_ENV31  dc.l    0
+C_ENV31  dc.l    0,0
         dc.l    "EN31"
-C_ENV32  dc.l    0
+C_ENV32  dc.l    0,0
         dc.l    "EN32"
 C_end
 
 reset_counters:
     lea C_start,a0
-    move    #(C_end-C_start)/8-1,d0
-.l  clr.l   (a0)+
-    addq    #4,a0
+    moveq    #(C_end-C_start)/12-1,d0
+.l  
+    clr.l   (a0)+
+    clr.l   (a0)+
+    add     #4,a0
     dbf d0,.l
     rts
 
 sid_get_counters:
     lea     C_start,a2
-    move    #(C_end-C_start)/8-1,d2
-    move.l  C_CLK1,d3
+    moveq   #(C_end-C_start)/12-1,d3
     rts
 
-    endif
+
+counter_1:
+    dc.l    0,1
+
+  endif ; COUNTERS
 
 COUNT macro
     if COUNTERS
-    addq.l  #1,\1
+    pushm   d0/a0/a1
+    lea     counter_1+8(pc),a0
+    lea     \1+8(pc),a1
+    sub.b   d0,d0
+    addx.l  -(a0),-(a1)
+    addx.l  -(a0),-(a1)
+    popm    d0/a0/a1
     endif
     endm
     
@@ -1376,10 +1387,8 @@ envelope_clock:
     COUNT   C_ENV6
     
 .loopRelease
-
-
 .2Release
-    COUNT   C_ENV8
+    COUNT   C_ENV7
 
     sub.l   d1,d0   * delta_t -= rate_step
     
@@ -1388,27 +1397,27 @@ envelope_clock:
     cmp.b   d4,d3
     bne.b   .continueLoopRelease
 
-    COUNT   C_ENV9
+    COUNT   C_ENV8
 
     moveq   #0,d3   * exponential_counter
     tst.b   envelope_hold_zero(a0)
     bne.b   .continueLoopRelease
  
-    COUNT   C_ENV10
+    COUNT   C_ENV9
 
     subq.b  #1,d5
 
     * Values not in switch scope are null
     move.b  (a1,d5.w),d2 
     beq.b   .continueLoopRelease
-    COUNT   C_ENV11
+    COUNT   C_ENV10
 
     move.b  d2,envelope_exponential_counter_period(a0)
     move.b  d2,d4
     * case 0x00:
     tst.b   d5
     bne.b   .continueLoopRelease
-    COUNT   C_ENV12
+    COUNT   C_ENV11
     * When the envelope counter is changed to zero, it is frozen at zero.
     st      envelope_hold_zero(a0)
 
@@ -1417,9 +1426,9 @@ envelope_clock:
     move.l  d6,d1
 
     cmp.l   d1,d0
-    bhs.b   .2Release
+    bhs     .2Release
 
-    COUNT   C_ENV7
+    COUNT   C_ENV12
 
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
@@ -1447,61 +1456,61 @@ envelope_clock:
 ;    jmp     (a2)
 ;
 .loopDecaySustainDo
-    COUNT   C_ENV24
+    COUNT   C_ENV13
 
     move.b  envelope_sustain_level(a0),d7
 
 .2DecaySustain
-    COUNT   C_ENV25    
+    COUNT   C_ENV14    
     sub.l   d1,d0   * delta_t -= rate_step
      
     addq.b  #1,d3
     ;cmp.b   envelope_exponential_counter_period(a0),d3
     cmp.b   d4,d3
-    bne.b   .continueLoopDecaySustain
+    bne     .continueLoopDecaySustain
 
-    COUNT   C_ENV26
+    COUNT   C_ENV15
 
     moveq   #0,d3   * exponential_counter
 
     tst.b   envelope_hold_zero(a0)
-    bne.b   .continueLoopDecaySustain
+    bne     .continueLoopDecaySustain
 
-    COUNT   C_ENV27
+    COUNT   C_ENV16
 
     cmp.b   d7,d5
     beq.b   .break1DecaySustain
     subq.b  #1,d5
 
-    COUNT   C_ENV28
+    COUNT   C_ENV17
 
 .break1DecaySustain
-    COUNT   C_ENV29
+    COUNT   C_ENV18
 
     * Values not in switch scope are null
     move.b  (a1,d5.w),d2 
     beq.b   .continueLoopDecaySustain
 
-    COUNT   C_ENV30
+    COUNT   C_ENV19
 
     move.b  d2,envelope_exponential_counter_period(a0)
     move.b  d2,d4
     * case 0x00:
     tst.b   d5
-    bne.b   .continueLoopDecaySustain
+    bne    .continueLoopDecaySustain
     * When the envelope counter is changed to zero, it is frozen at zero.
     st      envelope_hold_zero(a0)
 
-    COUNT   C_ENV31
+    COUNT   C_ENV20
 
 .continueLoopDecaySustain
     * rate_step = rate_period
     move.l  d6,d1
 
     cmp.l   d1,d0
-    bhs.b   .2DecaySustain
+    bhs    .2DecaySustain
  
-    COUNT   C_ENV23
+    COUNT   C_ENV21
 
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
@@ -1543,14 +1552,12 @@ envelope_clock:
 ;
 
 .loopAttackDo
-    COUNT   C_ENV16
-
-
+    COUNT   C_ENV22
 
     ;;moveq   #0,d3 - envelope_exponential_counter
     
 .2attack
-    COUNT   C_ENV17
+    COUNT   C_ENV23
 
     sub.l   d1,d0   * delta_t -= rate_step
 
@@ -1560,7 +1567,7 @@ envelope_clock:
     cmp.b   #$ff,d5
     bne     .break1Attack
 
-    COUNT   C_ENV18
+    COUNT   C_ENV24
 
     ; Switch to the decay-sustain state
 
@@ -1573,23 +1580,24 @@ envelope_clock:
     bra     .break1DecaySustain
     
 .break1Attack
-    COUNT   C_ENV19
+    COUNT   C_ENV25
 
     * Values not in switch scope are null
     move.b  (a1,d5.w),d2 
     beq.b   .continueLoopAttack
     move.b  d2,envelope_exponential_counter_period(a0)
     move.b  d2,d4
-    COUNT   C_ENV20
+
+    COUNT   C_ENV26
 
 .continueLoopAttack
     * rate_step = rate_period
     move.l  d6,d1
 
     cmp.l   d1,d0
-    bhs.b   .2attack
+    bhs    .2attack
 
-    COUNT   C_ENV15
+    COUNT   C_ENV27
 
     move.b  d5,envelope_counter(a0)
     clr.b    envelope_exponential_counter(a0)
