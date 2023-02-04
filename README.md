@@ -16,11 +16,12 @@ output buffer address and amount of SID cycles to run.
 - oversample3x14: Sample three times, heavier than above.
 - oversample4x14: Sample four times, heavier than above.
 
-The fast modes produce sampling noise depending on the tune that is being
+The "fast" modes produce sampling noise depending on the tune that is being
 played. The interpolate and oversample modes should reduce the noise.
 
-A 68060 at 50MHz can manage the fast modes at CPU load of 50-80% depending
-on the tune that is being played.
+A 68060 at 50MHz can manage the "fast" modes at CPU load of around 50% depending
+on the tune that is being played. Oversample x2, x3 and interpolate also likely
+work.
 
 The code is optimized for 68060. It uses a lot of multiplications and tries
 to avoid divisions. Instructions have been arranged for superscalar execution.
