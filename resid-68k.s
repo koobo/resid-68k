@@ -729,35 +729,34 @@ wave_output_P_T:
     move.l  wave_accumulator(a1),d2
     eor.l   d2,d1
 .noRingMod
-    moveq   #11,d3 * shift
+    moveq   #11+1,d3 * shift
     and.l   #$800000,d1
     beq     .noMsb
     not.l   d0
 .noMsb
     lsr.l   d3,d0
-    and     #$0fff,d0
+    and     #$0fff>>1,d0
     ;------------------------ wave_output___T:
 
-    lsr.w   #1,d0
+    ;lsr.w   #1,d0
     move.l  wave_wave_P_T(a0),a1
-    move.b  (a1,d0.w),d1
-    lsl     #4,d1
+    move.b  (a1,d0.w),d0
+    lsl     #4,d0
 
     ;------------------------ wave_output___P:
     tst.b   wave_test(a0)
     bne.b   .do
-    moveq   #12,d2 * shift
-    move.l  wave_accumulator(a0),d0
-    lsr.l   d2,d0
-    cmp     wave_pw(a0),d0
+    ;moveq   #12,d2 * shift
+    move.l  wave_accumulator(a0),d1
+    lsr.l   d3,d1
+    cmp     wave_pw(a0),d1
     bhs.b   .do
     moveq   #0,d0
     jmp     (a3)
 .do
-    move    #$0fff,d0
     ;------------------------ wave_output___P:
 
-    and     d1,d0
+    and     #$0fff,d0
     jmp     (a3)
 
 
@@ -772,7 +771,6 @@ wave_output_PS_:
     move.b  (a1,d0.w),d1
     lsl.w   #4,d1
 
-    ;bsr     wave_output_P__sub
     ;------------------------ wave_output___P:
     tst.b   wave_test(a0)
     bne.b   .do
@@ -801,7 +799,6 @@ wave_output_PST:
     move.b  (a1,d0.w),d1
     lsl.w   #4,d1
 
-    ;bsr     wave_output_P__sub
     ;------------------------ wave_output___P:
     tst.b   wave_test(a0)
     bne.b   .do
