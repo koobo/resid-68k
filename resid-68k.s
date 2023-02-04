@@ -127,6 +127,10 @@ C_WO9    dc.l    0,0
         dc.l    "WO9 "
 C_W10    dc.l    0,0
         dc.l    "W10 "
+C_W11    dc.l    0,0
+        dc.l    "W11 "
+C_W12    dc.l    0,0
+        dc.l    "W12 "
 C_EFLT1  dc.l    0,0
         dc.l    "EFL1"
 C_EFLT2  dc.l    0,0
@@ -648,6 +652,7 @@ wave_output___T:
     and.l   #$800000,d1
     beq     .noMsb
     not.l   d0
+    COUNT   C_W11
 .noMsb
     lsr.l   d3,d0
     and     #$0fff,d0
@@ -689,6 +694,7 @@ wave_output_P__:
     cmp     wave_pw(a0),d0  * 1; 2+2
     bhs.b   .do             * 0/1/7; 6 taken, 4 not taken
     moveq   #0,d0           * 1; 2 
+    COUNT   C_W12
     jmp     (a3)            
 .do
     move    #$0fff,d0       * 1; 2,4?
