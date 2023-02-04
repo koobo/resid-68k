@@ -1360,6 +1360,8 @@ envelope_clock:
     move.l  d0,envelope_rate_counter(a0)
     jmp     (a2)
 
+    cnop    0,4
+
 .2
     COUNT   C_ENV5
 
@@ -1439,7 +1441,9 @@ envelope_clock:
 **************************************
 * DECAY SUSTAIN
 **************************************
-    
+
+    cnop    0,4
+
 ;.loopDecaySustain
 ;    COUNT   C_ENV22
 ;
@@ -1550,6 +1554,8 @@ envelope_clock:
 ;    move.l  d0,envelope_rate_counter(a0)
 ;    jmp     (a2)
 ;
+
+    cnop    0,4
 
 .loopAttackDo
     COUNT   C_ENV22
