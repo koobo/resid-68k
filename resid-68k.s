@@ -1051,7 +1051,8 @@ voice_reset:
     rts
 
 * in:
-*    a2 = object
+*    a0 = wave
+*    a2 = voice
 * out:
 *    d0 = Amplitude modulated waveform output.
 *         Ideal range [-2048*255, 2047*255].
@@ -1059,7 +1060,7 @@ voice_reset:
 *    d0-d4,a0,a1,a2
 
 VOICE_OUT macro
-    move.l  voice_wave(a2),a0
+    ;move.l  voice_wave(a2),a0
     lea     .vo\1(pc),a3
     ;bra     wave_output
     * Shortcut:
@@ -3128,15 +3129,19 @@ sid_clock:
     sub.l   a3,d7
     bne     .loop
 
-.loopExit
+;.loopExit
+    * a0 = wave3
+
      ; Clock filter
      ; Get input
     move.l  sid_voice3(a5),a2
     VOICE_OUT 3
     * Assume voice objects are stored one after another
+    lea     -wave_SIZEOF(a0),a0
     lea     -voice_SIZEOF(a2),a2
     move.l  d0,d5
     VOICE_OUT 2
+    lea     -wave_SIZEOF(a0),a0
     lea     -voice_SIZEOF(a2),a2
     move.l  d0,d6
     VOICE_OUT 1
