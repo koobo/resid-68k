@@ -131,6 +131,22 @@ C_W11    dc.l    0,0
         dc.l    "W11 "
 C_W12    dc.l    0,0
         dc.l    "W12 "
+C_W13    dc.l    0,0
+        dc.l    "W13 "
+C_W14    dc.l    0,0
+        dc.l    "W14 "
+C_W15    dc.l    0,0
+        dc.l    "W15 "
+C_W16    dc.l    0,0
+        dc.l    "W16 "
+C_W17    dc.l    0,0
+        dc.l    "W17 "
+C_W18    dc.l    0,0
+        dc.l    "W18 "
+C_W19    dc.l    0,0
+        dc.l    "W19 "
+C_W20    dc.l    0,0
+        dc.l    "W20 "
 C_EFLT1  dc.l    0,0
         dc.l    "EFL1"
 C_EFLT2  dc.l    0,0
@@ -228,13 +244,7 @@ counter_1:
 
 COUNT macro
     if COUNTERS
-    pushm   d0/a0/a1
-    lea     counter_1+8(pc),a0
-    lea     \1+8(pc),a1
-    sub.b   d0,d0
-    addx.l  -(a0),-(a1)
-    addx.l  -(a0),-(a1)
-    popm    d0/a0/a1
+    addq.l  #1,\1+4
     endif
     endm
     
@@ -327,12 +337,17 @@ wave_writeCONTROL_REG:
     ; Store wave generator routine address
     ;move.w  d1,wave_waveform(a0)
     lea     wave_output\.tab(pc),a1
+ 
+    moveq   #$04,d2
+    and.b   d0,d2
+    move.b  d2,wave_ring_mod(a0)
+
+    beq.b   .noRm
+    * Select a ring mod variant of the table
+    add     #16,d1
+.noRm
     add.w   (a1,d1.w*2),a1
     move.l  a1,wave_get_output(a0)
-
-    moveq   #$04,d2
-    and.b  d0,d2
-    move.b  d2,wave_ring_mod(a0)
 
     moveq   #$02,d1
     and.b  d0,d1
@@ -619,10 +634,10 @@ WAVE_SYNC macro
 * uses: 
 *   d0-d4,a0,a1
 wave_output:
-    
-    move.w  wave_waveform(a0),d0
-    move.w  .tab(pc,d0.w*2),d0
-    jmp     .tab(pc,d0.w)
+;    
+;    move.w  wave_waveform(a0),d0
+;    move.w  .tab(pc,d0.w*2),d0
+;    jmp     .tab(pc,d0.w)
 
 .tab
     dc.w     wave_output____-.tab
@@ -641,40 +656,70 @@ wave_output:
     dc.w     wave_outputNP_T-.tab
     dc.w     wave_outputNPS_-.tab
     dc.w     wave_outputNPST-.tab
+.tabRingMod
+    dc.w     wave_output____-.tab
+    dc.w     wave_output___T_ring-.tab
+    dc.w     wave_output__S_-.tab
+    dc.w     wave_output__ST-.tab
+    dc.w     wave_output_P__-.tab
+    dc.w     wave_output_P_T_ring-.tab
+    dc.w     wave_output_PS_-.tab
+    dc.w     wave_output_PST-.tab
+    dc.w     wave_outputN___-.tab
+    dc.w     wave_outputN__T-.tab
+    dc.w     wave_outputN_S_-.tab
+    dc.w     wave_outputN_ST-.tab
+    dc.w     wave_outputNP__-.tab
+    dc.w     wave_outputNP_T-.tab
+    dc.w     wave_outputNPS_-.tab
+    dc.w     wave_outputNPST-.tab
 
 wave_output___T:
     COUNT   C_WO1
     move.l  wave_accumulator(a0),d0
     move.l  d0,d1
-    tst.b   wave_ring_mod(a0)
-    beq.b   .noRingMod
-    COUNT   C_W10
-
-    move.l  wave_sync_source(a0),a1
-    move.l  wave_accumulator(a1),d2
-    eor.l   d2,d1
-.noRingMod
+  
     moveq   #11,d3 * shift
     and.l   #$800000,d1
-    beq     .noMsb
+    beq.b   .noMsb
     not.l   d0
-    COUNT   C_W11
+    COUNT   C_WO2
+.noMsb
+    lsr.l   d3,d0
+    and     #$0fff,d0
+    jmp     (a3)
+
+wave_output___T_ring:
+    COUNT   C_WO3
+    move.l  wave_accumulator(a0),d0
+    move.l  d0,d1
+ 
+    move.l  wave_sync_source(a0),a1
+    moveq   #11,d3 * shift
+    move.l  wave_accumulator(a1),d2
+    eor.l   d2,d1
+
+    and.l   #$800000,d1
+    beq.b   .noMsb
+    not.l   d0
+    COUNT   C_WO4
 .noMsb
     lsr.l   d3,d0
     and     #$0fff,d0
     jmp     (a3)
 
 
-wave_output__S_:
-    COUNT   C_WO2
 
+wave_output__S_:
+    COUNT   C_WO5
     moveq   #12,d1
     move.l  wave_accumulator(a0),d0
     lsr.l   d1,d0
     jmp     (a3)
 
+
 wave_output__ST:
-    COUNT   C_WO3
+    COUNT   C_WO6
 
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
@@ -689,7 +734,7 @@ wave_output__ST:
 * out:
 *   d0 = $000 or $fff
 wave_output_P__:
-    COUNT   C_WO4
+    COUNT   C_WO7
 
     ;tst.b   wave_test(a0)
     ;bne.b   .do
@@ -701,7 +746,7 @@ wave_output_P__:
     bhs.b   .do             * 0/1/7; 6 taken, 4 not taken
     ;moveq   #0,d0           * 1; 2 
     move.w  wave_test_mask(a0),d0
-    COUNT   C_W12
+    COUNT   C_WO8
     jmp     (a3)            
 .do
     move    #$0fff,d0       * 1; 2,4?
@@ -724,21 +769,16 @@ wave_output_P__:
 
 
 wave_output_P_T:
-    COUNT   C_WO6
+    COUNT   C_WO9
 
     ;------------------------ wave_output___T:
     move.l  wave_accumulator(a0),d0
     move.l  d0,d1
-    tst.b   wave_ring_mod(a0)
-    beq.b   .noRingMod
 
-    move.l  wave_sync_source(a0),a1
-    move.l  wave_accumulator(a1),d2
-    eor.l   d2,d1
-.noRingMod
     moveq   #11+1,d3 * shift
     and.l   #$800000,d1
-    beq     .noMsb
+    beq.b   .noMsb
+    COUNT   C_W10
     not.l   d0
 .noMsb
     lsr.l   d3,d0
@@ -758,6 +798,53 @@ wave_output_P_T:
     lsr.l   d3,d1
     cmp     wave_pw(a0),d1
     bhs.b   .do
+    COUNT   C_W11
+    ;moveq   #0,d0
+    move.w  wave_test_mask(a0),d1
+    and.w   d1,d0
+    jmp     (a3)
+.do
+    ;------------------------ wave_output___P:
+
+    and     #$0fff,d0
+    jmp     (a3)
+
+
+wave_output_P_T_ring:
+    COUNT   C_W12
+
+    ;------------------------ wave_output___T:
+    move.l  wave_accumulator(a0),d0
+    move.l  d0,d1
+    
+    move.l  wave_sync_source(a0),a1
+    moveq   #11+1,d3 * shift
+    move.l  wave_accumulator(a1),d2
+    eor.l   d2,d1
+
+    and.l   #$800000,d1
+    beq.b   .noMsb
+    not.l   d0
+    COUNT   C_W13
+.noMsb
+    lsr.l   d3,d0
+    and     #$0fff>>1,d0
+    ;------------------------ wave_output___T:
+
+    ;lsr.w   #1,d0
+    move.l  wave_wave_P_T(a0),a1
+    move.b  (a1,d0.w),d0
+    lsl     #4,d0
+
+    ;------------------------ wave_output___P:
+    ;tst.b   wave_test(a0)
+    ;bne.b   .do
+    ;moveq   #12,d2 * shift
+    move.l  wave_accumulator(a0),d1
+    lsr.l   d3,d1
+    cmp     wave_pw(a0),d1
+    bhs.b   .do
+    COUNT   C_W14
     ;moveq   #0,d0
     move.w  wave_test_mask(a0),d1
     and.w   d1,d0
@@ -770,7 +857,7 @@ wave_output_P_T:
 
 
 wave_output_PS_:
-    COUNT   C_WO7
+    COUNT   C_W15
 
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
@@ -788,6 +875,7 @@ wave_output_PS_:
     lsr.l   d2,d0
     cmp     wave_pw(a0),d0
     bhs.b   .do
+    COUNT   C_W16
     ;moveq   #0,d0
     move.w  wave_test_mask(a0),d1
     and.w   d1,d0
@@ -800,7 +888,7 @@ wave_output_PS_:
     jmp     (a3)
 
 wave_output_PST:
-    COUNT   C_WO8
+    COUNT   C_W17
 
     ; wave_output__S_ inlined
     moveq   #12,d2 * shift
@@ -818,6 +906,7 @@ wave_output_PST:
     lsr.l   d2,d0
     cmp     wave_pw(a0),d0
     bhs.b   .do
+    COUNT   C_W18
     ;moveq   #0,d0
     move.w  wave_test_mask(a0),d1
     and.w   d1,d0
@@ -830,7 +919,7 @@ wave_output_PST:
     jmp     (a3)
 
 wave_outputN___:
-    COUNT   C_WO9
+    COUNT   C_W19
 
     move.l  wave_shift_register(a0),d1
 
@@ -884,6 +973,7 @@ wave_outputNP__:
 wave_outputNP_T:
 wave_outputNPS_:
 wave_outputNPST:
+    COUNT   C_W20
     moveq   #0,d0
     jmp     (a3)
 
