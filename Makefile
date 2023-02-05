@@ -4,7 +4,7 @@ VASM_FLAGS := -Fhunkexe -kick1hunks -quiet -m68020 -nosym $(INCLUDE)
 
 RESID    := resid-68k.i resid-68k.s
 
-DATE := `git log -1 --format=%cI | head -c16 | sed s/://`
+DATE := `git log -1 --format=%aI | head -c16 | sed s/://`
 
 all: testAudio testCycles
 
