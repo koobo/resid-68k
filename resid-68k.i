@@ -68,7 +68,7 @@ FIXP_MASK = $ffff
         UWORD   wave_freq
         UWORD   wave_pw
         UWORD   wave_waveform       * Control register right-shifted 4 bits for table lookup
-        UWORD   wave_pad
+        UWORD   wave_test_mask
         ULONG   wave_get_output
     LABEL wave_SIZEOF ; = 48
 

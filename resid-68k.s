@@ -349,7 +349,13 @@ wave_writeCONTROL_REG:
     move.l  #$7ffff8,wave_shift_register(a0)
 .1
     move.b  d0,wave_test(a0)
+    beq.b   .noTest
+    * Test bit forces pulse out to be 0xfff
+    move.w  #$fff,wave_test_mask(a0)
     rts
+.noTest
+    clr.w   wave_test_mask(a0)
+    rts 
 
 
 * in:
@@ -685,15 +691,16 @@ wave_output__ST:
 wave_output_P__:
     COUNT   C_WO4
 
-    tst.b   wave_test(a0)
-    bne.b   .do
-    COUNT   C_WO5
+    ;tst.b   wave_test(a0)
+    ;bne.b   .do
+    ;COUNT   C_WO5
     moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0
     lsr.l   d2,d0
     cmp     wave_pw(a0),d0  * 1; 2+2
     bhs.b   .do             * 0/1/7; 6 taken, 4 not taken
-    moveq   #0,d0           * 1; 2 
+    ;moveq   #0,d0           * 1; 2 
+    move.w  wave_test_mask(a0),d0
     COUNT   C_W12
     jmp     (a3)            
 .do
@@ -744,14 +751,16 @@ wave_output_P_T:
     lsl     #4,d0
 
     ;------------------------ wave_output___P:
-    tst.b   wave_test(a0)
-    bne.b   .do
+    ;tst.b   wave_test(a0)
+    ;bne.b   .do
     ;moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d1
     lsr.l   d3,d1
     cmp     wave_pw(a0),d1
     bhs.b   .do
-    moveq   #0,d0
+    ;moveq   #0,d0
+    move.w  wave_test_mask(a0),d1
+    and.w   d1,d0
     jmp     (a3)
 .do
     ;------------------------ wave_output___P:
@@ -772,14 +781,16 @@ wave_output_PS_:
     lsl.w   #4,d1
 
     ;------------------------ wave_output___P:
-    tst.b   wave_test(a0)
-    bne.b   .do
+    ;tst.b   wave_test(a0)
+    ;bne.b   .do
     moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0
     lsr.l   d2,d0
     cmp     wave_pw(a0),d0
     bhs.b   .do
-    moveq   #0,d0
+    ;moveq   #0,d0
+    move.w  wave_test_mask(a0),d1
+    and.w   d1,d0
     jmp     (a3)
 .do
     move    #$0fff,d0
@@ -800,14 +811,16 @@ wave_output_PST:
     lsl.w   #4,d1
 
     ;------------------------ wave_output___P:
-    tst.b   wave_test(a0)
-    bne.b   .do
+    ;tst.b   wave_test(a0)
+    ;bne.b   .do
     moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0
     lsr.l   d2,d0
     cmp     wave_pw(a0),d0
     bhs.b   .do
-    moveq   #0,d0
+    ;moveq   #0,d0
+    move.w  wave_test_mask(a0),d1
+    and.w   d1,d0
     jmp     (a3)
 .do
     move    #$0fff,d0
