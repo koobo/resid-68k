@@ -800,8 +800,7 @@ wave_output_P_T:
     bhs.b   .do
     COUNT   C_W11
     ;moveq   #0,d0
-    move.w  wave_test_mask(a0),d1
-    and.w   d1,d0
+    and.w   wave_test_mask(a0),d0
     jmp     (a3)
 .do
     ;------------------------ wave_output___P:
@@ -846,8 +845,7 @@ wave_output_P_T_ring:
     bhs.b   .do
     COUNT   C_W14
     ;moveq   #0,d0
-    move.w  wave_test_mask(a0),d1
-    and.w   d1,d0
+    and.w   wave_test_mask(a0),d0
     jmp     (a3)
 .do
     ;------------------------ wave_output___P:
@@ -877,8 +875,7 @@ wave_output_PS_:
     bhs.b   .do
     COUNT   C_W16
     ;moveq   #0,d0
-    move.w  wave_test_mask(a0),d1
-    and.w   d1,d0
+    and.w   wave_test_mask(a0),d0
     jmp     (a3)
 .do
     move    #$0fff,d0
