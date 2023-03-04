@@ -2838,6 +2838,10 @@ sid_set_sampling_method:
     cmp.b   #SAMPLING_METHOD_SAMPLE_FAST14,d1
     beq     .go
 
+    lea     sid_clock_fast16(pc),a1
+    cmp.b   #SAMPLING_METHOD_SAMPLE_FAST16,d1
+    beq     .go
+
     lea     sid_clock_interpolate14(pc),a1
     cmp.b   #SAMPLING_METHOD_INTERPOLATE14,d1
     beq     .go
@@ -3190,33 +3194,35 @@ sid_clock_fast16:
     add.l   #1<<(FIXP_SHIFT-1),d5
 
     * d2 = delta_t_sample
+    moveq   #FIXP_SHIFT,d4
     move.l  d5,d2
-    swap    d2
-    ext.l   d2      * >>FIXP_SHIFT
+    asr.l   d4,d2       * >>FIXP_SHIFT
    
-    * Loop termination conditions:
-    * if (delta_t_sample > delta_t)
-    cmp.l   d0,d2
-    bgt     .break
+       * Loop termination conditions:
     * buffer overflow check
     * if (s >= n) 
     cmp.l   d1,d3
     bge     .x     
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .break
+ 
+    * sample_offset = (next_sample_offset & FIXP_MASK) - (1 << (FIXP_SHIFT - 1));
+    and.l   #FIXP_MASK,d5
+    sub.l   #1<<(FIXP_SHIFT-1),d5
+    move.l  d5,a4
 
-    pushm   d0/d1/d3/d5/a1
+    * delta_t -= delta_t_sample
+    sub.l   d2,d0
+    
+    pushm   d0/d1/d3/a1 * 4 regs
     move.l  d2,d0
     bsr     sid_clock
-    popm    d0/d1/d3/d5/a1
-    
-    sub.l   d2,d0
-    move.l  d5,d6
-    and.l   #FIXP_MASK,d6
-    sub.l   #1<<(FIXP_SHIFT-1),d6
-    move.l  d6,a4
+    popm    d0/d1/d3/a1
     
     ; Inline output generation
-    move.l  sid_extfilt(a5),a0
     ;extfilter_output inlined
+    move.l  sid_extfilt(a5),a0
     moveq   #91,d6
     muls.l  extfilter_Vo(a0),d6
     moveq   #10,d4
@@ -3224,7 +3230,7 @@ sid_clock_fast16:
     CLAMP16  d6
 
     * store one sample d3
-    move.w  d6,(a1,d3.l*2)    * chip write
+    move.w  d6,(a1,d3.l*2)    * buffer write
     addq.l  #1,d3
     bra     .loop
     
@@ -3236,7 +3242,7 @@ sid_clock_fast16:
 
     swap    d0
     clr.w   d0      * delta_t<<FIXP_SHIFT
-    sub.l   d0,sid_sample_offset(a5)
+    sub.l   d0,a4
 .x
     move.l  a4,sid_sample_offset(a5)
   
@@ -3306,13 +3312,9 @@ sid_clock_fast8:
     muls.l  extfilter_Vo(a0),d6
     asr.l   d4,d6   * FP shift + 16->8 bit shift
     CLAMP8  d6
-    * Volume scaling
-    ;mulu    sid_volume(a5),d6
-    ;lsr.w   #6,d6
 
     * store one byte at d3
     move.b  d6,(a1,d3.l)    * chip write
-
     addq.l  #1,d3
     bra     .loop
     
