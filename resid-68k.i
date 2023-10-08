@@ -139,8 +139,9 @@ FIXP_MASK = $ffff
         ULONG   sid_sample_offset
         APTR    sid_clock_routine
         ULONG   sid_sample_prev         * interpolate mode
-        ULONG   sid_oversampleScale     * oversample mode
         ULONG   sid_oversample          * oversample mode
+        ULONG   sid_outputScale
+        ULONG   sid_outputBoost
         UWORD   sid_volume
         UBYTE   sid_bus_value           * unused
         UBYTE   sid_sampling_method

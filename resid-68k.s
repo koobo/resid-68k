@@ -2636,12 +2636,14 @@ sid_reset:
  endif
     rts
 
+* UNUSED
 * in:
 *   a0 = object
 * out:
 *   d0 = 8-bit output
 * uses: 
 *   d0,a0
+ REM
 sid_output8:
 .range = 1<<8
 .half  = .range>>1
@@ -2656,14 +2658,16 @@ sid_output8:
     * clamp to [-128..127]
     CLAMP8  d0
     rts
+ EREM
 
-
+* UNUSED
 * in:
 *   a0 = object
 * out:
 *   d0 = 16-bit output
 * uses: 
 *   d0,a0
+ REM
 sid_output16:
 .range = 1<<16
 .half  = .range>>1
@@ -2679,6 +2683,7 @@ sid_output16:
     
     CLAMP16 d0
     rts
+ EREM
 
 * in:
 *   a0 = object
@@ -2829,7 +2834,11 @@ sid_write:
     bra     filter_writeMODE_VOL
 
 
-sid_set_sampling_method:
+sid_set_sampling_method:   
+    * Default scale factor to scale to final 16-bit sample range
+    * output*scale/(1<<10)
+    move.l  #91,sid_outputScale(a0)
+
     lea     sid_clock_fast8(pc),a1
     cmp.b   #SAMPLING_METHOD_SAMPLE_FAST8,d1
     beq     .go
@@ -2849,17 +2858,17 @@ sid_set_sampling_method:
     lea     sid_clock_oversample14(pc),a1
 
     move.l  #2,sid_oversample(a0)
-    move.l  #46,sid_oversampleScale(a0)
+    move.l  #46,sid_outputScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x14,d1
     beq     .go
 
     move.l  #3,sid_oversample(a0)
-    move.l  #31,sid_oversampleScale(a0)
+    move.l  #31,sid_outputScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE3x14,d1
     beq     .go
 
     move.l  #4,sid_oversample(a0)
-    move.l  #23,sid_oversampleScale(a0)
+    move.l  #23,sid_outputScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,d1
     beq     .go
 
@@ -2971,6 +2980,27 @@ sid_set_sampling_parameters_paula:
     moveq   #0,d0
     rts
 
+* In:
+*   a0 = object
+*   d0 = boost value to adjust final sample scaling, boost by factor x. Range 0..4
+sid_set_output_boost: 
+    cmp.l   #4,d0
+    bls     .1
+    moveq   #0,d0
+.1
+    move.l  d0,sid_outputBoost(a0)
+    rts
+
+
+* Out:
+*   d6 = Boosted or unchanged output scale factor
+sid_get_outputScale:
+    move.l  sid_outputScale(a0),d6
+    move.l  sid_outputBoost(a0),d7
+    beq     .1
+    mulu.w  d7,d6
+.1
+    rts
 
 * in:
 *   a5 = object
@@ -3185,6 +3215,9 @@ sid_clock_fast16:
     moveq   #0,d3
     move.l  sid_sample_offset(a5),a4
     move.l  sid_cycles_per_sample(a5),a6
+
+    bsr     sid_get_outputScale
+    move.l  d6,-(sp)
 .loop
     * d5 = next_sample_offset
     ;move.l  sid_sample_offset(a5),d5
@@ -3223,7 +3256,7 @@ sid_clock_fast16:
     ; Inline output generation
     ;extfilter_output inlined
     move.l  sid_extfilt(a5),a0
-    moveq   #91,d6
+    move.l  (sp),d6
     muls.l  extfilter_Vo(a0),d6
     moveq   #10,d4
     asr.l   d4,d6   * FP 10 shift
@@ -3245,7 +3278,7 @@ sid_clock_fast16:
     sub.l   d0,a4
 .x
     move.l  a4,sid_sample_offset(a5)
-  
+    addq.l  #4,sp
     * samples written
     move.l  d3,d0
     rts
@@ -3268,6 +3301,9 @@ sid_clock_fast8:
     moveq   #0,d3
     move.l  sid_sample_offset(a5),a4
     move.l  sid_cycles_per_sample(a5),a6
+
+    bsr     sid_get_outputScale
+    move.l  d6,-(sp)
 .loop
     * cycle_count next_sample_offset = sample_offset 
     *                + cycles_per_sample
@@ -3307,9 +3343,9 @@ sid_clock_fast8:
     ; Inline output generation
     ;extfilter_output inlined
     move.l  sid_extfilt(a5),a0
-    moveq   #91,d6
-    moveq   #10+8,d4    * FP 10, 16->8    
+    move.l  (sp),d6
     muls.l  extfilter_Vo(a0),d6
+    moveq   #10+8,d4    * FP 10, 16->8    
     asr.l   d4,d6   * FP shift + 16->8 bit shift
     CLAMP8  d6
 
@@ -3330,6 +3366,7 @@ sid_clock_fast8:
 .x
     move.l  a4,sid_sample_offset(a5)
   
+    addq.l  #4,sp
     * samples written
     move.l  d3,d0
     rts
@@ -3352,6 +3389,9 @@ sid_clock_fast14:
     * a6 = s
     sub.l   a6,a6
     move.l  sid_sample_offset(a5),a4
+
+    bsr     sid_get_outputScale
+    move.l  d6,-(sp)
 .loop
     * d5 = next_sample_offset
     move.l  a4,d5
@@ -3384,7 +3424,7 @@ sid_clock_fast14:
 
     ; Inline output generation
     move.l  sid_extfilt(a5),a0
-    moveq   #91,d6
+    move.l  (sp),d6
     muls.l  extfilter_Vo(a0),d6
     moveq   #10,d4  * FP 10
     asr.l   d4,d6   * FP shift
@@ -3413,11 +3453,13 @@ sid_clock_fast14:
 .x
     move.l  a4,sid_sample_offset(a5)
   
+    addq.l  #4,sp
     * samples written
     move.l  a6,d0
     rts
 
 * A variant more suitable for the 030
+ REM
 sid_clock_fast14_030:
     move.l  a0,a5
     * d3 = s
@@ -3492,7 +3534,7 @@ sid_clock_fast14_030:
     * samples written
     move.l  a6,d0
     rts
-
+ EREM
 
 
 
@@ -3513,6 +3555,9 @@ sid_clock_oversample14:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
+
+    bsr     sid_get_outputScale
+    move.l  d6,-(sp)
 
     move.l  sid_sample_offset(a5),a4
 
@@ -3564,14 +3609,11 @@ sid_clock_oversample14:
     cmp.l   d1,d3
     bge     .x     
     ; ---------------------------------
+    muls.l  (sp),d7
     moveq   #10,d4  * FP 10
-    muls.l  sid_oversampleScale(a5),d7
     asr.l   d4,d7   * FP shift
     CLAMP16 d7
-    * Volume scaling
-    ;muls    sid_volume(a5),d7
-    ;asr.l   #6,d7
-
+    
     * store low 6 bits
     lsr.b   #2,d7
     move.b  d7,(a2,d3.l)     * chip write
@@ -3597,7 +3639,7 @@ sid_clock_oversample14:
     sub.l   d0,a4
 .x
     move.l  a4,sid_sample_offset(a5)
-  
+    addq.l  #4,sp
     * samples written
     move.l  d3,d0
     rts
@@ -3621,6 +3663,9 @@ sid_clock_interpolate14:
     move.l  a0,a5
     * d3 = s
     moveq   #0,d3
+
+    bsr     sid_get_outputScale
+    move.l  d6,-(sp)
 
     move.l  sid_sample_offset(a5),a4
 .loop
@@ -3667,13 +3712,11 @@ sid_clock_interpolate14:
     bsr     sid_clock
 
     * Grab sample 
-    moveq   #10,d6      * FP
     move.l  sid_extfilt(a5),a0
-    moveq   #91,d4
+    move.l  6*4(sp),d4  * access the previous top of the stack
     muls.l  extfilter_Vo(a0),d4
+    moveq   #10,d6      * FP
     asr.l   d6,d4       * FP shift
-    ;CLAMP16 d4
-    ;ext.l   d4
     move.l  d4,sid_sample_prev(a5)
 
     move.l  a6,d0       * a6 cycles, second part
@@ -3683,13 +3726,12 @@ sid_clock_interpolate14:
     popm    d0/d1/d3/d5/a1/a2
     
 
-    moveq   #10,d6      * FP
     move.l  sid_extfilt(a5),a0
-    moveq   #91,d4
+    move.l  (sp),d4
     muls.l  extfilter_Vo(a0),d4
+    moveq   #10,d6      * FP
     asr.l   d6,d4       * FP shift
-    ;CLAMP16 d4
-    ;ext.l   d4
+
     * d4 = sample_now
 
     moveq   #16,d6 * >>FP_SHIFT
@@ -3702,10 +3744,7 @@ sid_clock_interpolate14:
     move.l  d4,sid_sample_prev(a5)
 
     CLAMP16 d7
-    * Volume scaling
-    ;muls    sid_volume(a5),d7
-    ;asr.l   #6,d7
-
+   
     * store low 6 bits
     lsr.b   #2,d7
     move.b  d7,(a2,d3.l)     * chip write
@@ -3756,7 +3795,7 @@ sid_clock_interpolate14:
     sub.l   d0,a4
 .x
     move.l  a4,sid_sample_offset(a5)
-
+    addq.l  #4,sp
     * bytes written
     move.l  d3,d0
     rts
