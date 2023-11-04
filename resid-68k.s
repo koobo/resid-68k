@@ -554,52 +554,50 @@ wave_clock:
 *   d0 = cycle_count delta_t
 * uses:
 *   d0-d6,a0
- REM
-wave_clock_single:
-    tst.b   wave_test(a0)
-    beq     .go
-.x  jmp     (a2)
-.go
-    move    d0,d6
-    subq    #1,d6
-    bmi     .x
-
-    move.l  wave_accumulator(a0),d1
-    moveq   #0,d2
-    move.w  wave_freq(a0),d2
-.loop
-    move.l  d1,d3
-    add.l   d2,d1
-    and.l   #$ffffff,d1
-    * d1 = acc next
-    * d3 = acc 
-
-    not.l   d3
-    and.l   d1,d3
-    * d3 = accumulator_bits_Set
-
-    btst    #23,d3    
-    sne     wave_msb_rising(a0)
-
-    btst    #19,d3
-    beq     .a
-
-    ; clock shift register
-    move.l  wave_shift_register(a0),d4
-    move.l  d4,d5
-    lsl.l   #5,d5 * move bit 17 to position 22
-    eor.l   d4,d5
-    moveq   #10,d3   
-    and.l   #$3fffff,d4 * clear top bit
-    lsl.l   d3,d5 * move bit 22 into X
-    addx.l  d4,d4 * shift and or bit 0
-    move.l  d4,wave_shift_register(a0)
-.a
-    dbf     d6,.loop
-    move.l  d1,wave_accumulator(a0)
-    jmp     (a2)
- EREM
-
+;;wave_clock_single:
+;;    tst.b   wave_test(a0)
+;;    beq     .go
+;;.x  jmp     (a2)
+;;.go
+;;    move    d0,d6
+;;    subq    #1,d6
+;;    bmi     .x
+;;
+;;    move.l  wave_accumulator(a0),d1
+;;    moveq   #0,d2
+;;    move.w  wave_freq(a0),d2
+;;.loop
+;;    move.l  d1,d3
+;;    add.l   d2,d1
+;;    and.l   #$ffffff,d1
+;;    * d1 = acc next
+;;    * d3 = acc 
+;;
+;;    not.l   d3
+;;    and.l   d1,d3
+;;    * d3 = accumulator_bits_Set
+;;
+;;    btst    #23,d3    
+;;    sne     wave_msb_rising(a0)
+;;
+;;    btst    #19,d3
+;;    beq     .a
+;;
+;;    ; clock shift register
+;;    move.l  wave_shift_register(a0),d4
+;;    move.l  d4,d5
+;;    lsl.l   #5,d5 * move bit 17 to position 22
+;;    eor.l   d4,d5
+;;    moveq   #10,d3   
+;;    and.l   #$3fffff,d4 * clear top bit
+;;    lsl.l   d3,d5 * move bit 22 into X
+;;    addx.l  d4,d4 * shift and or bit 0
+;;    move.l  d4,wave_shift_register(a0)
+;;.a
+;;    dbf     d6,.loop
+;;    move.l  d1,wave_accumulator(a0)
+;;    jmp     (a2)
+ 
 * in:
 *   a0 = object
 * uses:
@@ -3094,22 +3092,20 @@ sid_clock:
 
     COUNT   C_CLK3
 
-    move.l  wave_accumulator(a0),d1
+    move.l  wave_accumulator(a0),d1 * max: $ffffff
     move.l  #$800000,d2
     btst    #23,d1      * andi.l #$800000 
     beq.b   .a
     add.l   d2,d2
-.a  sub.l   d1,d2
+.a  sub.l   d1,d2   * d2 = max 0x800000
 
     * d2 = delta_accumulator
 
-    * The lowest note C-0 freq value is $115.
-    * Lowest divisor so the quotient fits into
-    * 16 bits is $101. We can likely use
-    * 16-bit division as it's <=22(1/0) where
-    * the 32-bit is 38(1/0) on 68060.
+    * The lowest note C-0 freq value is around $115. Lowest divisor so the 
+    * quotient fits into 16 bits is $81. We can likely use 16-bit division
+    * as it's <=22(1/0) where the 32-bit is 38(1/0) on 68060.
     divu.w  wave_freq(a0),d2
-    bvc.s   .shortDivOk     ; branch if overflow clear
+    bvc.b   .shortDivOk     ; branch if overflow clear
     
     COUNT   C_CLK4
 
