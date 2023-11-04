@@ -2838,7 +2838,7 @@ sid_set_sampling_method:
     * Default scale factor to scale to final 16-bit sample range
     * output*scale/(1<<10)
     move.l  #91,sid_outputScale(a0)
-
+    ; ---------------------------------
     lea     sid_clock_fast8(pc),a1
     cmp.b   #SAMPLING_METHOD_SAMPLE_FAST8,d1
     beq     .go
@@ -2851,10 +2851,12 @@ sid_set_sampling_method:
     cmp.b   #SAMPLING_METHOD_SAMPLE_FAST16,d1
     beq     .go
 
+    ; ---------------------------------
     lea     sid_clock_interpolate14(pc),a1
     cmp.b   #SAMPLING_METHOD_INTERPOLATE14,d1
     beq     .go
-
+    
+    ; ---------------------------------
     lea     sid_clock_oversample14(pc),a1
 
     move.l  #2,sid_oversample(a0)
@@ -2870,6 +2872,24 @@ sid_set_sampling_method:
     move.l  #4,sid_oversample(a0)
     move.l  #23,sid_outputScale(a0)
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,d1
+    beq     .go
+
+    ; ---------------------------------
+    lea     sid_clock_oversample16(pc),a1
+
+    move.l  #2,sid_oversample(a0)
+    move.l  #46,sid_outputScale(a0)
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x16,d1
+    beq     .go
+
+    move.l  #3,sid_oversample(a0)
+    move.l  #31,sid_outputScale(a0)
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE3x16,d1
+    beq     .go
+
+    move.l  #4,sid_oversample(a0)
+    move.l  #23,sid_outputScale(a0)
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x16,d1
     beq     .go
 
     * Error: set Z
@@ -3643,6 +3663,110 @@ sid_clock_oversample14:
     * samples written
     move.l  d3,d0
     rts
+
+
+* Clock by oversampling and averaging the samples.
+* IDENTITAL TO ABOVE, just not using two separate output buffers.
+* Seems to be effective in reducing the sampling noise.
+* in:
+*   a0 = object
+*   a1 = output buffer pointer
+*   d0 = cycles to run
+*   d1 = buffer size limit in samples
+* out:
+*   d0 = samples written
+* uses:
+*   d0-a6
+sid_clock_oversample16:
+    
+    move.l  a0,a5
+    * d3 = s
+    moveq   #0,d3
+
+    bsr     sid_get_outputScale
+    move.l  d6,-(sp)
+
+    move.l  sid_sample_offset(a5),a4
+
+    * Multiply cycles needed
+    mulu.l  sid_oversample(a5),d0
+.loop
+    * inner loop count
+    move.l  sid_oversample(a5),a6
+    * sample data accumulator
+    moveq   #0,d7
+    pushm   d1/d3/a1
+.innerLoop
+    ; ---------------------------------
+    * d5 = next_sample_offset
+    move.l  a4,d5
+    add.l   sid_cycles_per_sample(a5),d5
+    add.l   #1<<(FIXP_SHIFT-1),d5
+
+    * d2 = delta_t_sample
+    moveq   #FIXP_SHIFT,d4
+    move.l  d5,d2
+    asr.l   d4,d2       * >>FIXP_SHIFT
+   
+;    * Loop termination conditions:
+    * if (delta_t_sample > delta_t)
+    cmp.l   d0,d2
+    bgt     .popAndBreak
+
+    and.l   #FIXP_MASK,d5
+    sub.l   #1<<(FIXP_SHIFT-1),d5
+    move.l  d5,a4
+    sub.l   d2,d0
+
+    pushm   d0/d7
+    move.l  d2,d0
+    bsr     sid_clock
+    popm    d0/d7
+    
+    ; Inline output generation
+    move.l  sid_extfilt(a5),a0
+    add.l   extfilter_Vo(a0),d7
+    ; ---------------------------------
+    subq.w  #1,a6
+    tst.w   a6
+    bgt     .innerLoop
+    popm    d1/d3/a1
+    ; ---------------------------------
+    ; buffer overflow check
+    cmp.l   d1,d3
+    bge     .x     
+    ; ---------------------------------
+    muls.l  (sp),d7
+    moveq   #10,d4  * FP 10
+    asr.l   d4,d7   * FP shift
+    CLAMP16 d7
+    
+    * store one sample d7
+    move.w  d7,(a1,d3.l*2)    * buffer write
+    ; ---------------------------------
+    bra     .loop
+
+.popAndBreak
+    popm    d1/d3/a1
+
+.break
+    ; ---------------------------------
+    * run remaining d0 cycles
+    pushm   d0/d3
+    bsr     sid_clock
+    popm    d0/d3
+
+    swap    d0
+    clr.w   d0      * delta_t<<FIXP_SHIFT
+    sub.l   d0,a4
+.x
+    move.l  a4,sid_sample_offset(a5)
+    addq.l  #4,sp
+    * samples written
+    move.l  d3,d0
+    rts
+
+
 
 
 
