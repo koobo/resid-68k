@@ -2920,6 +2920,12 @@ sid_set_sampling_parameters:
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE3x14,sid_sampling_method(a0)
     beq.b   .2
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,sid_sampling_method(a0)
+    beq.b   .2
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x16,sid_sampling_method(a0)
+    beq.b   .2
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE3x16,sid_sampling_method(a0)
+    beq.b   .2
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x16,sid_sampling_method(a0)
     bne.b   .1
 .2
     mulu.l  sid_oversample(a0),d2
@@ -2975,12 +2981,17 @@ sid_set_sampling_parameters_paula:
     divu.l  d2,d3
     * d3 = Playback frequency in Hz as 22.10 FP
 
-
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x14,sid_sampling_method(a0)
     beq.b   .2
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE3x14,sid_sampling_method(a0)
     beq.b   .2
     cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x14,sid_sampling_method(a0)
+    beq.b   .2
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE2x16,sid_sampling_method(a0)
+    beq.b   .2
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE3x16,sid_sampling_method(a0)
+    beq.b   .2
+    cmp.b   #SAMPLING_METHOD_OVERSAMPLE4x16,sid_sampling_method(a0)
     bne.b   .1
 .2
     mulu.l  sid_oversample(a0),d3
@@ -3739,6 +3750,7 @@ sid_clock_oversample16:
     
     * store one sample d7
     move.w  d7,(a1,d3.l*2)    * buffer write
+    addq.l  #1,d3
     ; ---------------------------------
     bra     .loop
 
