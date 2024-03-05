@@ -1880,6 +1880,8 @@ filter_writeRES_FILT:
     and     #$f,d0
     move.b  d1,filter_res(a0)
     move.b  d0,filter_filt(a0)
+    lsl     #4,d0
+    move.w  d0,filter_filtX16(a0)
     bra     filter_set_Q
     
 
@@ -2006,7 +2008,7 @@ filter_clock:
     bne.b   .1
     clr.l   d3
 .1
-    moveq   #0,d5
+    ;moveq   #0,d5
 
     tst.b   filter_enabled(a0)
     bne.b   .3
@@ -2019,9 +2021,11 @@ filter_clock:
     ;rts
     bra     filter_output
 .3
-    move.b  filter_filt(a0),d5
-    move.w  (.tab,pc,d5.w*2),d5
-    jmp     .tab(pc,d5)
+
+ REM ; option 1
+    move.b  filter_filt(a0),d5   * 1
+    move.w  (.tab,pc,d5.w*2),d5  * 1
+    jmp     .tab(pc,d5)          * 5
 
 .tab    
     dc.w    .f0-.tab
@@ -2040,85 +2044,104 @@ filter_clock:
     dc.w    .fd-.tab
     dc.w    .fe-.tab
     dc.w    .ff-.tab
+ EREM
+    move.w  filter_filtX16(a0),d5   
+    jmp     .f0(pc,d5.w)
 
+    cnop    0,16
 .f0
     add.l   d3,d1
     clr.l   d5
     add.l   d2,d1
     move.l  d1,filter_Vnf(a0)
     bra     .break
+    cnop    0,16
 .f1
     add.l   d3,d2
     move.l  d1,d5
     move.l  d2,filter_Vnf(a0)
     bra     .break
+    cnop    0,16
 .f2
     add.l   d3,d1
     move.l  d2,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
+    cnop    0,16
 .f3
     move.l  d1,d5
     move.l  d3,filter_Vnf(a0)
     add.l   d2,d5
     bra     .break
+    cnop    0,16
 .f4
     add.l   d2,d1
     move.l  d3,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
+    cnop    0,16
 .f5
     move.l  d1,d5
     move.l  d2,filter_Vnf(a0)
     add.l   d3,d5
     bra     .break
+    cnop    0,16
 .f6
     move.l  d2,d5
     move.l  d1,filter_Vnf(a0)
     add.l   d3,d5
     bra     .break
+    cnop    0,16
 .f7
     move.l  d1,d5
     add.l   d2,d5
     clr.l   filter_Vnf(a0)
     add.l   d3,d5
     bra     .break
+    cnop    0,16
 .f8
     add.l   d3,d1
     add.l   d2,d1
     clr.l   d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
+    cnop    0,16
 .f9
     add.l   d3,d2
     move.l  d1,d5
     move.l  d2,filter_Vnf(a0)
     bra     .break
+    cnop    0,16
 .fa
     add.l   d3,d1
     move.l  d2,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
+    cnop    0,16
 .fb
     move.l  d1,d5
     move.l  d3,filter_Vnf(a0)
     add.l   d2,d5
     bra     .break
+    cnop    0,16
 .fc
     add.l   d2,d1
     move.l  d3,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
+    cnop    0,16
 .fd
     move.l  d3,d5
     move.l  d2,filter_Vnf(a0)
     add.l   d1,d5
     bra     .break
+    cnop    0,16
 .fe
     move.l  d3,d5
     move.l  d1,filter_Vnf(a0)
     add.l   d2,d5
     bra     .break
+    cnop    0,16
 .ff
     move.l  d3,d5
     add.l   d2,d5

@@ -113,6 +113,8 @@ FIXP_MASK = $ffff
         APTR    filter_f0
         ULONG   filter_w0_max_1
         ULONG   filter_w0_max_dt
+        UWORD   filter_filtX16
+        UWORD   filter_pad3
     LABEL filter_SIZEOF ; = 56
 
     STRUCTURE   extfilter,0
