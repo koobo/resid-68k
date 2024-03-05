@@ -1895,7 +1895,9 @@ filter_writeMODE_VOL:
     lsr.b   #4,d1
     and     #7,d1
     move.w  d1,filter_hp_bp_lp(a1)
-   
+    lsl     #5,d1
+    move.w  d1,filter_hp_bp_lpX32(a1)
+
     and     #$f,d0
     move.b  d0,filter_vol(a1)
     
@@ -2271,6 +2273,7 @@ filter_output:
     ;rts
     bra     filter_output_return
 .1  
+ REM ; option 1
     move.w  filter_hp_bp_lp(a0),d1
     move.w  .tab(pc,d1.w*2),d1
     jmp     .tab(pc,d1)
@@ -2284,35 +2287,48 @@ filter_output:
     dc.w    .f5-.tab
     dc.w    .f6-.tab
     dc.w    .f7-.tab
+ EREM
+    move.w  filter_hp_bp_lpX32(a0),d1
+    jmp     .f0(pc,d1.w)
 
-.f1
-    add.l   filter_Vlp(a0),d0
+    cnop    0,32
 .f0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
+    cnop    0,32
+.f1
+    add.l   filter_Vlp(a0),d0
+    muls.l  filter_volScaled(a0),d0
+    bra     filter_output_return
+    cnop    0,32
 .f2
     add.l   filter_Vbp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
+    cnop    0,32
 .f3
     add.l   filter_Vlp(a0),d0
     add.l   filter_Vbp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
+    cnop    0,32
 .f4
     add.l   filter_Vhp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
+    cnop    0,32
 .f5
     add.l   filter_Vlp(a0),d0
     add.l   filter_Vhp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
+    cnop    0,32
 .f6
     add.l   filter_Vbp(a0),d0
     add.l   filter_Vhp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
+    cnop    0,32
 .f7
     add.l   filter_Vlp(a0),d0
     add.l   filter_Vbp(a0),d0
