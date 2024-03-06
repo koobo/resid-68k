@@ -1441,7 +1441,7 @@ exponential_counter_period_table:
 *   d0-d7,a0,a1,a2
 * note:
 *   call counts from frame $b of Advanced Chemistry (calls per output sample)
-envelope_clock:
+envelope_clock macro
 
     COUNT   C_ENV1
 
@@ -1469,7 +1469,8 @@ envelope_clock:
     COUNT   C_ENV4
 .x0
     move.l  d0,envelope_rate_counter(a0)
-    jmp     (a2)
+   ; jmp     (a2)
+    bra     .envExit
 
     cnop    0,4
 
@@ -1546,8 +1547,8 @@ envelope_clock:
     move.b  d5,envelope_counter(a0)
     move.b  d3,envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
-    jmp     (a2)
-
+ ;   jmp     (a2)
+    bra     .envExit
 
 **************************************
 * DECAY SUSTAIN
@@ -1573,7 +1574,7 @@ envelope_clock:
 .loopDecaySustainDo
     COUNT   C_ENV13
 
-    move.b  envelope_sustain_level(a0),d7
+    ;move.b  envelope_sustain_level(a0),d7
 
 .2DecaySustain
     COUNT   C_ENV14    
@@ -1593,7 +1594,7 @@ envelope_clock:
 
     COUNT   C_ENV16
 
-    cmp.b   d7,d5
+    cmp.b   envelope_sustain_level(a0),d5
     beq.b   .break1DecaySustain
     subq.b  #1,d5
 
@@ -1631,7 +1632,8 @@ envelope_clock:
     move.b  d3,envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
     move.l  d6,envelope_rate_period(a0)  
-    jmp     (a2)
+    ;jmp     (a2)
+    bra     .envExit
 ;
 ;    tst.l   d0
 ;    bne     .loopDecaySustain
@@ -1693,7 +1695,7 @@ envelope_clock:
     move.l  envelope_rate_counter_period(pc,d2.w*4),d6 * pOEP-only (pc-relative)
 
     * Needed in decay sustain
-    move.b  envelope_sustain_level(a0),d7
+    ;move.b  envelope_sustain_level(a0),d7
     bra     .break1DecaySustain
     
 .break1Attack
@@ -1719,8 +1721,10 @@ envelope_clock:
     move.b  d5,envelope_counter(a0)
     clr.b    envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
-    jmp     (a2)
+;    jmp     (a2)
 
+.envExit
+ endm
 
 
 
@@ -3085,22 +3089,30 @@ sid_clock:
  
     move.l  sid_voice1(a5),a0
     move.l  voice_envelope(a0),a0
-    lea     .env1(pc),a2
-    bra      envelope_clock    
-.env1
-
-   * assume envelope objects are stored one after another
-    lea     envelope_SIZEOF(a0),a0
+    moveq   #3-1,d7
+.envLoop
     move.l  a3,d0
-    lea     .env2-.env1(a2),a2
-    bra      envelope_clock    
-.env2
+    envelope_clock
 
     lea     envelope_SIZEOF(a0),a0
-    move.l  a3,d0
-    lea     .env3-.env2(a2),a2
-    bra      envelope_clock    
-.env3
+    dbf     d7,.envLoop
+
+;    lea     .env1(pc),a2
+;    bra      envelope_clock    
+;.env1
+;
+;   * assume envelope objects are stored one after another
+;    lea     envelope_SIZEOF(a0),a0
+;    move.l  a3,d0
+;    lea     .env2-.env1(a2),a2
+;    bra      envelope_clock    
+;.env2
+;
+;    lea     envelope_SIZEOF(a0),a0
+;    move.l  a3,d0
+;    lea     .env3-.env2(a2),a2
+;    bra      envelope_clock    
+;.env3
 
     move.l  a3,d7
     * d7 = delta_t_osc = delta_t
