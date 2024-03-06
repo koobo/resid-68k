@@ -1873,15 +1873,17 @@ filter_writeFC_HI:
 *    a0 = object
 *    d0 = res_filt
 * uses:
-*    d0,d1,a0
+*    d0,d1,a0,a1
 filter_writeRES_FILT:
     move.b  d0,d1
     lsr.b   #4,d1
     and     #$f,d0
     move.b  d1,filter_res(a0)
     move.b  d0,filter_filt(a0)
-    lsl     #4,d0
-    move.w  d0,filter_filtX16(a0)
+
+    lea     filter_clock\.tab(pc),a1
+    add.w   (a1,d0.w*2),a1
+    move.l  a1,filter_filt_jump(a0)
     bra     filter_set_Q
     
 
@@ -1892,11 +1894,6 @@ filter_writeRES_FILT:
 filter_writeMODE_VOL:
     move.b  d0,d1
     smi     filter_voice3off(a1)
-    lsr.b   #4,d1
-    and     #7,d1
-    move.w  d1,filter_hp_bp_lp(a1)
-    lsl     #5,d1
-    move.w  d1,filter_hp_bp_lpX32(a1)
 
     and     #$f,d0
     move.b  d0,filter_vol(a1)
@@ -1904,6 +1901,14 @@ filter_writeMODE_VOL:
     mulu    sid_volume(a0),d0
     lsr     #6,d0
     move.l  d0,filter_volScaled(a1)
+
+    lsr.b   #4,d1
+    and     #7,d1
+    move.w  d1,filter_hp_bp_lp(a1)
+
+    lea     filter_output\.tab(pc),a0
+    add.w   (a0,d1.w*2),a0
+    move.l  a0,filter_hp_bp_lp_jump(a1)
     rts
 
 * in:
@@ -2010,7 +2015,6 @@ filter_clock:
     bne.b   .1
     clr.l   d3
 .1
-    ;moveq   #0,d5
 
     tst.b   filter_enabled(a0)
     bne.b   .3
@@ -2024,10 +2028,14 @@ filter_clock:
     bra     filter_output
 .3
 
- REM ; option 1
+ REM
+    moveq   #0,d5                * 1
     move.b  filter_filt(a0),d5   * 1
     move.w  (.tab,pc,d5.w*2),d5  * 1
     jmp     .tab(pc,d5)          * 5
+ EREM
+    move.l  filter_filt_jump(a0),a1 * 1
+    jmp     (a1)                    * 5
 
 .tab    
     dc.w    .f0-.tab
@@ -2046,104 +2054,85 @@ filter_clock:
     dc.w    .fd-.tab
     dc.w    .fe-.tab
     dc.w    .ff-.tab
- EREM
-    move.w  filter_filtX16(a0),d5   
-    jmp     .f0(pc,d5.w)
 
-    cnop    0,16
 .f0
     add.l   d3,d1
     clr.l   d5
     add.l   d2,d1
     move.l  d1,filter_Vnf(a0)
     bra     .break
-    cnop    0,16
 .f1
     add.l   d3,d2
     move.l  d1,d5
     move.l  d2,filter_Vnf(a0)
     bra     .break
-    cnop    0,16
 .f2
     add.l   d3,d1
     move.l  d2,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
-    cnop    0,16
 .f3
     move.l  d1,d5
     move.l  d3,filter_Vnf(a0)
     add.l   d2,d5
     bra     .break
-    cnop    0,16
 .f4
     add.l   d2,d1
     move.l  d3,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
-    cnop    0,16
 .f5
     move.l  d1,d5
     move.l  d2,filter_Vnf(a0)
     add.l   d3,d5
     bra     .break
-    cnop    0,16
 .f6
     move.l  d2,d5
     move.l  d1,filter_Vnf(a0)
     add.l   d3,d5
     bra     .break
-    cnop    0,16
 .f7
     move.l  d1,d5
     add.l   d2,d5
     clr.l   filter_Vnf(a0)
     add.l   d3,d5
     bra     .break
-    cnop    0,16
 .f8
     add.l   d3,d1
     add.l   d2,d1
     clr.l   d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
-    cnop    0,16
 .f9
     add.l   d3,d2
     move.l  d1,d5
     move.l  d2,filter_Vnf(a0)
     bra     .break
-    cnop    0,16
 .fa
     add.l   d3,d1
     move.l  d2,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
-    cnop    0,16
 .fb
     move.l  d1,d5
     move.l  d3,filter_Vnf(a0)
     add.l   d2,d5
     bra     .break
-    cnop    0,16
 .fc
     add.l   d2,d1
     move.l  d3,d5
     move.l  d1,filter_Vnf(a0)
     bra     .break
-    cnop    0,16
 .fd
     move.l  d3,d5
     move.l  d2,filter_Vnf(a0)
     add.l   d1,d5
     bra     .break
-    cnop    0,16
 .fe
     move.l  d3,d5
     move.l  d1,filter_Vnf(a0)
     add.l   d2,d5
     bra     .break
-    cnop    0,16
 .ff
     move.l  d3,d5
     add.l   d2,d5
@@ -2260,7 +2249,7 @@ filter_clock:
 * out:
 *    d0 = filter output 20 bits
 * uses:
-*    d0,d1,a0
+*    d0,d1,a0,a1
 filter_output:
     * calls: 1x
 
@@ -2270,13 +2259,16 @@ filter_output:
     tst.b   filter_enabled(a0)
     bne.b   .1
     muls.l  filter_volScaled(a0),d0
-    ;rts
     bra     filter_output_return
 .1  
+
  REM ; option 1
     move.w  filter_hp_bp_lp(a0),d1
     move.w  .tab(pc,d1.w*2),d1
     jmp     .tab(pc,d1)
+ EREM
+    move.l  filter_hp_bp_lp_jump(a0),a1
+    jmp     (a1)
 
 .tab
     dc.w    .f0-.tab
@@ -2287,48 +2279,35 @@ filter_output:
     dc.w    .f5-.tab
     dc.w    .f6-.tab
     dc.w    .f7-.tab
- EREM
-    move.w  filter_hp_bp_lpX32(a0),d1
-    jmp     .f0(pc,d1.w)
-
-    cnop    0,32
+ 
+.f1
+    add.l   filter_Vlp(a0),d0
 .f0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
-    cnop    0,32
-.f1
-    add.l   filter_Vlp(a0),d0
-    muls.l  filter_volScaled(a0),d0
-    bra     filter_output_return
-    cnop    0,32
 .f2
     add.l   filter_Vbp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
-    cnop    0,32
 .f3
     add.l   filter_Vlp(a0),d0
     add.l   filter_Vbp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
-    cnop    0,32
 .f4
     add.l   filter_Vhp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
-    cnop    0,32
 .f5
     add.l   filter_Vlp(a0),d0
     add.l   filter_Vhp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
-    cnop    0,32
 .f6
     add.l   filter_Vbp(a0),d0
     add.l   filter_Vhp(a0),d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
-    cnop    0,32
 .f7
     add.l   filter_Vlp(a0),d0
     add.l   filter_Vbp(a0),d0
