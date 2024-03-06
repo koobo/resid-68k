@@ -391,20 +391,20 @@ wave_reset
 
 * in:
 *   a0 = object
-*   a2 = return address
-*   d0 = cycle_count delta_t, preserved
+*   a2 = cycle_count delta_t, preserved
 * uses:
-*   d0-d6,a0
-wave_clock:
+*   d1-d6,a0
+WAVE_CLOCK_ macro
+   ; tst.b   wave_test(a0)
+   ; beq     .wcgo
+   ; COUNT   C_WAV4
+;
+   ; jmp     (a2)
+
     tst.b   wave_test(a0)
-    beq     .go
-    COUNT   C_WAV4
+    bne    .wcexit
 
-    jmp     (a2)
-
-    * align for 060
-    cnop    0,4
-.go
+.wcgo
     * calls: 3x
 
  REM ; option 1
@@ -414,7 +414,7 @@ wave_clock:
     * d3 = delta_accumulator
     move    wave_freq(a0),d3
     mulu.w  d0,d3
-  
+    
     clr.b   wave_msb_rising(a0)
 
     move.l  d1,d2
@@ -425,20 +425,22 @@ wave_clock:
 
     ;btst    #23,d1      * previous MSB
     and.l   #$800000,d1 * test previous MSB, pOEP|sOEP
-    bne     .noMsb
+    bne     .wcnoMsb
     btst    #23,d2      * test current MSB, pOEP-until-last
-    beq     .noMsb
+    beq     .wcnoMsb
     st      wave_msb_rising(a0)
-.noMsb
+.wcnoMsb
  EREM 
     ; --------------------------------- 
 ; option 2 - resid 1.0
     COUNT   C_WAV1
 
    * d3 = delta_accumulator
-    move    wave_freq(a0),d3
-    mulu.w  d0,d3
-
+    ;move    wave_freq(a0),d3
+    ;mulu.w  d0,d3
+    move.w  a2,d3
+    mulu.w  wave_freq(a0),d3
+   
     * d2 = accumulator_next
     move.l  wave_accumulator(a0),d2
     move.l  d2,d1
@@ -465,9 +467,9 @@ wave_clock:
     * d2 = accumulator
     * d3 = delta_accumulator
 
-.loop
+.wcloop
     cmp.l   d1,d3
-    bhs.b   .continue
+    bhs.b   .wccontinue
 
     COUNT   C_WAV2
 
@@ -483,37 +485,37 @@ wave_clock:
 
  REM ; option 1
     cmp.l   #$80000,d1 
-    bhi     .else
+    bhi     .wcelse
     ;and.l   #$80000,d4
     btst    #19,d4   ; this seems to win over and.l here
-    bne     .break
+    bne     .wcbreak
     btst    #19,d2
-    beq     .break
-    bra     .continue
-.else
+    beq     .wcbreak
+    bra     .wccontinue
+.wcelse
     and.l   #$80000,d4
-    beq     .continue
+    beq     .wccontinue
     btst    #19,d2
-    beq     .break
+    beq     .wcbreak
  EREM
  ;REM ; option 2
  ;possibly faster since Bcc and std intruction may pair in certain
  ;situations
     cmp.l   d6,d1 
-    bhi     .else
+    bhi     .wcelse
     and.l   d6,d4
-    bne     .break
+    bne     .wcbreak
     and.l   d2,d6
-    beq     .break
-    bra     .continue
-.else
+    beq     .wcbreak
+    bra     .wccontinue
+.wcelse
     and.l   d6,d4
-    beq     .continue
+    beq     .wccontinue
     and.l   d2,d6
-    beq     .break
+    beq     .wcbreak
  ;EREM
 
-.continue
+.wccontinue
     COUNT   C_WAV3
     * Shift the noise/random register.  
     * bit0
@@ -543,11 +545,17 @@ wave_clock:
     move.l  d4,wave_shift_register(a0)
 
     sub.l   d1,d3
-    bne     .loop
+    bne     .wcloop
 
-.break
-    jmp     (a2)
+.wcbreak
+.wcexit
+    endm
+;    jmp     (a2)
     
+wave_clock___:
+    WAVE_CLOCK_
+    jmp     (a2)
+
 * in:
 *   a0 = object
 *   a2 = return address
@@ -3177,21 +3185,30 @@ sid_clock:
 
 .continue
     ; a0 = wave3 + wave_SIZEOF
+
     ; clock oscillators with delta_t_min
+;    lea     -wave_SIZEOF(a0),a0   
+;    move.l  a3,d0
+;    ; wave_clock does not clobber d0
+;    lea     .wav1(pc),a2
+;    bra     wave_clock  ; wave 3
+;.wav1
+;    lea     -wave_SIZEOF(a0),a0   
+;    lea     .wav2-.wav1(a2),a2
+;    bra     wave_clock  ; wave 2
+;.wav2
+;    lea     -wave_SIZEOF(a0),a0   
+;    lea     .wav3-.wav2(a2),a2
+;    bra     wave_clock  ; wave 1
+;.wav3
+    ;move.l  a3,d0   ; wave_clock does not clobber d0
+    move.l  a3,a2    ; wave_clock does not clobber a2
+    moveq   #3-1,d0  ; ..or d0
+.wcLoop0
     lea     -wave_SIZEOF(a0),a0   
-    move.l  a3,d0
-    ; wave_clock does not clobber d0
-    lea     .wav1(pc),a2
-    bra     wave_clock  ; wave 3
-.wav1
-    lea     -wave_SIZEOF(a0),a0   
-    lea     .wav2-.wav1(a2),a2
-    bra     wave_clock  ; wave 2
-.wav2
-    lea     -wave_SIZEOF(a0),a0   
-    lea     .wav3-.wav2(a2),a2
-    bra     wave_clock  ; wave 1
-.wav3
+    WAVE_CLOCK_
+    dbf     d0,.wcLoop0
+
 
     * a0 = wave1
     ; synchronize oscillators
