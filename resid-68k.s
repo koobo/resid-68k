@@ -693,7 +693,7 @@ wave_output___T:
 .noMsb
     lsr.l   d3,d0
     and     #$0fff,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 wave_output___T_ring:
     COUNT   C_WO3
@@ -712,7 +712,7 @@ wave_output___T_ring:
 .noMsb
     lsr.l   d3,d0
     and     #$0fff,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 
@@ -721,7 +721,7 @@ wave_output__S_:
     moveq   #12,d1
     move.l  wave_accumulator(a0),d0
     lsr.l   d1,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 wave_output__ST:
@@ -735,7 +735,7 @@ wave_output__ST:
     move.l  wave_wave__ST(a0),a1
     move.b  (a1,d1.w),d0
     lsl.w   #4,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 * out:
 *   d0 = $000 or $fff
@@ -753,10 +753,10 @@ wave_output_P__:
     ;moveq   #0,d0           * 1; 2 
     move.w  wave_test_mask(a0),d0
     COUNT   C_WO8
-    jmp     (a3)            
+    bra     wave_output_return            
 .do
     move    #$0fff,d0       * 1; 2,4?
-    jmp     (a3)            
+    bra     wave_output_return            
 
 * 060: 2 or 9
 * 030: 2+2, 6, 2 = 12
@@ -768,7 +768,7 @@ wave_output_P__:
 ;    shs     d0             * 1, 4
 ;    ext     d0             * 1, 4
 ;    lsr     #4,d0          * 1, 4
-;    jmp     (a3)
+;    bra        wave_output_return
 
 * 060: 3 or 4
 * 030: 4+4+4+4 = 16
@@ -807,12 +807,12 @@ wave_output_P_T:
     COUNT   C_W11
     ;moveq   #0,d0
     and.w   wave_test_mask(a0),d0
-    jmp     (a3)
+    bra     wave_output_return
 .do
     ;------------------------ wave_output___P:
 
     and     #$0fff,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 wave_output_P_T_ring:
@@ -852,12 +852,12 @@ wave_output_P_T_ring:
     COUNT   C_W14
     ;moveq   #0,d0
     and.w   wave_test_mask(a0),d0
-    jmp     (a3)
+    bra     wave_output_return
 .do
     ;------------------------ wave_output___P:
 
     and     #$0fff,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 wave_output_PS_:
@@ -882,13 +882,13 @@ wave_output_PS_:
     COUNT   C_W16
     ;moveq   #0,d0
     and.w   wave_test_mask(a0),d0
-    jmp     (a3)
+    bra     wave_output_return
 .do
     move    #$0fff,d0
     ;------------------------ wave_output___P:
     
     and     d1,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 wave_output_PST:
     COUNT   C_W17
@@ -913,13 +913,13 @@ wave_output_PST:
     ;moveq   #0,d0
     move.w  wave_test_mask(a0),d1
     and.w   d1,d0
-    jmp     (a3)
+    bra     wave_output_return
 .do
     move    #$0fff,d0
     ;------------------------ wave_output___P:
     
     and     d1,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 wave_outputN___:
     COUNT   C_W19
@@ -964,7 +964,7 @@ wave_outputN___:
     lsl.w   #1,d3
     or.w    d1,d0
     or.w    d3,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 
@@ -978,7 +978,7 @@ wave_outputNPS_:
 wave_outputNPST:
     COUNT   C_W20
     moveq   #0,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 ******************************************************************************
@@ -1062,6 +1062,7 @@ voice_reset:
 * uses:
 *    d0-d4,a0,a1,a2
 
+ REM
 VOICE_OUT macro
     ;move.l  voice_wave(a2),a0
     lea     .vo\1(pc),a3
@@ -1082,7 +1083,7 @@ VOICE_OUT macro
 voice_output:
     VOICE_OUT
     rts
-
+ EREM
 
 
 ******************************************************************************
@@ -3227,20 +3228,57 @@ sid_clock:
 
      ; Clock filter
      ; Get input
+;    move.l  sid_voice3(a5),a2
+;    VOICE_OUT 3
+;    * Assume voice objects are stored one after another
+;    lea     -wave_SIZEOF(a0),a0
+;    lea     -voice_SIZEOF(a2),a2
+;    move.l  d0,d5
+;    VOICE_OUT 2
+;    lea     -wave_SIZEOF(a0),a0
+;    lea     -voice_SIZEOF(a2),a2
+;    move.l  d0,d6
+;    VOICE_OUT 1
+;
+
     move.l  sid_voice3(a5),a2
-    VOICE_OUT 3
-    * Assume voice objects are stored one after another
+    moveq   #3-1,d5
+.voiceOutLoop
+    ; ---------------------------------
+    ; VOICE OUT
+* in:
+*    a0 = wave
+*    a2 = voice
+* out:
+*    d0 = Amplitude modulated waveform output.
+*         Ideal range [-2048*255, 2047*255].
+* uses:
+*    d0-d4,a0,a1,a2
+
+    move.l  wave_get_output(a0),a1
+    jmp     (a1)
+wave_output_return:
+    * d0 = 12-bit
+    sub.w   voice_wave_zero(a2),d0
+    * envelope_output inlined:
+    move.l  voice_envelope(a2),a1
+    muls.w  envelope_counterHi(a1),d0
+    * d0 = 20-bit
+    add.l   voice_voice_DC(a2),d0
+    ; ---------------------------------
     lea     -wave_SIZEOF(a0),a0
+    move.l  d0,-(sp)
     lea     -voice_SIZEOF(a2),a2
-    move.l  d0,d5
-    VOICE_OUT 2
-    lea     -wave_SIZEOF(a0),a0
-    lea     -voice_SIZEOF(a2),a2
-    move.l  d0,d6
-    VOICE_OUT 1
-    move.l  d5,d3   * voice 3
-    move.l  d6,d2   * voice 2
-    move.l  d0,d1   * voice 1
+    dbf     d5,sid_clock\.voiceOutLoop
+
+    move.l  (sp)+,d1    * voice 1
+    move.l  (sp)+,d2    * voice 2
+    move.l  (sp)+,d3    * voice 3
+
+
+;    move.l  d5,d3   * voice 3
+;    move.l  d6,d2   * voice 2
+;    move.l  d0,d1   * voice 1
     move.l  (sp),d0 * restore delta_t
     
     move.l  sid_filter(a5),a0
