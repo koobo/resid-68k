@@ -2259,6 +2259,9 @@ filter_clock:
 
 * in:
 *    a0 = object
+*    d3 = Vhp from above
+*    d4 = Vbp from above
+*    a3 = Vlp from above
 * out:
 *    d0 = filter output 20 bits
 * uses:
@@ -2294,37 +2297,37 @@ filter_output:
     dc.w    .f7-.tab
  
 .f1
-    add.l   filter_Vlp(a0),d0
+    add.l   a3,d0
 .f0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
 .f2
-    add.l   filter_Vbp(a0),d0
+    add.l   d4,d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
 .f3
-    add.l   filter_Vlp(a0),d0
-    add.l   filter_Vbp(a0),d0
+    add.l   a3,d0
+    add.l   d4,d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
 .f4
-    add.l   filter_Vhp(a0),d0
+    add.l   d3,d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
 .f5
-    add.l   filter_Vlp(a0),d0
-    add.l   filter_Vhp(a0),d0
+    add.l   a3,d0
+    add.l   d3,d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
 .f6
-    add.l   filter_Vbp(a0),d0
-    add.l   filter_Vhp(a0),d0
+    add.l   d4,d0
+    add.l   d3,d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
 .f7
-    add.l   filter_Vlp(a0),d0
-    add.l   filter_Vbp(a0),d0
-    add.l   filter_Vhp(a0),d0
+    add.l   a3,d0
+    add.l   d4,d0
+    add.l   d3,d0
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
 
