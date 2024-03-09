@@ -552,9 +552,9 @@ WAVE_CLOCK_ macro
     endm
 ;    jmp     (a2)
     
-wave_clock___:
-    WAVE_CLOCK_
-    jmp     (a2)
+;wave_clock:
+;    WAVE_CLOCK_
+;    jmp     (a2)
 
 * in:
 *   a0 = object
@@ -1441,7 +1441,7 @@ exponential_counter_period_table:
 *   d0-d7,a0,a1,a2
 * note:
 *   call counts from frame $b of Advanced Chemistry (calls per output sample)
-envelope_clock macro
+ENVELOPE_CLOCK_ macro
 
     COUNT   C_ENV1
 
@@ -3077,42 +3077,33 @@ sid_get_outputScale:
 *   - oversample x3: 11/12
 *   - oversample x4: 8/9
 sid_clock:
-    tst.l   d0
-    bgt     .1
-    rts
-.1
+;    Assum d0 is positive here
+;    tst.l   d0
+;    bgt     .1
+;    rts
+;.1
+ 
     COUNT   C_CLK1
     * calls: 1x, once per output sample in fast
 
     move.l  d0,a3
     push    d0      * save delta_t
- 
+
+    ; ---------------------------------
+    ; Run envelopes
+
     move.l  sid_voice1(a5),a0
     move.l  voice_envelope(a0),a0
     moveq   #3-1,d7
 .envLoop
     move.l  a3,d0
-    envelope_clock
+    ENVELOPE_CLOCK_
 
+    * assume envelope objects are stored one after another
     lea     envelope_SIZEOF(a0),a0
     dbf     d7,.envLoop
 
-;    lea     .env1(pc),a2
-;    bra      envelope_clock    
-;.env1
-;
-;   * assume envelope objects are stored one after another
-;    lea     envelope_SIZEOF(a0),a0
-;    move.l  a3,d0
-;    lea     .env2-.env1(a2),a2
-;    bra      envelope_clock    
-;.env2
-;
-;    lea     envelope_SIZEOF(a0),a0
-;    move.l  a3,d0
-;    lea     .env3-.env2(a2),a2
-;    bra      envelope_clock    
-;.env3
+    ; ---------------------------------
 
     move.l  a3,d7
     * d7 = delta_t_osc = delta_t
@@ -3199,22 +3190,9 @@ sid_clock:
 .continue
     ; a0 = wave3 + wave_SIZEOF
 
+    ; ---------------------------------
+
     ; clock oscillators with delta_t_min
-;    lea     -wave_SIZEOF(a0),a0   
-;    move.l  a3,d0
-;    ; wave_clock does not clobber d0
-;    lea     .wav1(pc),a2
-;    bra     wave_clock  ; wave 3
-;.wav1
-;    lea     -wave_SIZEOF(a0),a0   
-;    lea     .wav2-.wav1(a2),a2
-;    bra     wave_clock  ; wave 2
-;.wav2
-;    lea     -wave_SIZEOF(a0),a0   
-;    lea     .wav3-.wav2(a2),a2
-;    bra     wave_clock  ; wave 1
-;.wav3
-    ;move.l  a3,d0   ; wave_clock does not clobber d0
     move.l  a3,a2    ; wave_clock does not clobber a2
     moveq   #3-1,d0  ; ..or d0
 .wcLoop0
@@ -3222,6 +3200,7 @@ sid_clock:
     WAVE_CLOCK_
     dbf     d0,.wcLoop0
 
+    ; ---------------------------------
 
     * a0 = wave1
     ; synchronize oscillators
@@ -3235,38 +3214,17 @@ sid_clock:
     sub.l   a3,d7
     bne     .loop
 
-;.loopExit
+    ; ---------------------------------
     * a0 = wave3
 
-     ; Clock filter
-     ; Get input
-;    move.l  sid_voice3(a5),a2
-;    VOICE_OUT 3
-;    * Assume voice objects are stored one after another
-;    lea     -wave_SIZEOF(a0),a0
-;    lea     -voice_SIZEOF(a2),a2
-;    move.l  d0,d5
-;    VOICE_OUT 2
-;    lea     -wave_SIZEOF(a0),a0
-;    lea     -voice_SIZEOF(a2),a2
-;    move.l  d0,d6
-;    VOICE_OUT 1
-;
+    * Get voice output
+    * Assume voice objects are stored one after another
 
     move.l  sid_voice3(a5),a2
     moveq   #3-1,d5
 .voiceOutLoop
     ; ---------------------------------
     ; VOICE OUT
-* in:
-*    a0 = wave
-*    a2 = voice
-* out:
-*    d0 = Amplitude modulated waveform output.
-*         Ideal range [-2048*255, 2047*255].
-* uses:
-*    d0-d4,a0,a1,a2
-
     move.l  wave_get_output(a0),a1
     jmp     (a1)
 wave_output_return:
@@ -3279,14 +3237,13 @@ wave_output_return:
     add.l   voice_voice_DC(a2),d0
     ; ---------------------------------
     lea     -wave_SIZEOF(a0),a0
-    move.l  d0,-(sp)
     lea     -voice_SIZEOF(a2),a2
+    move.l  d0,-(sp)
     dbf     d5,sid_clock\.voiceOutLoop
 
     move.l  (sp)+,d1    * voice 1
     move.l  (sp)+,d2    * voice 2
     move.l  (sp)+,d3    * voice 3
-
 
 ;    move.l  d5,d3   * voice 3
 ;    move.l  d6,d2   * voice 2
