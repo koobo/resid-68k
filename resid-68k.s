@@ -3253,16 +3253,9 @@ wave_output_return:
     move.l  sid_filter(a5),a0
     bra     filter_clock ; + filter_output
 filter_output_return:
-    move.l  sid_extfilt(a5),a0
-    tst.b   extfilter_enabled(a0)
-    bne.b   .2
-    ; Quick exit
-    move.l  d0,extfilter_Vo(a0)
-    addq.l  #4,sp   * pop
-    rts
-.2
     ; Clock external filter
     move.l  d0,d1       * input for the filter
+    move.l  sid_extfilt(a5),a0
     pop     d0          * restore delta_t
     bra     extfilter_clock
   
