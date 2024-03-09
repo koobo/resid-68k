@@ -3094,15 +3094,16 @@ sid_clock:
 
     move.l  sid_voice1(a5),a0
     move.l  voice_envelope(a0),a0
-    moveq   #3-1,d7
+    moveq   #3,d7
 .envLoop
     move.l  a3,d0
     ENVELOPE_CLOCK_
 
     * assume envelope objects are stored one after another
     lea     envelope_SIZEOF(a0),a0
-    dbf     d7,.envLoop
-
+    subq    #1,d7
+    bne     .envLoop
+    
     ; ---------------------------------
 
     move.l  a3,d7
@@ -3194,11 +3195,12 @@ sid_clock:
 
     ; clock oscillators with delta_t_min
     move.l  a3,a2    ; wave_clock does not clobber a2
-    moveq   #3-1,d0  ; ..or d0
+    moveq   #3,d0  ; ..or d0
 .wcLoop0
     lea     -wave_SIZEOF(a0),a0   
     WAVE_CLOCK_
-    dbf     d0,.wcLoop0
+    subq    #1,d0
+    bne     .wcLoop0
 
     ; ---------------------------------
 
@@ -3221,7 +3223,7 @@ sid_clock:
     * Assume voice objects are stored one after another
 
     move.l  sid_voice3(a5),a2
-    moveq   #3-1,d5
+    moveq   #3,d5
 .voiceOutLoop
     ; ---------------------------------
     ; VOICE OUT
@@ -3239,7 +3241,9 @@ wave_output_return:
     lea     -wave_SIZEOF(a0),a0
     lea     -voice_SIZEOF(a2),a2
     move.l  d0,-(sp)
-    dbf     d5,sid_clock\.voiceOutLoop
+    ;dbf     d5,sid_clock\.voiceOutLoop
+    subq    #1,d5
+    bne     sid_clock\.voiceOutLoop
 
     move.l  (sp)+,d1    * voice 1
     move.l  (sp)+,d2    * voice 2
