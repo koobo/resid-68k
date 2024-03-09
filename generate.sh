@@ -19,4 +19,5 @@ done
 
 find . -iname "tc-*" | sort | sed -e 's,^\./,,' | awk '{ print "echo -------------- " $0; print $0;}' > runit
 
-lha a testCycles.lha runit tc-*
+rm $DIR/testCycles.lha
+lha a $DIR/testCycles.lha runit tc-*
