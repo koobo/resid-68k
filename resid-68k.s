@@ -2047,9 +2047,8 @@ filter_clock:
     move.w  (.tab,pc,d5.w*2),d5  * 1
     jmp     .tab(pc,d5)          * 5
  EREM
-    ;move.l  filter_filt_jump(a0),a1 * 1
-    ;jmp     (a1)                    * 5
-    jmp     ([filter_filt_jump,a0])
+    move.l  filter_filt_jump(a0),a1 * 1
+    jmp     (a1)                    * 5
 
 .tab    
     dc.w    .f0-.tab
@@ -2281,9 +2280,8 @@ filter_output:
     move.w  .tab(pc,d1.w*2),d1
     jmp     .tab(pc,d1)
  EREM
-    ;move.l  filter_hp_bp_lp_jump(a0),a1
-    ;jmp     (a1)
-    jmp     ([filter_hp_bp_lp_jump,a0])
+    move.l  filter_hp_bp_lp_jump(a0),a1
+    jmp     (a1)
 
 .tab
     dc.w    .f0-.tab
