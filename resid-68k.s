@@ -3222,11 +3222,11 @@ sid_clock:
 
     move.l  sid_voice3(a5),a2
     moveq   #3-1,d5
-    bra     .voiceOutLoop_
+;    bra     .voiceOutLoop_
 .voiceOutLoop
-    move.l  d0,-(sp)
-    lea     -wave_SIZEOF(a0),a0
-    lea     -voice_SIZEOF(a2),a2
+;    move.l  d0,-(sp)
+;    lea     -wave_SIZEOF(a0),a0
+;    lea     -voice_SIZEOF(a2),a2
 .voiceOutLoop_
     ; ---------------------------------
     ; VOICE OUT
@@ -3241,10 +3241,13 @@ wave_output_return:
     * d0 = 20-bit
     add.l   voice_voice_DC(a2),d0
     ; ---------------------------------
+    lea     -wave_SIZEOF(a0),a0
+    lea     -voice_SIZEOF(a2),a2
+    move.l  d0,-(sp)
     dbf     d5,sid_clock\.voiceOutLoop
 
-    ;move.l  (sp)+,d1    * voice 1
-    move.l  d0,d1
+;    move.l  d0,d1       * voice 1
+    move.l  (sp)+,d1    * voice 2
     move.l  (sp)+,d2    * voice 2
     move.l  (sp)+,d3    * voice 3
 
