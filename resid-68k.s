@@ -1788,6 +1788,7 @@ filter_constructor:
     clr.l   filter_Vbp(a0)
     clr.l   filter_Vlp(a0)
     clr.l   filter_Vnf(a0)
+    bsr     filter_reset_jumps
 
     * Precalc constants for filter_set_w0
     ;fmove.s #3.1415926535897932385,fp0  * pi
@@ -1849,8 +1850,22 @@ filter_reset:
     clr.l   filter_Vbp(a0)
     clr.l   filter_Vlp(a0)
     clr.l   filter_Vnf(a0)
+
+    bsr     filter_reset_jumps
     bsr     filter_set_w0
     bsr     filter_set_Q
+    rts
+
+* in:
+*    a0 = object
+filter_reset_jumps:
+    ; Initialize jumps to default
+    lea     filter_clock\.tab(pc),a1
+    add.w   (a1),a1
+    move.l  a1,filter_filt_jump(a0)
+    lea     filter_output\.tab(pc),a1
+    add.w   (a1),a1
+    move.l  a1,filter_hp_bp_lp_jump(a0)
     rts
 
 * in:
