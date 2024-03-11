@@ -2479,24 +2479,27 @@ extfilter_clock:
     move.l  d1,extfilter_Vo(a0)
     rts
 
-    * This aligns the loop below optimally for 060
-    cnop    0,4
 .1
     move.l  d1,a1
+
+    move.l  extfilter_Vlp(a0),d6
+    moveq   #8,d2
+    move.l  extfilter_Vhp(a0),a3
+    moveq   #20,d1  * shift
+
+    cmp.w   #8,d0
+    blo     .rest
 
     move.l  extfilter_w0lp(a0),d3
     move.l  extfilter_w0hp(a0),d4
     asr.l   #5,d3 * mul 8, asr 8
     asl.l   #3,d4 * mul 8
 
-    move.l  extfilter_Vlp(a0),d6
-    moveq   #8,d2
-    move.l  extfilter_Vhp(a0),a3
-    moveq   #20,d1  * shift
-   
+
     * d2 = delta_t_flt
     * a1 = Vi
-    
+
+ REM ;;;;; OPTION 1    
 .loop
     COUNT   C_EFLT1
 
@@ -2536,21 +2539,21 @@ extfilter_clock:
 ;    add.l   d5,a4
 
     * The above interleaved:
- REM ; option 1
-    move.l  a4,d7
-    sub.l   a3,d7
-    move.l  d7,a2
-    muls.l  d4,d7 * 2 pOEP only
-    move.l  a1,d5 * 1 pOEP 
-    asr.l   d1,d7 * 0 sOEP
-    sub.l   a4,d5 * 1 pOEP
-    muls.l  d3,d5 * 2 pOEP only
-    add.l   d7,a3 * 1 pOEP
-    asr.l   d6,d5 * 0 sOEP
-    add.l   d5,a4 * 1 pOEP
-    sub.l   d2,d0 * 0 sOEP
-    bne     .loop
- EREM
+; REM ; option 1
+;    move.l  a4,d7
+;    sub.l   a3,d7
+;    move.l  d7,a2
+;    muls.l  d4,d7 * 2 pOEP only
+;    move.l  a1,d5 * 1 pOEP 
+;    asr.l   d1,d7 * 0 sOEP
+;    sub.l   a4,d5 * 1 pOEP
+;    muls.l  d3,d5 * 2 pOEP only
+;    add.l   d7,a3 * 1 pOEP
+;    asr.l   d6,d5 * 0 sOEP
+;    add.l   d5,a4 * 1 pOEP
+;    sub.l   d2,d0 * 0 sOEP
+;    bne     .loop
+; EREM
 
  ; option 2 - similar speed but less regs
     move.l  d6,d7
@@ -2567,6 +2570,54 @@ extfilter_clock:
     add.l   d5,d6 * 1 pOEP
     sub.l   d2,d0 * 0 sOEP
     bne     .loop
+
+.x
+ EREM ;;; OPTION 1 END
+
+.loop
+    COUNT   C_EFLT1
+    move.l  d6,d7
+    sub.l   a3,d7
+    move.l  d7,a2
+    muls.l  d4,d7 * 2 pOEP only
+    move.l  a1,d5 * 1 pOEP 
+    asr.l   d1,d7 * 0 sOEP
+    sub.l   d6,d5 * 1 pOEP
+    add.l   d7,a3 * 0 sOEP
+    muls.l  d3,d5 * 2 pOEP only
+    moveq   #12,d7 *1 pOEP
+    asr.l   d7,d5 * 0 sOEP, move.l ,Rx
+    add.l   d5,d6 * 1 pOEP
+    subq.l  #8,d0 * 0 sOEP
+    
+    cmp.w   #8,d0
+    bhs     .loop
+    tst.w   d0
+    beq     .x
+
+.rest
+    COUNT   C_EFLT2
+
+    ; ---------------------------------
+    * delta_t_flt changed
+    move.l  extfilter_w0lp(a0),d3
+    muls.l  d0,d3
+    move.l  extfilter_w0hp(a0),d4
+    muls.l  d0,d4
+    asr.l   #8,d3
+    ; ---------------------------------
+    move.l  d6,d7
+    sub.l   a3,d7
+    move.l  d7,a2
+    muls.l  d4,d7 * 2 pOEP only
+    move.l  a1,d5 * 1 pOEP 
+    asr.l   d1,d7 * 0 sOEP
+    sub.l   d6,d5 * 1 pOEP
+    add.l   d7,a3 * 0 sOEP
+    muls.l  d3,d5 * 2 pOEP only
+    moveq   #12,d7 *1 pOEP
+    asr.l   d7,d5 * 0 sOEP, move.l ,Rx
+    add.l   d5,d6 * 1 pOEP
 
 .x
     move.l  a2,extfilter_Vo(a0)
