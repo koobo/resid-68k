@@ -2172,7 +2172,7 @@ filter_clock:
     * calc initial value with delta_t_flt=8
 
     move.l  filter_Vhp(a0),d3
-    moveq   #8,d1
+    moveq   #8,d1 ;;;;;;;;;;;
     move.l  filter_Vbp(a0),d4
     move.l  d5,a2
     move.l  filter_Vlp(a0),a3
@@ -3225,11 +3225,10 @@ sid_get_outputScale:
 *   - oversample x3: 11/12
 *   - oversample x4: 8/9
 sid_clock:
-;    Assum d0 is positive here
-;    tst.l   d0
-;    bgt     .1
-;    rts
-;.1
+    tst.l   d0
+    bgt     .1
+    rts
+.1
  
     COUNT   C_CLK1
     * calls: 1x, once per output sample in fast
