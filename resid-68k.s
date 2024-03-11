@@ -2295,13 +2295,13 @@ filter_clock:
     asr.l   #2,d3 * 1 pOEP
     sub.l   d6,d4 * 0 sOEP
     sub.l   a3,d3 * 1 pOEP
-    sub.l   a2,d3 * 1 pOEP
     subq.l  #8,d0 * 0 sOEP
+    sub.l   a2,d3 * 1 pOEP
     * 12 cycles
     * ---------------------------------
 
-    cmp.w   #8,d0
-    bhs     .loop
+    cmp.w   #8,d0 * 0 sOEP
+    bhs     .loop * 1 pOEP-only usually
     tst.w   d0
     beq     .exit
 
