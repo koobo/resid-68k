@@ -1431,12 +1431,11 @@ exponential_counter_period_table:
 
    
  ifne EXPERIMENTAL_ENVELOPE_CLOCK
-    printt  "EXPERMENTAL ENVELOPE CLOCK enabled"
+    printt  "EXPERIMENTAL ENVELOPE CLOCK enabled"
 * EXPERIMENTAL ENVELOPE CLOCK
 * in:
 *   a0 = object
 *   d0 = cycle_count delta_t
-*   a2 = return address
 * uses:
 *   d0-d7,a0,a1,a2
 * note:
@@ -1477,12 +1476,11 @@ ENVELOPE_CLOCK_ macro
 .2
     COUNT   C_ENV5
 
-    moveq   #0,d5
     move.b  envelope_exponential_counter(a0),d3
-    moveq   #0,d2
-    move.b  envelope_counter(a0),d5
-    lea     exponential_counter_period_table(pc),a1
+    moveq   #0,d5
     move.b  envelope_exponential_counter_period(a0),d4
+    lea     exponential_counter_period_table(pc),a1
+    move.b  envelope_counter(a0),d5
 
     ; Decay-sustain is the most common case
     cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
@@ -1691,6 +1689,7 @@ ENVELOPE_CLOCK_ macro
     ; Switch to the decay-sustain state
 
     move.b  #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
+    moveq   #0,d2
     move.b  envelope_decay(a0),d2
     move.l  envelope_rate_counter_period(pc,d2.w*4),d6 * pOEP-only (pc-relative)
 
