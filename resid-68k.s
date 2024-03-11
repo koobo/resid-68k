@@ -2483,7 +2483,8 @@ extfilter_clock:
     move.l  d1,a1
 
     move.l  extfilter_Vlp(a0),d6
-    moveq   #8,d2
+;    moveq   #8,d2
+    moveq   #12,d2
     move.l  extfilter_Vhp(a0),a3
     moveq   #20,d1  * shift
 
@@ -2585,12 +2586,15 @@ extfilter_clock:
     sub.l   d6,d5 * 1 pOEP
     add.l   d7,a3 * 0 sOEP
     muls.l  d3,d5 * 2 pOEP only
-    moveq   #12,d7 *1 pOEP
-    asr.l   d7,d5 * 0 sOEP, move.l ,Rx
-    add.l   d5,d6 * 1 pOEP
+    ;moveq   #12,d7 *1 pOEP
+    ;asr.l   d7,d5 * 0 sOEP, move.l ,Rx
+    ;add.l   d5,d6 * 1 pOEP
+    ;subq.l  #8,d0 * 0 sOEP
+    asr.l   d2,d5 * 1 pOEP
     subq.l  #8,d0 * 0 sOEP
+    add.l   d5,d6 * 1 pOEP
     
-    cmp.w   #8,d0
+    cmp.w   #8,d0 * 0 sOEP
     bhs     .loop
     tst.w   d0
     beq     .x
@@ -2615,9 +2619,15 @@ extfilter_clock:
     sub.l   d6,d5 * 1 pOEP
     add.l   d7,a3 * 0 sOEP
     muls.l  d3,d5 * 2 pOEP only
-    moveq   #12,d7 *1 pOEP
-    asr.l   d7,d5 * 0 sOEP, move.l ,Rx
+    ;moveq   #12,d7 *1 pOEP
+    ;asr.l   d7,d5 * 0 sOEP, move.l ,Rx
+    ;add.l   d5,d6 * 1 pOEP
+    asr.l   d2,d5 * 1 pOEP
+    move.l  a2,extfilter_Vo(a0)
     add.l   d5,d6 * 1 pOEP
+    move.l  a3,extfilter_Vhp(a0)
+    move.l  d6,extfilter_Vlp(a0)
+    rts
 
 .x
     move.l  a2,extfilter_Vo(a0)
