@@ -2167,9 +2167,9 @@ filter_clock:
     add.l   d1,d5
 
 .break
-    * w0_delta_t is dependent on delta_t_flt
+
+     * w0_delta_t is dependent on delta_t_flt
     * calc initial value with delta_t_flt=8
-    move.l  filter_w0_ceil_dt(a0),d2
 
     move.l  filter_Vhp(a0),d3
     moveq   #8,d1
@@ -2178,16 +2178,22 @@ filter_clock:
     move.l  filter_Vlp(a0),a3
     moveq   #14,d5 * shift
     move.l  filter_1024_div_Q(a0),a1
-    asr.l   #3,d2 ; mul #8, asr #6
   
+    cmp.w   #8,d0
+    blo     .rest
+
+    * Value for step 8
+    move.l  filter_w0_ceil_dt(a0),d2
+    asr.l   #3,d2 ; mul #8, asr #6
+
     * d5 = shift
     * a2 = Vi
     * d0 = delta_t
     * d1 = delta_t_flt
 
+ REM ;;;;;;;;; OPTION 1
 .loop
     * calls: 6x
-
     COUNT   C_FLT1
 
     cmp.l   d1,d0
@@ -2199,6 +2205,8 @@ filter_clock:
     asr.l   #6,d2
     COUNT   C_FLT2
 .4  
+
+; Original:
 ;    * dVlp
 ;    move.l  d4,d7
 ;    muls.l  d2,d7
@@ -2222,27 +2230,25 @@ filter_clock:
 ;    sub.l   a3,d3
 ;    sub.l   a2,d3
 
- REM
-    * The above interleaved:
-    * OPTION 1
-    move.l  d4,d7 
-    muls.l  d2,d7 * 2 pOEP only
-    move.l  d3,d6 * 1 pOEP
-    asr.l   d5,d7 * 0 sOEP
-    move.l  a1,d3 * 1 pOEP
-    muls.l  d2,d6 * 2 pOEP only
-    sub.l   d7,a3 * 1 pOEP
-    muls.l  d4,d3 * 2 pOEP only
-    asr.l   d5,d6 * 1 pOEP
-    asr.l   #8,d3 * 0 sOEP
-    sub.l   d6,d4 * 1 pOEP
-    asr.l   #2,d3 * 0 sOEP
-    sub.l   a3,d3 * 1 pOEP
-    sub.l   a2,d3 * 1 pOEP
-    sub.l   d1,d0 * 0 sOEP
-    * 13 cycles
- EREM
- 
+;;    * The above interleaved:
+;;    * OPTION 1
+;;    move.l  d4,d7 
+;;    muls.l  d2,d7 * 2 pOEP only
+;;    move.l  d3,d6 * 1 pOEP
+;;    asr.l   d5,d7 * 0 sOEP
+;;    move.l  a1,d3 * 1 pOEP
+;;    muls.l  d2,d6 * 2 pOEP only
+;;    sub.l   d7,a3 * 1 pOEP
+;;    muls.l  d4,d3 * 2 pOEP only
+;;    asr.l   d5,d6 * 1 pOEP
+;;    asr.l   #8,d3 * 0 sOEP
+;;    sub.l   d6,d4 * 1 pOEP
+;;    asr.l   #2,d3 * 0 sOEP
+;;    sub.l   a3,d3 * 1 pOEP
+;;    sub.l   a2,d3 * 1 pOEP
+;;    sub.l   d1,d0 * 0 sOEP
+;;    * 13 cycles
+
     * The above interleaved:
     * OPTION 2
     move.l  d4,d7 
@@ -2264,8 +2270,72 @@ filter_clock:
 
     bne     .loop
 .x
-    move.l  d3,filter_Vhp(a0)
+ EREM ;;;;;;;; OPTION 1 END
+
+; REM ;;;;;;; OPTION 2
+  
+    * Start with 8 cycle steps
+
+.loop
+    COUNT   C_FLT1
+ 
+    * ---------------------------------
+    * The above interleaved:
+    * OPTION 2
+    move.l  d4,d7 
+    muls.l  d2,d7 * 2 pOEP only
+    move.l  d3,d6 * 1 pOEP
+    asr.l   d5,d7 * 0 sOEP
+    move.l  a1,d3 * 1 pOEP
+    sub.l   d7,a3 * 0 sOEP
+    muls.l  d2,d6 * 2 pOEP only
+    muls.l  d4,d3 * 2 pOEP only
+    asr.l   #8,d3 * 1 pOEP
+    asr.l   d5,d6 * 0 sOEP
+    asr.l   #2,d3 * 1 pOEP
+    sub.l   d6,d4 * 0 sOEP
+    sub.l   a3,d3 * 1 pOEP
+    sub.l   a2,d3 * 1 pOEP
+    subq.l  #8,d0 * 0 sOEP
+    * 12 cycles
+    * ---------------------------------
+
+    cmp.w   #8,d0
+    bhs     .loop
+    tst.w   d0
+    beq     .exit
+
+.rest
+    * d0 = rest of the cycles, < 8
+
+    * delta_t_flt changed, update w0_delta_t
+    muls.l   filter_w0_ceil_dt(a0),d0
+    asr.l   #6,d0
+    COUNT   C_FLT2
+
+    * ---------------------------------
+    * OPTION 2
+    move.l  d4,d7 
+    muls.l  d0,d7 * 2 pOEP only
+    move.l  d3,d6 * 1 pOEP
+    asr.l   d5,d7 * 0 sOEP
+    move.l  a1,d3 * 1 pOEP
+    sub.l   d7,a3 * 0 sOEP
+    muls.l  d0,d6 * 2 pOEP only
+    muls.l  d4,d3 * 2 pOEP only
+    asr.l   #8,d3 * 1 pOEP
+    asr.l   d5,d6 * 0 sOEP
+    asr.l   #2,d3 * 1 pOEP
+    sub.l   d6,d4 * 0 sOEP
+    sub.l   a3,d3 * 1 pOEP
+    sub.l   a2,d3 * 1 pOEP
+    * ---------------------------------
+
+.exit
+;; EREM ;;;;;;;;; OPTION 2 END
+
     move.l  d4,filter_Vbp(a0)
+    move.l  d3,filter_Vhp(a0)
     move.l  a3,filter_Vlp(a0)
 
     ;rts
