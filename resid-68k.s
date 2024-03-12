@@ -2180,7 +2180,7 @@ filter_clock:
     move.l  filter_1024_div_Q(a0),a1
   
     cmp.w   #8,d0
-    blo     .rest
+    bls     .rest
 
     * Value for step 8
     move.l  filter_w0_ceil_dt(a0),d2
@@ -2489,7 +2489,7 @@ extfilter_clock:
     moveq   #20,d1  * shift
 
     cmp.w   #8,d0
-    blo     .rest
+    bls     .rest
 
     move.l  extfilter_w0lp(a0),d3
     move.l  extfilter_w0hp(a0),d4
