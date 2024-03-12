@@ -1813,6 +1813,12 @@ filter_constructor:
 *    d0 = true to enable, false to disable
 filter_enable_filter
     move.b  d0,filter_enabled(a0)
+    beq     .disable
+    rts
+
+.disable
+    pea     filter_clock\.disabled(pc)
+    move.l  (sp)+,filter_filt_jump(a0)
     rts
 
 * in:
@@ -1908,12 +1914,19 @@ filter_writeRES_FILT:
     move.b  d1,filter_res(a0)
     move.b  d0,filter_filt(a0)
 
+    tst.b   filter_enabled(a0)
+    beq     .disabled
+
     lea     filter_clock\.tab(pc),a1
     add.w   (a1,d0.w*2),a1
+.1
     move.l  a1,filter_filt_jump(a0)
     bra     filter_set_Q
     
-
+.disabled
+    lea     filter_clock\.disabled(pc),a1
+    bra      .1
+    
 * in:
 *    a0 = sid object
 *    a1 = filter object
@@ -2043,6 +2056,7 @@ filter_clock:
     clr.l   d3
 .1
 
+ REM ;; filter disabled combined with below jmp
     tst.b   filter_enabled(a0)
     bne.b   .3
     add.l   d3,d1
@@ -2053,7 +2067,8 @@ filter_clock:
     clr.l   filter_Vlp(a0)    
     ;rts
     bra     filter_output
-.3
+.3 
+ EREM
 
  REM
     moveq   #0,d5                * 1
@@ -2063,6 +2078,19 @@ filter_clock:
  EREM
     move.l  filter_filt_jump(a0),a1 * 1
     jmp     (a1)                    * 5
+
+.disabled
+    add.l   d3,d1
+    add.l   d2,d1
+    move.l  d1,filter_Vnf(a0)
+    clr.l   filter_Vhp(a0)    
+    clr.l   filter_Vbp(a0)    
+    clr.l   filter_Vlp(a0)    
+    ; filter_output part:
+    move.l  filter_Vnf(a0),d0
+    add.l   filter_mixer_DC(a0),d0
+    muls.l  filter_volScaled(a0),d0
+    bra     filter_output_return
 
 .tab    
     dc.w    .f0-.tab
@@ -2356,11 +2384,13 @@ filter_output:
     move.l  filter_Vnf(a0),d0
     add.l   filter_mixer_DC(a0),d0
 
+ REM
     tst.b   filter_enabled(a0)
     bne.b   .1
     muls.l  filter_volScaled(a0),d0
     bra     filter_output_return
 .1  
+ EREM
 
  REM ; option 1
     move.w  filter_hp_bp_lp(a0),d1
