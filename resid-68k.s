@@ -2422,6 +2422,9 @@ filter_output:
 *
 ******************************************************************************
 
+EXTFILTER_W0LP = 104858
+EXTFILTER_W0HP = 105
+
 * in:
 *    a0 = object
 extfilter_constructor:
@@ -2430,8 +2433,8 @@ extfilter_constructor:
     bsr     extfilter_enable_filter
     moveq   #CHIP_MODEL_MOS6581,d0
     bsr     extfilter_set_chip_model
-    move.l  #104858,extfilter_w0lp(a0)
-    move.l  #105,extfilter_w0hp(a0)
+    move.l  #EXTFILTER_W0LP,extfilter_w0lp(a0)
+    move.l  #EXTFILTER_W0HP,extfilter_w0hp(a0)
     rts
 
 * in:
@@ -2491,11 +2494,12 @@ extfilter_clock:
     cmp.w   #8,d0
     bls     .rest
 
-    move.l  extfilter_w0lp(a0),d3
-    move.l  extfilter_w0hp(a0),d4
-    asr.l   #5,d3 * mul 8, asr 8
-    asl.l   #3,d4 * mul 8
-
+;    move.l  extfilter_w0lp(a0),d3
+;    move.l  extfilter_w0hp(a0),d4
+;    asr.l   #5,d3 * mul 8, asr 8
+;    asl.l   #3,d4 * mul 8
+    move.l  #(EXTFILTER_W0LP*8)>>8,d3 ; 3276
+    move.l  #(EXTFILTER_W0HP)<<3,d4   ; 840
 
     * d2 = delta_t_flt
     * a1 = Vi
@@ -2575,6 +2579,7 @@ extfilter_clock:
 .x
  EREM ;;; OPTION 1 END
 
+    ;;; OPTION 2 START
 .loop
     COUNT   C_EFLT1
     move.l  d6,d7
@@ -2602,11 +2607,18 @@ extfilter_clock:
 .rest
     COUNT   C_EFLT2
 
+    ; d0 <= 8
+
     ; ---------------------------------
     * delta_t_flt changed
-    move.l  extfilter_w0lp(a0),d3
+    ;move.l  extfilter_w0lp(a0),d3
+    ;muls.l  d0,d3
+    ;move.l  extfilter_w0hp(a0),d4
+    ;muls.l  d0,d4
+    ;asr.l   #8,d3
+    move.l  #(EXTFILTER_W0LP),d3
+    moveq   #(EXTFILTER_W0HP),d4   
     muls.l  d0,d3
-    move.l  extfilter_w0hp(a0),d4
     muls.l  d0,d4
     asr.l   #8,d3
     ; ---------------------------------
