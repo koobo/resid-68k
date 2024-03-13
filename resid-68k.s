@@ -536,12 +536,12 @@ WAVE_CLOCK_ macro
     ; option 2
     move.l  wave_shift_register(a0),d4
     move.l  d4,d5
-    lsl.l   #5,d5 * move bit 17 to position 22
+    lsl.l   #5,d5  * move bit 17 to position 22
+    moveq   #10,d6 * shift 
     eor.l   d4,d5
-    moveq   #10,d6   
     and.l   #$3fffff,d4 * clear top bit
     lsl.l   d6,d5 * move bit 22 into X
-    addx.l  d4,d4 * shift and or bit 0
+    addx.l  d4,d4 * shift and OR bit 0 from X
     move.l  d4,wave_shift_register(a0)
 
     sub.l   d1,d3
@@ -2362,8 +2362,8 @@ filter_clock:
 .exit
 ;; EREM ;;;;;;;;; OPTION 2 END
 
-    move.l  d4,filter_Vbp(a0)
     move.l  d3,filter_Vhp(a0)
+    move.l  d4,filter_Vbp(a0)
     move.l  a3,filter_Vlp(a0)
 
     ;rts
