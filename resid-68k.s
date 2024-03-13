@@ -2501,6 +2501,8 @@ extfilter_set_chip_model
 *   a0 = object
 *   d0 = cycle_count delta_t
 *   d1 = sample Vi
+* Out:
+*   d1 = extfilter_Vo
 * uses:
 *   d0-d7,a0,a1,a2,a3
 extfilter_clock:
@@ -2668,12 +2670,14 @@ extfilter_clock:
     move.l  a2,extfilter_Vo(a0)
     add.l   d5,d6 * 1 pOEP
     move.l  a3,extfilter_Vhp(a0)
+    move.l  a2,d1       * d1 = output
     move.l  d6,extfilter_Vlp(a0)
     rts
 
 .x
     move.l  a2,extfilter_Vo(a0)
     move.l  d6,extfilter_Vlp(a0)
+    move.l  a2,d1       * d1 = output
     move.l  a3,extfilter_Vhp(a0)
     rts
 
@@ -3255,6 +3259,8 @@ sid_get_outputScale:
 * in:
 *   a5 = object
 *   d0 = cycle_count delta_t
+* out:
+*   d1 = extfilter_Vo
 * uses:
 *   d0-d7,a0-a3
 *   a5 preserved
@@ -3673,13 +3679,16 @@ sid_clock_fast14:
 
     pushm   d0/d1/a1/a2 * 4 regs
     move.l  d2,d0
-    bsr     sid_clock
+    bsr     sid_clock 
+    * d1 = extfilter_Vo
+    move.l  d1,d6
     popm    d0/d1/a1/a2
 
     ; Inline output generation
-    move.l  sid_extfilt(a5),a0
-    move.l  (sp),d6
-    muls.l  extfilter_Vo(a0),d6
+    ;move.l  sid_extfilt(a5),a0
+    ;move.l  (sp),d6
+    ;muls.l  extfilter_Vo(a0),d6
+    muls.l  (sp),d6
     moveq   #10,d4  * FP 10
     asr.l   d4,d6   * FP shift
     CLAMP16 d6
