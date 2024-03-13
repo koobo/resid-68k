@@ -3666,8 +3666,8 @@ sid_clock_fast14:
     * Loop termination conditions:
     * buffer overflow check
     * if (s >= n) 
-    cmp.l   d1,a6
-    bge     .x     
+;;;    cmp.l   d1,a6
+;;;    bge     .x     
     * if (delta_t_sample > delta_t)
     cmp.l   d0,d2
     bgt     .break
@@ -3677,29 +3677,28 @@ sid_clock_fast14:
     move.l  d5,a4
     sub.l   d2,d0
 
-    pushm   d0/d1/a1/a2 * 4 regs
+    pushm   d0/a1/a2 * 3 regs
     move.l  d2,d0
     bsr     sid_clock 
     * d1 = extfilter_Vo
-    move.l  d1,d6
-    popm    d0/d1/a1/a2
+    popm    d0/a1/a2
 
     ; Inline output generation
     ;move.l  sid_extfilt(a5),a0
     ;move.l  (sp),d6
     ;muls.l  extfilter_Vo(a0),d6
-    muls.l  (sp),d6
+    muls.l  (sp),d1
     moveq   #10,d4  * FP 10
-    asr.l   d4,d6   * FP shift
-    CLAMP16 d6
+    asr.l   d4,d1   * FP shift
+    CLAMP16 d1
     
     * store low 6 bits
-    lsr.b   #2,d6
-    move.b  d6,(a2,a6.l)     * chip write
-    ror.w   #8,d6
+    lsr.b   #2,d1
+    move.b  d1,(a2,a6.l)     * chip write
+    ror.w   #8,d1
     * store high 8 bits
     addq.l  #1,a6
-    move.b  d6,-1(a1,a6.l)   * chip write, stall
+    move.b  d1,-1(a1,a6.l)   * chip write, stall
 
     bra     .loop
     
