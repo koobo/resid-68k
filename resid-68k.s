@@ -693,7 +693,7 @@ wave_output___T:
 .noMsb
     lsr.l   d3,d0
     and     #$0fff,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 wave_output___T_ring:
     COUNT   C_WO3
@@ -712,7 +712,7 @@ wave_output___T_ring:
 .noMsb
     lsr.l   d3,d0
     and     #$0fff,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 
 
@@ -721,7 +721,7 @@ wave_output__S_:
     moveq   #12,d1
     move.l  wave_accumulator(a0),d0
     lsr.l   d1,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 
 wave_output__ST:
@@ -735,7 +735,7 @@ wave_output__ST:
     move.l  wave_wave__ST(a0),a1
     move.b  (a1,d1.w),d0
     lsl.w   #4,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 * out:
 *   d0 = $000 or $fff
@@ -753,10 +753,10 @@ wave_output_P__:
     ;moveq   #0,d0           * 1; 2 
     move.w  wave_test_mask(a0),d0
     COUNT   C_WO8
-    bra     wave_output_return            
+    jmp     (a3)            
 .do
     move    #$0fff,d0       * 1; 2,4?
-    bra     wave_output_return            
+    jmp     (a3)            
 
 * 060: 2 or 9
 * 030: 2+2, 6, 2 = 12
@@ -807,12 +807,12 @@ wave_output_P_T:
     COUNT   C_W11
     ;moveq   #0,d0
     and.w   wave_test_mask(a0),d0
-    bra     wave_output_return
+    jmp     (a3)
 .do
     ;------------------------ wave_output___P:
 
     and     #$0fff,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 
 wave_output_P_T_ring:
@@ -852,12 +852,12 @@ wave_output_P_T_ring:
     COUNT   C_W14
     ;moveq   #0,d0
     and.w   wave_test_mask(a0),d0
-    bra     wave_output_return
+    jmp     (a3)
 .do
     ;------------------------ wave_output___P:
 
     and     #$0fff,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 
 wave_output_PS_:
@@ -882,13 +882,13 @@ wave_output_PS_:
     COUNT   C_W16
     ;moveq   #0,d0
     and.w   wave_test_mask(a0),d0
-    bra     wave_output_return
+    jmp     (a3)
 .do
     move    #$0fff,d0
     ;------------------------ wave_output___P:
     
     and     d1,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 wave_output_PST:
     COUNT   C_W17
@@ -913,13 +913,13 @@ wave_output_PST:
     ;moveq   #0,d0
     move.w  wave_test_mask(a0),d1
     and.w   d1,d0
-    bra     wave_output_return
+    jmp     (a3)
 .do
     move    #$0fff,d0
     ;------------------------ wave_output___P:
     
     and     d1,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 wave_outputN___:
     COUNT   C_W19
@@ -964,7 +964,7 @@ wave_outputN___:
     lsl.w   #1,d3
     or.w    d1,d0
     or.w    d3,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 
 
@@ -978,7 +978,7 @@ wave_outputNPS_:
 wave_outputNPST:
     COUNT   C_W20
     moveq   #0,d0
-    bra     wave_output_return
+    jmp     (a3)
 
 
 ******************************************************************************
@@ -3382,7 +3382,6 @@ sid_clock:
     lea     wave_SIZEOF(a0),a0
     dbf     d6,.cycleCheck
 
-.continue
     ; a0 = wave3 + wave_SIZEOF
 
     ; ---------------------------------
@@ -3413,9 +3412,46 @@ sid_clock:
     * a0 = wave3
 
     * Get voice output
-    * Assume voice objects are stored one after another
 
-    move.l  sid_voice3(a5),a2
+    * jmp+jmp = 5+5 = 10 cycles
+    * jsr+rts = 5+7 = 12 cycles
+    * jmp+bra = 5+3 = 5..8 cycles
+
+    * ---- voice3 out
+    lea     .wr1(pc),a3
+    move.l  wave_get_output(a0),a1
+    jmp     (a1)
+.wr1:
+    lea     -wave_SIZEOF(a0),a0
+    sub.w   voice_wave_zero+resid_voice3(a5),d0
+    muls.w  envelope_counterHi+resid_envelope3(a5),d0
+    add.l   voice_voice_DC+resid_voice3(a5),d0
+    move.l  d0,d5
+    * ---- voice2 out
+    move.l  wave_get_output(a0),a1
+    lea     .wr2(pc),a3
+    jmp     (a1)
+.wr2:
+    lea     -wave_SIZEOF(a0),a0
+    sub.w   voice_wave_zero+resid_voice2(a5),d0
+    muls.w  envelope_counterHi+resid_envelope2(a5),d0
+    add.l   voice_voice_DC+resid_voice2(a5),d0
+    move.l  d0,d6
+    * ---- voice1 out
+    move.l  wave_get_output(a0),a1
+    lea     .wr3(pc),a3
+    jmp     (a1)
+.wr3:
+    sub.w   voice_wave_zero+resid_voice1(a5),d0
+    muls.w  envelope_counterHi+resid_envelope1(a5),d0
+    add.l   voice_voice_DC+resid_voice1(a5),d0
+    ; 30 cyc + return jmp 15
+    ; = 45
+
+ REM ;loopy
+
+
+     move.l  sid_voice3(a5),a2
     moveq   #3-1,d5
     bra     .voiceOutLoop_
 .voiceOutLoop
@@ -3437,15 +3473,38 @@ wave_output_return:
     add.l   voice_voice_DC(a2),d0
     ; ---------------------------------
     dbf     d5,sid_clock\.voiceOutLoop
+  EREM
 
-    ;move.l  (sp)+,d1    * voice 1
-    move.l  d0,d1
-    move.l  (sp)+,d2    * voice 2
-    move.l  (sp)+,d3    * voice 3
+ 
+ REM
+    ; Clock filter
+     ; Get input
+    move.l  sid_voice3(a5),a2
+    VOICE_OUT 3
+    * Assume voice objects are stored one after another
+    lea     -wave_SIZEOF(a0),a0
+    lea     -voice_SIZEOF(a2),a2
+    move.l  d0,d5
+    VOICE_OUT 2
+    lea     -wave_SIZEOF(a0),a0
+    lea     -voice_SIZEOF(a2),a2
+    move.l  d0,d6
+    VOICE_OUT 1
 
-;    move.l  d5,d3   * voice 3
-;    move.l  d6,d2   * voice 2
-;    move.l  d0,d1   * voice 1
+ EREM
+
+
+    ; 3 * 12 = 36
+    ; + 3*jmp 
+    ; = 51
+
+    ; -----
+    move.l  d5,d3   * voice3
+    move.l  d6,d2   * voice2
+    move.l  d0,d1   * voice1
+
+    ;-------------------------------
+
     move.l  (sp),d0 * restore delta_t
     
     move.l  sid_filter(a5),a0
