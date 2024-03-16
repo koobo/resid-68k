@@ -3313,9 +3313,11 @@ sid_clock:
     ; Find minimum number of cycles to an oscillator accumulator MSB toggle.
     ; We have to clock on each MSB on / MSB off for hard sync to operate
     ; correctly.
-    move.l  sid_voice1(a5),a0
+
+    ;move.l  sid_voice1(a5),a0
+    ;move.l  voice_wave(a0),a0
+    lea     resid_wave1(a5),a0
     * assume wave objects are stored one after another
-    move.l  voice_wave(a0),a0
     * Loop three waves
     moveq   #3-1,d6
 .cycleCheck
