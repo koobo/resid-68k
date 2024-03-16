@@ -3289,8 +3289,9 @@ sid_clock:
     ; ---------------------------------
     ; Run envelopes
 
-    move.l  sid_voice1(a5),a0
-    move.l  voice_envelope(a0),a0
+    ;move.l  sid_voice1(a5),a0
+    ;move.l  voice_envelope(a0),a0
+    lea     resid_envelope1(a5),a0
     moveq   #3-1,d7
 .envLoop
     move.l  a3,d0
