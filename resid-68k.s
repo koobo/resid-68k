@@ -693,7 +693,7 @@ wave_output___T:
 .noMsb
     lsr.l   d3,d0
     and     #$0fff,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 wave_output___T_ring:
     COUNT   C_WO3
@@ -712,7 +712,7 @@ wave_output___T_ring:
 .noMsb
     lsr.l   d3,d0
     and     #$0fff,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 
@@ -721,7 +721,7 @@ wave_output__S_:
     moveq   #12,d1
     move.l  wave_accumulator(a0),d0
     lsr.l   d1,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 wave_output__ST:
@@ -735,7 +735,7 @@ wave_output__ST:
     move.l  wave_wave__ST(a0),a1
     move.b  (a1,d1.w),d0
     lsl.w   #4,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 * out:
 *   d0 = $000 or $fff
@@ -753,10 +753,10 @@ wave_output_P__:
     ;moveq   #0,d0           * 1; 2 
     move.w  wave_test_mask(a0),d0
     COUNT   C_WO8
-    jmp     (a3)            
+    bra     wave_output_return            
 .do
     move    #$0fff,d0       * 1; 2,4?
-    jmp     (a3)            
+    bra     wave_output_return            
 
 * 060: 2 or 9
 * 030: 2+2, 6, 2 = 12
@@ -807,12 +807,12 @@ wave_output_P_T:
     COUNT   C_W11
     ;moveq   #0,d0
     and.w   wave_test_mask(a0),d0
-    jmp     (a3)
+    bra     wave_output_return
 .do
     ;------------------------ wave_output___P:
 
     and     #$0fff,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 wave_output_P_T_ring:
@@ -852,12 +852,12 @@ wave_output_P_T_ring:
     COUNT   C_W14
     ;moveq   #0,d0
     and.w   wave_test_mask(a0),d0
-    jmp     (a3)
+    bra     wave_output_return
 .do
     ;------------------------ wave_output___P:
 
     and     #$0fff,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 wave_output_PS_:
@@ -882,13 +882,13 @@ wave_output_PS_:
     COUNT   C_W16
     ;moveq   #0,d0
     and.w   wave_test_mask(a0),d0
-    jmp     (a3)
+    bra     wave_output_return
 .do
     move    #$0fff,d0
     ;------------------------ wave_output___P:
     
     and     d1,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 wave_output_PST:
     COUNT   C_W17
@@ -913,13 +913,13 @@ wave_output_PST:
     ;moveq   #0,d0
     move.w  wave_test_mask(a0),d1
     and.w   d1,d0
-    jmp     (a3)
+    bra     wave_output_return
 .do
     move    #$0fff,d0
     ;------------------------ wave_output___P:
     
     and     d1,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 wave_outputN___:
     COUNT   C_W19
@@ -964,7 +964,7 @@ wave_outputN___:
     lsl.w   #1,d3
     or.w    d1,d0
     or.w    d3,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 
@@ -978,7 +978,7 @@ wave_outputNPS_:
 wave_outputNPST:
     COUNT   C_W20
     moveq   #0,d0
-    jmp     (a3)
+    bra     wave_output_return
 
 
 ******************************************************************************
@@ -3422,6 +3422,7 @@ sid_clock:
     * jsr+rts = 5+7 = 12 cycles
     * jmp+bra = 5+3 = 5..8 cycles
 
+ REM ; option 3
     * ---- voice3 out
     lea     .wr1(pc),a3
     move.l  wave_get_output(a0),a1
@@ -3453,10 +3454,13 @@ sid_clock:
     ; 30 cyc + return jmp 15
     ; = 45
 
- REM ;loopy
+    move.l  d5,d3   * voice3
+    move.l  d6,d2   * voice2
+    move.l  d0,d1   * voice1
+  EREM ; option 3
 
-
-     move.l  sid_voice3(a5),a2
+; REM ;loopy loop
+    move.l  sid_voice3(a5),a2
     moveq   #3-1,d5
     bra     .voiceOutLoop_
 .voiceOutLoop
@@ -3478,7 +3482,11 @@ wave_output_return:
     add.l   voice_voice_DC(a2),d0
     ; ---------------------------------
     dbf     d5,sid_clock\.voiceOutLoop
-  EREM
+
+    move.l  (sp)+,d2   * voice2
+    move.l  (sp)+,d3   * voice3
+    move.l  d0,d1   * voice1
+ ; EREM
 
  
  REM
@@ -3496,17 +3504,16 @@ wave_output_return:
     move.l  d0,d6
     VOICE_OUT 1
 
- EREM
-
+    ; -----
+    move.l  d5,d3   * voice3
+    move.l  d6,d2   * voice2
+    move.l  d0,d1   * voice1
 
     ; 3 * 12 = 36
     ; + 3*jmp 
     ; = 51
 
-    ; -----
-    move.l  d5,d3   * voice3
-    move.l  d6,d2   * voice2
-    move.l  d0,d1   * voice1
+ EREM
 
     ;-------------------------------
 
