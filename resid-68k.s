@@ -3512,12 +3512,14 @@ wave_output_return:
 
     move.l  (sp),d0 * restore delta_t
     
-    move.l  sid_filter(a5),a0
+    ;move.l  sid_filter(a5),a0  
+    lea     resid_filter(a5),a0
     bra     filter_clock ; + filter_output
 filter_output_return:
     ; Clock external filter
     move.l  d0,d1       * input for the filter
-    move.l  sid_extfilt(a5),a0
+    ;move.l  sid_extfilt(a5),a0
+    lea     resid_extfilter(a5),a0
     pop     d0          * restore delta_t
     bra     extfilter_clock
   
