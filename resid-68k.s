@@ -3708,6 +3708,7 @@ sid_clock_fast8:
 *   d0 = samples written
 * uses:
 *   d0-a6
+    cnop 0,4
 sid_clock_fast14:
     move.l  a0,a5
     * a6 = s
