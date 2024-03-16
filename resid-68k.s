@@ -3740,9 +3740,9 @@ sid_clock_fast14:
     bgt     .break
 
     and.l   #FIXP_MASK,d5
-    sub.l   d2,d0
     sub.l   #1<<(FIXP_SHIFT-1),d5
     move.l  d5,a4
+    sub.l   d2,d0
 
     pushm   d0/a1/a2 * 3 regs
     move.l  d2,d0
