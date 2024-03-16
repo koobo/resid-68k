@@ -1697,6 +1697,8 @@ ENVELOPE_CLOCK_ macro
     ;move.b  envelope_sustain_level(a0),d7
     bra     .break1DecaySustain
     
+    cnop    0,4
+
 .break1Attack
     COUNT   C_ENV25
 
