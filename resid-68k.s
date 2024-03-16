@@ -3431,20 +3431,20 @@ sid_clock:
     sub.w   voice_wave_zero+resid_voice3(a5),d0
     muls.w  envelope_counterHi+resid_envelope3(a5),d0
     add.l   voice_voice_DC+resid_voice3(a5),d0
+    lea     .wr2(pc),a3
     move.l  d0,d5
     * ---- voice2 out
     move.l  wave_get_output(a0),a1
-    lea     .wr2(pc),a3
     jmp     (a1)
 .wr2:
     lea     -wave_SIZEOF(a0),a0
     sub.w   voice_wave_zero+resid_voice2(a5),d0
     muls.w  envelope_counterHi+resid_envelope2(a5),d0
     add.l   voice_voice_DC+resid_voice2(a5),d0
+    lea     .wr3(pc),a3
     move.l  d0,d6
     * ---- voice1 out
     move.l  wave_get_output(a0),a1
-    lea     .wr3(pc),a3
     jmp     (a1)
 .wr3:
     sub.w   voice_wave_zero+resid_voice1(a5),d0
