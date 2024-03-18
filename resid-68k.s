@@ -737,6 +737,8 @@ wave_output__ST:
     lsl.w   #4,d0
     jmp     (a3)
 
+* Pulse
+* The test bit holds the pulse waveform output at 0xfff
 * out:
 *   d0 = $000 or $fff
 wave_output_P__:
@@ -806,7 +808,7 @@ wave_output_P_T:
     bhs.b   .do
     COUNT   C_W11
     ;moveq   #0,d0
-    and.w   wave_test_mask(a0),d0
+    and.w   wave_test_mask(a0),d0 * mask is 0 if test bit is 0
     jmp     (a3)
 .do
     ;------------------------ wave_output___P:
@@ -851,7 +853,7 @@ wave_output_P_T_ring:
     bhs.b   .do
     COUNT   C_W14
     ;moveq   #0,d0
-    and.w   wave_test_mask(a0),d0
+    and.w   wave_test_mask(a0),d0 * mask is 0 if test bit is 0
     jmp     (a3)
 .do
     ;------------------------ wave_output___P:
@@ -863,7 +865,7 @@ wave_output_P_T_ring:
 wave_output_PS_:
     COUNT   C_W15
 
-    ; wave_output__S_ inlined
+    ;------------------------ wave_output___S:
     moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0
     lsr.l   d2,d0
@@ -874,14 +876,15 @@ wave_output_PS_:
     ;------------------------ wave_output___P:
     ;tst.b   wave_test(a0)
     ;bne.b   .do
-    moveq   #12,d2 * shift
-    move.l  wave_accumulator(a0),d0
-    lsr.l   d2,d0
+    ;moveq   #12,d2 * shift
+    ;move.l  wave_accumulator(a0),d0
+    ;lsr.l   d2,d0
     cmp     wave_pw(a0),d0
     bhs.b   .do
     COUNT   C_W16
     ;moveq   #0,d0
-    and.w   wave_test_mask(a0),d0
+    move.w  wave_test_mask(a0),d0 * mask is 0 if test bit is 0
+    and.w   d1,d0
     jmp     (a3)
 .do
     move    #$0fff,d0
@@ -893,7 +896,7 @@ wave_output_PS_:
 wave_output_PST:
     COUNT   C_W17
 
-    ; wave_output__S_ inlined
+    ;------------------------ wave_output___S:
     moveq   #12,d2 * shift
     move.l  wave_accumulator(a0),d0  
     lsr.l   d2,d0
@@ -904,14 +907,14 @@ wave_output_PST:
     ;------------------------ wave_output___P:
     ;tst.b   wave_test(a0)
     ;bne.b   .do
-    moveq   #12,d2 * shift
-    move.l  wave_accumulator(a0),d0
-    lsr.l   d2,d0
+    ;moveq   #12,d2 * shift
+    ;move.l  wave_accumulator(a0),d0
+    ;lsr.l   d2,d0
     cmp     wave_pw(a0),d0
     bhs.b   .do
     COUNT   C_W18
     ;moveq   #0,d0
-    move.w  wave_test_mask(a0),d1
+    move.w  wave_test_mask(a0),d0 * mask is 0 if test bit is 0
     and.w   d1,d0
     jmp     (a3)
 .do
