@@ -1500,8 +1500,11 @@ ENVELOPE_CLOCK_ macro
 **************************************
 .loopReleaseDo
     COUNT   C_ENV6
-    
-.loopRelease
+
+    * enter hold zero specific loop?
+    tst.b   envelope_hold_zero(a0)
+    bne.b   .2Release_holdZero
+
 .2Release
     COUNT   C_ENV7
 
@@ -1515,8 +1518,8 @@ ENVELOPE_CLOCK_ macro
     COUNT   C_ENV8
 
     moveq   #0,d3   * exponential_counter
-    tst.b   envelope_hold_zero(a0)
-    bne.b   .continueLoopRelease
+    ;;tst.b   envelope_hold_zero(a0)
+    ;;bne.b   .continueLoopRelease
  
     COUNT   C_ENV9
 
@@ -1536,13 +1539,30 @@ ENVELOPE_CLOCK_ macro
     * When the envelope counter is changed to zero, it is frozen at zero.
     st      envelope_hold_zero(a0)
 
+    ; -------------- hold zero loop
+    bra     .continueLoopRelease_holdZero
+.2Release_holdZero
+    sub.l   d1,d0   * delta_t -= rate_step
+    addq.b  #1,d3
+    cmp.b   d4,d3
+    bne.b   .continueLoopRelease_holdZero
+    moveq   #0,d3   * exponential_counter
+.continueLoopRelease_holdZero
+    * rate_step = rate_period
+    move.l  d6,d1
+    cmp.l   d1,d0
+    bhs     .2Release_holdZero
+    bra     .releaseExit
+    ; ----------------
+
+
 .continueLoopRelease
     * rate_step = rate_period
     move.l  d6,d1
 
     cmp.l   d1,d0
     bhs     .2Release
-
+.releaseExit
     COUNT   C_ENV12
 
     move.b  d5,envelope_counter(a0)
@@ -1577,6 +1597,10 @@ ENVELOPE_CLOCK_ macro
 
     ;move.b  envelope_sustain_level(a0),d7
 
+    * enter hold zero specific loop?
+    tst.b   envelope_hold_zero(a0)
+    bne     .2DecaySustain_holdZero
+
 .2DecaySustain
     COUNT   C_ENV14    
     sub.l   d1,d0   * delta_t -= rate_step
@@ -1590,8 +1614,8 @@ ENVELOPE_CLOCK_ macro
 
     moveq   #0,d3   * exponential_counter
 
-    tst.b   envelope_hold_zero(a0)
-    bne     .continueLoopDecaySustain
+    ;;tst.b   envelope_hold_zero(a0)
+    ;;bne     .continueLoopDecaySustain
 
     COUNT   C_ENV16
 
@@ -1619,6 +1643,22 @@ ENVELOPE_CLOCK_ macro
     st      envelope_hold_zero(a0)
 
     COUNT   C_ENV20
+ ;REM
+    ; ------------------- decay sustain hold zero
+    bra     .continueLoopDecaySustain_holdZero
+.2DecaySustain_holdZero
+    sub.l   d1,d0   * delta_t -= rate_step
+    addq.b  #1,d3
+    cmp.b   d4,d3
+    bne     .continueLoopDecaySustain_holdZero
+    moveq   #0,d3   * exponential_counter
+.continueLoopDecaySustain_holdZero
+    move.l  d6,d1
+    cmp.l   d1,d0
+    bhs    .2DecaySustain_holdZero
+    bra     .decaySustainExit
+    ; -------------------
+ ;EREM
 
 .continueLoopDecaySustain
     * rate_step = rate_period
@@ -1626,7 +1666,7 @@ ENVELOPE_CLOCK_ macro
 
     cmp.l   d1,d0
     bhs    .2DecaySustain
- 
+.decaySustainExit
     COUNT   C_ENV21
 
     move.b  d5,envelope_counter(a0)
