@@ -49,6 +49,12 @@ pop    macro
     incdir include:
   endif
 
+  ifd __VASM
+    ; Disable "move.l to moveq" optimization, it may add "swap" which is
+    ; pOEP-only
+    opt o4-
+  endif
+
     include resid-68k.i
 
 RANGE8           = 1<<8
