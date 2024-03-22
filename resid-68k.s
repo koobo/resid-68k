@@ -2581,8 +2581,8 @@ extfilter_clock:
 ;    move.l  extfilter_w0hp(a0),d4
 ;    asr.l   #5,d3 * mul 8, asr 8
 ;    asl.l   #3,d4 * mul 8
-;    move.l  #(EXTFILTER_W0LP*8)>>8,d3 ; 3276
-;    move.l  #(EXTFILTER_W0HP)<<3,d4   ; 840
+    move.l  #(EXTFILTER_W0LP*8)>>8,d3 ; 3276
+    move.l  #(EXTFILTER_W0HP)<<3,d4   ; 840
 
     * d2 = delta_t_flt
     * a1 = Vi
@@ -2668,14 +2668,12 @@ extfilter_clock:
     move.l  d6,d7
     sub.l   a3,d7
     move.l  d7,a2
-    ;;muls.l  d4,d7 * 2 pOEP only
-    muls.l  #(EXTFILTER_W0HP)<<3,d7
+    muls.l  d4,d7 * 2 pOEP only
     move.l  a1,d5 * 1 pOEP 
     asr.l   d1,d7 * 0 sOEP
     sub.l   d6,d5 * 1 pOEP
     add.l   d7,a3 * 0 sOEP
-    ;;muls.l  d3,d5 * 2 pOEP only
-    muls.l  #(EXTFILTER_W0LP*8)>>8,d5
+    muls.l  d3,d5 * 2 pOEP only
     ;moveq   #12,d7 *1 pOEP
     ;asr.l   d7,d5 * 0 sOEP, move.l ,Rx
     ;add.l   d5,d6 * 1 pOEP
