@@ -8,6 +8,30 @@
     include devices/timer.i
     include dos/dos_lib.i
 
+pushm  macro
+       ifc        "\1","all"
+       movem.l    d0-a6,-(sp)
+       else
+       movem.l    \1,-(sp)
+       endc
+       endm
+
+popm   macro
+       ifc        "\1","all"
+       movem.l    (sp)+,d0-a6
+       else
+       movem.l    (sp)+,\1
+       endc
+       endm
+
+push   macro
+       move.l     \1,-(sp)
+       endm
+
+pop    macro
+       move.l     (sp)+,\1
+       endm
+
 * Period should be divisible by 64 for bug free 14-bit output
 PAULA_PERIOD=128    
 PAL_CLOCK=3546895
@@ -32,9 +56,57 @@ SAMPLE_BUFFER_SIZE = 140     * 138.550585
     * Launch and run a few cycles
 sid_main:     
     bsr     openTimer
-
     lea     Sid,a0
     jsr	    sid_constructor
+
+    clr.l   result1
+    clr.l   result2
+    clr.l   result3
+
+ rept 4
+    moveq   #1,d0   * ext filter on
+    moveq   #1,d1   * filter on
+    bsr     measure
+    add.l   d7,result1
+ endr
+ rept 4
+    moveq   #0,d0   * ext filter off
+    moveq   #1,d1   * filter on
+    bsr     measure
+    add.l   d7,result2
+ endr
+ rept 4
+    moveq   #0,d0   * ext filter off
+    moveq   #0,d1   * filter off
+    bsr     measure
+    add.l   d7,result3
+ endr
+    move.l  result1,d0
+    lsr.l   #2,d0
+    move.l  result2,d2
+    lsr.l   #2,d2
+    move.l  result3,d4
+    lsr.l   #2,d4
+
+ ifd __VASM
+    bsr     print
+ endif
+    rts
+
+result1 dc.l 0
+result2 dc.l 0
+result3 dc.l 0
+
+measure:
+    lea     Sid,a0
+    push    d1
+    jsr     sid_enable_external_filter
+    lea     Sid,a0
+    pop     d0
+    jsr     sid_enable_filter
+
+    lea     Sid,a0
+    jsr	    sid_reset
  
     move.l  #985248,d0
     moveq   #SAMPLING_METHOD_OVERSAMPLE2x14,d1
@@ -48,12 +120,6 @@ sid_main:
     jsr     sid_set_sampling_parameters_paula
     move.l  a1,a4
 
-    lea     Sid,a0
-    moveq   #1,d0
-    jsr     sid_enable_external_filter
-    lea     Sid,a0
-    moveq   #1,d0
-    jsr     sid_enable_filter
 
     lea     Sid,a0
     move.l  #SAMPLES_PER_FRAME,d0
@@ -87,15 +153,11 @@ loop
     dbf     d7,loop
 
     bsr    stopMeasure
+    move    $dff006,$dff180
     move.l  d0,d7
 
     move.l  4.w,a6
     jsr     _LVOPermit(a6)
-
- ifd __VASM
-    move.l  d7,d0
-    bsr     print
- endif
     rts
 
 cyclesPerFrame dc.l 0
@@ -384,9 +446,29 @@ print:
     swap    d1
     ext.l   d1
 
+    divu.w  #100,d2
+    move.l  d2,d3
+    ext.l   d2
+    swap    d3
+    ext.l   d3
+
+    divu.w  #100,d4
+    move.l  d4,d5
+    ext.l   d4
+    swap    d5
+    ext.l   d5
+
     lea     result(pc),a0
     move.l  4.w,a6
     bsr     desmsg
+
+    lea     desbuf,a0
+    move.l  a0,a1
+.f  tst.b   (a0)+
+    bne     .f
+    subq    #1,a0
+    sub.l   a1,a0
+    push    a0
 
     lea	dosname(pc),a1
 	jsr     _LVOOldOpenLibrary(a6)
@@ -395,7 +477,8 @@ print:
     jsr     _LVOOutput(a6)
     move.l  d0,d1
     move.l  #desbuf,d2
-    move.l  #128,d3
+    ;move.l  #128,d3
+    pop     d3
     jsr     _LVOWrite(a6)
 
     move.l  a6,a1
@@ -417,7 +500,7 @@ putc	move.b	d0,(a3)+
 
 desbuf  ds.b    256
 
-result      dc.b    "Result: %ld.%02.2ld ms",10,0
+result      dc.b    "Result: %ld.%02.2ld ms %ld.%02.2ld ms %ld.%02.2ld ms",10,0
 dosname		dc.b	"dos.library",0
  even
 
