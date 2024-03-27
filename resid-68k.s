@@ -3768,7 +3768,9 @@ sid_clock_fast14:
 
     bsr     sid_get_outputScale
     move.l  d6,-(sp)
+    bra     .go
 .loop
+ REM
     * d5 = next_sample_offset
     move.l  a4,d5
     add.l   sid_cycles_per_sample(a5),d5
@@ -3787,7 +3789,7 @@ sid_clock_fast14:
     * if (delta_t_sample > delta_t)
     cmp.l   d0,d2
     bgt     .break
-
+ EREM
     and.l   #FIXP_MASK,d5
     sub.l   #1<<(FIXP_SHIFT-1),d5
     move.l  d5,a4
@@ -3815,8 +3817,21 @@ sid_clock_fast14:
     * store high 8 bits
     addq.l  #1,a6
     move.b  d1,-1(a1,a6.l)   * chip write, stall
+.go
+;    bra     .loop
+    ; ---------------------------------
+    move.l  a4,d5
+    add.l   sid_cycles_per_sample(a5),d5
+    add.l   #1<<(FIXP_SHIFT-1),d5
 
-    bra     .loop
+    * d2 = delta_t_sample
+    moveq   #FIXP_SHIFT,d4
+    move.l  d5,d2
+    asr.l   d4,d2       * >>FIXP_SHIFT
+
+    cmp.l   d0,d2
+;    bgt     .break
+    ble     .loop
     
 .break
     * run remaining d0 cycles
