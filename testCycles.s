@@ -63,41 +63,91 @@ sid_main:
     clr.l   result2
     clr.l   result3
 
- rept 4
+    lea     result1,a0
+ rept 5
     moveq   #1,d0   * ext filter on
     moveq   #1,d1   * filter on
     bsr     measure
-    add.l   d7,result1
  endr
- rept 4
+
+    lea     result2,a0
+ rept 5
     moveq   #0,d0   * ext filter off
     moveq   #1,d1   * filter on
     bsr     measure
-    add.l   d7,result2
  endr
- rept 4
+
+    lea     result3,a0
+ rept 5
     moveq   #0,d0   * ext filter off
     moveq   #0,d1   * filter off
     bsr     measure
     add.l   d7,result3
  endr
-    move.l  result1,d0
-    lsr.l   #2,d0
-    move.l  result2,d2
-    lsr.l   #2,d2
-    move.l  result3,d4
-    lsr.l   #2,d4
+
+    lea     result1,a0
+    moveq   #5,d0
+    bsr     sortArray
+    lea     result2,a0
+    moveq   #5,d0
+    bsr     sortArray
+    lea     result3,a0
+    moveq   #5,d0
+    bsr     sortArray
+
+    * Median result
+    move.l  result1+4+4,d0
+    move.l  result2+4+4,d2
+    move.l  result3+4+4,d4
 
  ifd __VASM
     bsr     print
  endif
     rts
 
-result1 dc.l 0
-result2 dc.l 0
-result3 dc.l 0
+result1 dc.l 0,0,0,0,0
+result2 dc.l 0,0,0,0,0
+result3 dc.l 0,0,0,0,0
+
+* in:
+*  a0 = array of string integers
+*  d0 = length of the array, unsigned 16-bit
+* out:
+*  a0 = sorted array
+sortArray
+	cmp	#1,d0
+	bls.b	.x
+    moveq	#1,d1 
+.sortLoopOuter
+	move	d1,d2
+.sortLoopInner
+	move	d2,d3
+	lsl	#2,d3
+	movem.l	-4(a0,d3),a1/a2
+.strCmp 
+    cmp.l   a1,a2
+	bhi.b	.exitLoop
+.swap
+	movem.l	-4(a0,d3),a1/a2
+	exg	a1,a2
+	movem.l	a1/a2,-4(a0,d3)
+	
+	subq	#1,d2
+	bne.b	.sortLoopInner	
+.exitLoop
+	addq	#1,d1
+	cmp 	d0,d1
+	bne.b 	.sortLoopOuter
+.x	rts
+
 
 measure:
+    push    a0
+    bsr     .do
+    pop     a0
+    move.l  d7,(a0)+
+    rts
+.do
     lea     Sid,a0
     push    d1
     jsr     sid_enable_external_filter
