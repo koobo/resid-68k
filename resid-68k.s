@@ -3411,7 +3411,8 @@ sid_clock:
     addq.l  #1,d2
 .e
     cmp.l   a3,d2
-    bhs.b   .ee
+    ;bhs.b   .ee
+    bhs.b   .cx
     move.l  d2,a3
 .ee
     bra.b   .cx
