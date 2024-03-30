@@ -2251,7 +2251,7 @@ filter_clock:
     * calc initial value with delta_t_flt=8
 
     move.l  filter_Vhp(a0),d3
-    moveq   #8,d1 ;;;;;;;;;;;
+    moveq   #10,d1 * shift
     move.l  filter_Vbp(a0),d4
     move.l  d5,a2
     move.l  filter_Vlp(a0),a3
@@ -2394,6 +2394,23 @@ filter_clock:
 
     * ---------------------------------
     * OPTION 2
+;    move.l  d4,d7 
+;    muls.l  d0,d7 * 2 pOEP only
+;    move.l  d3,d6 * 1 pOEP
+;    asr.l   d5,d7 * 0 sOEP
+;    move.l  a1,d3 * 1 pOEP
+;    sub.l   d7,a3 * 0 sOEP
+;    muls.l  d0,d6 * 2 pOEP only
+;    muls.l  d4,d3 * 2 pOEP only
+;    asr.l   #8,d3 * 1 pOEP
+;    asr.l   d5,d6 * 0 sOEP
+;    asr.l   #2,d3 * 1 pOEP
+;    sub.l   d6,d4 * 0 sOEP
+;    sub.l   a3,d3 * 1 pOEP
+;    sub.l   a2,d3 * 1 pOEP
+    * 12
+
+    * OPTION 3
     move.l  d4,d7 
     muls.l  d0,d7 * 2 pOEP only
     move.l  d3,d6 * 1 pOEP
@@ -2402,19 +2419,19 @@ filter_clock:
     sub.l   d7,a3 * 0 sOEP
     muls.l  d0,d6 * 2 pOEP only
     muls.l  d4,d3 * 2 pOEP only
-    asr.l   #8,d3 * 1 pOEP
+    asr.l   d1,d3 * 1 pOEP
     asr.l   d5,d6 * 0 sOEP
-    asr.l   #2,d3 * 1 pOEP
-    sub.l   d6,d4 * 0 sOEP
     sub.l   a3,d3 * 1 pOEP
+    sub.l   d6,d4 * 0 sOEP
     sub.l   a2,d3 * 1 pOEP
+    * 11
     * ---------------------------------
-
+    
 .exit
 ;; EREM ;;;;;;;;; OPTION 2 END
 
-    move.l  d3,filter_Vhp(a0)
     move.l  d4,filter_Vbp(a0)
+    move.l  d3,filter_Vhp(a0)
     move.l  a3,filter_Vlp(a0)
 
     ;rts
