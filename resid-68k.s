@@ -105,6 +105,8 @@ C_CLK3   dc.l    0,0
         dc.l    "CLK3"
 C_CLK4   dc.l    0,0
         dc.l    "CLK4"
+C_CLK5   dc.l    0,0
+        dc.l    "CLK5"
 C_WAV1   dc.l    0,0
         dc.l    "WAV1"
 C_WAV2   dc.l    0,0
@@ -161,6 +163,8 @@ C_FLT1   dc.l    0,0
         dc.l    "FLT1"
 C_FLT2   dc.l    0,0
         dc.l    "FLT2"
+C_FLT3   dc.l    0,0
+        dc.l    "FLT3"
 C_ENV1   dc.l    0,0
         dc.l    "EN01"
 C_ENV2   dc.l    0,0
@@ -2390,8 +2394,15 @@ filter_clock:
     * ---------------------------------
 
     bhs     .loop * 1 pOEP-only usually
+ ifne COUNTERS
+    tst.w   d0
+    bne     .rest
+    COUNT   C_FLT3
+    bra     .exit
+ else
     tst.w   d0
     beq     .exit
+ endif
 
 .rest
     * d0 = rest of the cycles, < 8
@@ -3352,6 +3363,7 @@ sid_get_outputScale:
 sid_clock:
     tst.l   d0
     bgt     .1
+    COUNT   C_CLK5
     rts
 .1
  
