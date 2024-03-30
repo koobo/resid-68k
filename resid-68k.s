@@ -2369,17 +2369,26 @@ filter_clock:
     sub.l   d7,a3 * 0 sOEP
     muls.l  d2,d6 * 2 pOEP only
     muls.l  d4,d3 * 2 pOEP only
-    asr.l   #8,d3 * 1 pOEP
+;    asr.l   #8,d3 * 1 pOEP
+;    asr.l   d5,d6 * 0 sOEP
+;    asr.l   #2,d3 * 1 pOEP
+;    sub.l   d6,d4 * 0 sOEP
+;    sub.l   a3,d3 * 1 pOEP
+;    subq.l  #8,d0 * 0 sOEP
+;    sub.l   a2,d3 * 1 pOEP
+;    cmp.w   #8,d0 * 0 sOEP
+;    * 12 cycles
+
+    asr.l   d1,d3 * 1 pOEP
     asr.l   d5,d6 * 0 sOEP
-    asr.l   #2,d3 * 1 pOEP
-    sub.l   d6,d4 * 0 sOEP
     sub.l   a3,d3 * 1 pOEP
-    subq.l  #8,d0 * 0 sOEP
-    sub.l   a2,d3 * 1 pOEP
-    * 12 cycles
+    sub.l   d6,d4 * 0 sOEP
+    subq.l  #8,d0 * 1 pOEP
+    sub.l   a2,d3 * 0 sOEP
+    cmp.w   #8,d0 * 1 pOEP
+    * 12 cycles, one less instr
     * ---------------------------------
 
-    cmp.w   #8,d0 * 0 sOEP
     bhs     .loop * 1 pOEP-only usually
     tst.w   d0
     beq     .exit
