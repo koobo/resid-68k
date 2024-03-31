@@ -401,7 +401,7 @@ wave_reset
 
 * in:
 *   a0 = object
-*   a2 = cycle_count delta_t, preserved
+*   a3 = cycle_count delta_t, preserved
 * uses:
 *   d1-d6,a0
 WAVE_CLOCK_ macro
@@ -448,7 +448,8 @@ WAVE_CLOCK_ macro
    * d3 = delta_accumulator
     ;move    wave_freq(a0),d3
     ;mulu.w  d0,d3
-    move.w  a2,d3
+    ;move.w  a2,d3
+    move.w  a3,d3
     mulu.w  wave_freq(a0),d3
    
     * d2 = accumulator_next
@@ -3480,8 +3481,9 @@ sid_clock:
     ; ---------------------------------
 
     ; clock oscillators with delta_t_min
-    move.l  a3,a2    ; wave_clock does not clobber a2
-    moveq   #3-1,d0  ; ..or d0
+    ; in: a3 cycle count
+    ; wave_clock does not clobber d0,a2,a3
+    moveq   #3-1,d0
 .wcLoop0
     lea     -wave_SIZEOF(a0),a0   
     WAVE_CLOCK_
