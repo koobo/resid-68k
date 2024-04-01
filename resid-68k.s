@@ -3361,10 +3361,14 @@ sid_get_outputScale:
 *   - oversample x2: 17/18
 *   - oversample x3: 11/12
 *   - oversample x4: 8/9
+    
 sid_clock:
     tst.l   d0
     bgt     .1
     COUNT   C_CLK5
+    * No cycles to run, return previous output
+    move.l  sid_extfilt(a5),a0
+    move.l  extfilter_Vo(a0),d1
     rts
 .1
  
