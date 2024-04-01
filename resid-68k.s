@@ -1470,24 +1470,11 @@ ENVELOPE_CLOCK_ macro
     * d1 = rate step
     * d6 = envelope_rate_period
     
+    * env3 branch is more likely than env5 branch here based on measuring
     cmp.l   d1,d0
-    bhs.b   .2
-    COUNT   C_ENV3
+    ;bhs.b   .2
+    blo     .env3
 
-    add.l   envelope_rate_counter(a0),d0
-    tst.w   d0
-    bpl.b   .x0
-    addq.l  #1,d0
-    and.l   #$7fff,d0
-    COUNT   C_ENV4
-.x0
-    move.l  d0,envelope_rate_counter(a0)
-   ; jmp     (a2)
-    bra     .envExit
-
-    cnop    0,4
-
-.2
     COUNT   C_ENV5
 
     move.b  envelope_exponential_counter(a0),d3
@@ -1777,6 +1764,24 @@ ENVELOPE_CLOCK_ macro
     clr.b    envelope_exponential_counter(a0)
     move.l  d0,envelope_rate_counter(a0)
 ;    jmp     (a2)
+    bra     .envExit
+
+
+.env3
+    COUNT   C_ENV3
+
+    add.l   envelope_rate_counter(a0),d0
+    tst.w   d0
+    bpl.b   .x0
+    addq.l  #1,d0
+    and.l   #$7fff,d0
+    COUNT   C_ENV4
+.x0
+    move.l  d0,envelope_rate_counter(a0)
+   ; jmp     (a2)
+   ; bra     .envExit
+
+
 
 .envExit
  endm
