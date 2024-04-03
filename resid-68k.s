@@ -4011,7 +4011,7 @@ sid_clock_oversample14:
     move.l  sid_oversample(a5),a6
     * sample data accumulator
     moveq   #0,d7
-    pushm   d1/d3/a1/a2
+    pushm   d3/a1/a2
 .innerLoop
     ; ---------------------------------
     * d5 = next_sample_offset
@@ -4037,20 +4037,22 @@ sid_clock_oversample14:
     pushm   d0/d7
     move.l  d2,d0
     bsr     sid_clock
+    * d1 = extfilter_Vo
     popm    d0/d7
     
     ; Inline output generation
-    move.l  sid_extfilt(a5),a0
-    add.l   extfilter_Vo(a0),d7
+    ;;move.l  sid_extfilt(a5),a0
+    ;;add.l   extfilter_Vo(a0),d7
+    add.l   d1,d7   * accumulate samples
     ; ---------------------------------
     subq.w  #1,a6
     tst.w   a6
     bgt     .innerLoop
-    popm    d1/d3/a1/a2 
+    popm    d3/a1/a2 
     ; ---------------------------------
     ; buffer overflow check
-    cmp.l   d1,d3
-    bge     .x     
+    ;;cmp.l   d1,d3
+    ;;bge     .x     
     ; ---------------------------------
     muls.l  (sp),d7
     moveq   #10,d4  * FP 10
@@ -4068,7 +4070,7 @@ sid_clock_oversample14:
     bra     .loop
 
 .popAndBreak
-    popm    d1/d3/a1/a2 
+    popm    d3/a1/a2 
 
 .break
     ; ---------------------------------
@@ -4077,8 +4079,9 @@ sid_clock_oversample14:
     bsr     sid_clock
     popm    d0/d3
 
-    swap    d0
-    clr.w   d0      * delta_t<<FIXP_SHIFT
+    * delta_t<<FIXP_SHIFT
+    moveq   #FIXP_SHIFT,d1
+    lsl.l   d1,d0
     sub.l   d0,a4
 .x
     move.l  a4,sid_sample_offset(a5)
