@@ -2583,8 +2583,10 @@ extfilter_clock:
     move.l  extfilter_Vhp(a0),a3
     moveq   #20,d1  * shift
 
-    cmp.w   #8,d0
-    bls     .rest
+    * Cycles to run more than 8?
+    * It is always > 0 here.
+    subq.l  #8,d0
+    ble     .rest
 
 ;    move.l  extfilter_w0lp(a0),d3
 ;    move.l  extfilter_w0hp(a0),d4
@@ -2596,23 +2598,23 @@ extfilter_clock:
     * d2 = delta_t_flt
     * a1 = Vi
 
- REM ;;;;; OPTION 1    
-.loop
-    COUNT   C_EFLT1
-
-    * calls: 6x
-
-    cmp.l   d2,d0
-    bhs.b   .2
-    move.l  d0,d2
-    * delta_t_flt changed
-    move.l  extfilter_w0lp(a0),d3
-    muls.l  d2,d3
-    move.l  extfilter_w0hp(a0),d4
-    muls.l  d2,d4
-    asr.l   #8,d3
-    COUNT   C_EFLT2
-.2
+;; REM ;;;;; OPTION 1    
+;;.loop
+;;    COUNT   C_EFLT1
+;;
+;;    * calls: 6x
+;;
+;;    cmp.l   d2,d0
+;;    bhs.b   .2
+;;    move.l  d0,d2
+;;    * delta_t_flt changed
+;;    move.l  extfilter_w0lp(a0),d3
+;;    muls.l  d2,d3
+;;    move.l  extfilter_w0hp(a0),d4
+;;    muls.l  d2,d4
+;;    asr.l   #8,d3
+;;    COUNT   C_EFLT2
+;;.2
 ;    ; d7 = Vi - Vlp
 ;    move.l  a4,d7
 ;    sub.l   a3,d7
@@ -2652,24 +2654,24 @@ extfilter_clock:
 ;    bne     .loop
 ; EREM
 
- ; option 2 - similar speed but less regs
-    move.l  d6,d7
-    sub.l   a3,d7
-    move.l  d7,a2
-    muls.l  d4,d7 * 2 pOEP only
-    move.l  a1,d5 * 1 pOEP 
-    asr.l   d1,d7 * 0 sOEP
-    sub.l   d6,d5 * 1 pOEP
-    add.l   d7,a3 * 0 sOEP
-    muls.l  d3,d5 * 2 pOEP only
-    moveq   #12,d7 *1 pOEP
-    asr.l   d7,d5 * 0 sOEP, move.l ,Rx
-    add.l   d5,d6 * 1 pOEP
-    sub.l   d2,d0 * 0 sOEP
-    bne     .loop
-
-.x
- EREM ;;; OPTION 1 END
+;; ; option 2 - similar speed but less regs
+;;    move.l  d6,d7
+;;    sub.l   a3,d7
+;;    move.l  d7,a2
+;;    muls.l  d4,d7 * 2 pOEP only
+;;    move.l  a1,d5 * 1 pOEP 
+;;    asr.l   d1,d7 * 0 sOEP
+;;    sub.l   d6,d5 * 1 pOEP
+;;    add.l   d7,a3 * 0 sOEP
+;;    muls.l  d3,d5 * 2 pOEP only
+;;    moveq   #12,d7 *1 pOEP
+;;    asr.l   d7,d5 * 0 sOEP, move.l ,Rx
+;;    add.l   d5,d6 * 1 pOEP
+;;    sub.l   d2,d0 * 0 sOEP
+;;    bne     .loop 
+;;
+;;.x
+;; EREM ;;; OPTION 1 END
 
     ;;; OPTION 2 START
 .loop
@@ -2683,24 +2685,16 @@ extfilter_clock:
     sub.l   d6,d5 * 1 pOEP
     add.l   d7,a3 * 0 sOEP
     muls.l  d3,d5 * 2 pOEP only
-    ;moveq   #12,d7 *1 pOEP
-    ;asr.l   d7,d5 * 0 sOEP, move.l ,Rx
-    ;add.l   d5,d6 * 1 pOEP
-    ;subq.l  #8,d0 * 0 sOEP
     asr.l   d2,d5 * 1 pOEP
-    subq.l  #8,d0 * 0 sOEP
-    add.l   d5,d6 * 1 pOEP
-    
-    cmp.w   #8,d0 * 0 sOEP
-    bhs     .loop
-    tst.w   d0
-    beq     .x
+    add.l   d5,d6 * 1 pOEP    
+    subq.l  #8,d0 * 0 sOEP, loop counter
+    bgt     .loop * 1 pOEP
 
 .rest
+   * Rest of the 1-8 cycles
+    addq.l  #8,d0
+
     COUNT   C_EFLT2
-
-    ; d0 <= 8
-
     ; ---------------------------------
     * delta_t_flt changed
     ;move.l  extfilter_w0lp(a0),d3
@@ -2723,15 +2717,12 @@ extfilter_clock:
     sub.l   d6,d5 * 1 pOEP
     add.l   d7,a3 * 0 sOEP
     muls.l  d3,d5 * 2 pOEP only
-    ;moveq   #12,d7 *1 pOEP
-    ;asr.l   d7,d5 * 0 sOEP, move.l ,Rx
-    ;add.l   d5,d6 * 1 pOEP
     asr.l   d2,d5 * 1 pOEP
-    move.l  a2,extfilter_Vo(a0)
+    move.l  a2,extfilter_Vo(a0) * 0 sOEP
     add.l   d5,d6 * 1 pOEP
-    move.l  a3,extfilter_Vhp(a0)
-    move.l  a2,d1       * d1 = output
-    move.l  d6,extfilter_Vlp(a0)
+    move.l  a3,extfilter_Vhp(a0) * 0 sOEP
+    move.l  a2,d1  * d1 = output * 1 pOEP
+    move.l  d6,extfilter_Vlp(a0) * 0 sOEP
     rts
 
 .x
