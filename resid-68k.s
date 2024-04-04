@@ -2267,11 +2267,14 @@ filter_clock:
     move.l  filter_Vlp(a0),a3
     moveq   #14,d5 * shift
     move.l  filter_1024_div_Q(a0),a1
-  
-    cmp.w   #8,d0
-    bls     .rest
 
-    * Value for step 8
+    * Cycles to run more than 8?
+    * It is always > 0 here.
+    subq.l  #8,d0
+    ble     .rest
+
+    * Enter 8 cycle loop
+    * Value for 8 cycles at a time
     move.l  filter_w0_ceil_dt(a0),d2
     asr.l   #3,d2 ; mul #8, asr #6
 
@@ -2280,20 +2283,20 @@ filter_clock:
     * d0 = delta_t
     * d1 = delta_t_flt
 
- REM ;;;;;;;;; OPTION 1
-.loop
-    * calls: 6x
-    COUNT   C_FLT1
-
-    cmp.l   d1,d0
-    bhs.b   .4
-    move.l  d0,d1
-    * delta_t_flt changed, update w0_delta_t
-    move.l  filter_w0_ceil_dt(a0),d2
-    muls.l  d1,d2
-    asr.l   #6,d2
-    COUNT   C_FLT2
-.4  
+; REM ;;;;;;;;; OPTION 1
+;;.loop
+;;    * calls: 6x
+;;    COUNT   C_FLT1
+;;
+;;    cmp.l   d1,d0
+;;    bhs.b   .4
+;;    move.l  d0,d1
+;;    * delta_t_flt changed, update w0_delta_t
+;;    move.l  filter_w0_ceil_dt(a0),d2
+;;    muls.l  d1,d2
+;;    asr.l   #6,d2
+;;    COUNT   C_FLT2
+;;.4  
 
 ; Original:
 ;    * dVlp
@@ -2337,29 +2340,29 @@ filter_clock:
 ;;    sub.l   a2,d3 * 1 pOEP
 ;;    sub.l   d1,d0 * 0 sOEP
 ;;    * 13 cycles
-
-    * The above interleaved:
-    * OPTION 2
-    move.l  d4,d7 
-    muls.l  d2,d7 * 2 pOEP only
-    move.l  d3,d6 * 1 pOEP
-    asr.l   d5,d7 * 0 sOEP
-    move.l  a1,d3 * 1 pOEP
-    sub.l   d7,a3 * 0 sOEP
-    muls.l  d2,d6 * 2 pOEP only
-    muls.l  d4,d3 * 2 pOEP only
-    asr.l   #8,d3 * 1 pOEP
-    asr.l   d5,d6 * 0 sOEP
-    asr.l   #2,d3 * 1 pOEP
-    sub.l   d6,d4 * 0 sOEP
-    sub.l   a3,d3 * 1 pOEP
-    sub.l   a2,d3 * 1 pOEP
-    sub.l   d1,d0 * 0 sOEP
-    * 12 cycles
-
-    bne     .loop
-.x
- EREM ;;;;;;;; OPTION 1 END
+;;
+;;    * The above interleaved:
+;;    * OPTION 2
+;;    move.l  d4,d7 
+;;    muls.l  d2,d7 * 2 pOEP only
+;;    move.l  d3,d6 * 1 pOEP
+;;    asr.l   d5,d7 * 0 sOEP
+;;    move.l  a1,d3 * 1 pOEP
+;;    sub.l   d7,a3 * 0 sOEP
+;;    muls.l  d2,d6 * 2 pOEP only
+;;    muls.l  d4,d3 * 2 pOEP only
+;;    asr.l   #8,d3 * 1 pOEP
+;;    asr.l   d5,d6 * 0 sOEP
+;;    asr.l   #2,d3 * 1 pOEP
+;;    sub.l   d6,d4 * 0 sOEP
+;;    sub.l   a3,d3 * 1 pOEP
+;;    sub.l   a2,d3 * 1 pOEP
+;;    sub.l   d1,d0 * 0 sOEP
+;;    * 12 cycles
+;;
+;;    bne     .loop
+;;.x
+ ;;;;;;;; OPTION 1 END
 
 ; REM ;;;;;;; OPTION 2
   
@@ -2371,7 +2374,7 @@ filter_clock:
     * ---------------------------------
     * The above interleaved:
     * OPTION 2
-    move.l  d4,d7 
+    move.l  d4,d7 * 0 or 1
     muls.l  d2,d7 * 2 pOEP only
     move.l  d3,d6 * 1 pOEP
     asr.l   d5,d7 * 0 sOEP
@@ -2379,39 +2382,19 @@ filter_clock:
     sub.l   d7,a3 * 0 sOEP
     muls.l  d2,d6 * 2 pOEP only
     muls.l  d4,d3 * 2 pOEP only
-;    asr.l   #8,d3 * 1 pOEP
-;    asr.l   d5,d6 * 0 sOEP
-;    asr.l   #2,d3 * 1 pOEP
-;    sub.l   d6,d4 * 0 sOEP
-;    sub.l   a3,d3 * 1 pOEP
-;    subq.l  #8,d0 * 0 sOEP
-;    sub.l   a2,d3 * 1 pOEP
-;    cmp.w   #8,d0 * 0 sOEP
-;    * 12 cycles
-
     asr.l   d1,d3 * 1 pOEP
     asr.l   d5,d6 * 0 sOEP
     sub.l   a3,d3 * 1 pOEP
     sub.l   d6,d4 * 0 sOEP
-    subq.l  #8,d0 * 1 pOEP
-    sub.l   a2,d3 * 0 sOEP
-    cmp.w   #8,d0 * 1 pOEP
-    * 12 cycles, one less instr
+    sub.l   a2,d3 * 1 pOEP
+    subq.l  #8,d0 * 0 sOEP, loop counter
+    bgt     .loop * 1 pOEP
+    * 12/13 cycles
     * ---------------------------------
 
-    bhs     .loop * 1 pOEP-only usually
- ifne COUNTERS
-    tst.w   d0
-    bne     .rest
-    COUNT   C_FLT3
-    bra     .exit
- else
-    tst.w   d0
-    beq     .exit
- endif
-
 .rest
-    * d0 = rest of the cycles, < 8
+    * Rest of the 1-8 cycles
+    addq.l  #8,d0
 
     * delta_t_flt changed, update w0_delta_t
     muls.l   filter_w0_ceil_dt(a0),d0
@@ -2419,23 +2402,6 @@ filter_clock:
     COUNT   C_FLT2
 
     * ---------------------------------
-    * OPTION 2
-;    move.l  d4,d7 
-;    muls.l  d0,d7 * 2 pOEP only
-;    move.l  d3,d6 * 1 pOEP
-;    asr.l   d5,d7 * 0 sOEP
-;    move.l  a1,d3 * 1 pOEP
-;    sub.l   d7,a3 * 0 sOEP
-;    muls.l  d0,d6 * 2 pOEP only
-;    muls.l  d4,d3 * 2 pOEP only
-;    asr.l   #8,d3 * 1 pOEP
-;    asr.l   d5,d6 * 0 sOEP
-;    asr.l   #2,d3 * 1 pOEP
-;    sub.l   d6,d4 * 0 sOEP
-;    sub.l   a3,d3 * 1 pOEP
-;    sub.l   a2,d3 * 1 pOEP
-    * 12
-
     * OPTION 3
     move.l  d4,d7 
     muls.l  d0,d7 * 2 pOEP only
