@@ -2268,6 +2268,33 @@ filter_clock:
     moveq   #14,d5 * shift
     move.l  filter_1024_div_Q(a0),a1
 
+    cmp.w   #36,d0
+    bne     .normal
+
+    * Special case for 36 cycles
+    * Enter 8 cycle loop
+    * Value for 8 cycles at a time
+    move.l  filter_w0_ceil_dt(a0),d2
+    asr.l   #3,d2 ; mul #8, asr #6
+ rept 4
+    move.l  d4,d7 * 0 sOEP
+    muls.l  d2,d7 * 2 pOEP only
+    move.l  d3,d6 * 1 pOEP
+    asr.l   d5,d7 * 0 sOEP
+    move.l  a1,d3 * 1 pOEP
+    sub.l   d7,a3 * 0 sOEP
+    muls.l  d2,d6 * 2 pOEP only
+    muls.l  d4,d3 * 2 pOEP only
+    asr.l   d1,d3 * 1 pOEP
+    asr.l   d5,d6 * 0 sOEP
+    sub.l   a3,d3 * 1 pOEP
+    sub.l   d6,d4 * 0 sOEP
+    sub.l   a2,d3 * 1 pOEP
+ endr
+    moveq   #36-4*8,d0
+    bra     .rest2
+
+.normal
     * Cycles to run more than 8?
     * It is always > 0 here.
     subq.l  #8,d0
@@ -2388,14 +2415,14 @@ filter_clock:
     sub.l   d6,d4 * 0 sOEP
     sub.l   a2,d3 * 1 pOEP
     subq.l  #8,d0 * 0 sOEP, loop counter
-    bgt     .loop * 1 pOEP
     * 12/13 cycles
+    bgt     .loop * 0/7 pOEP
     * ---------------------------------
 
 .rest
     * Rest of the 1-8 cycles
     addq.l  #8,d0
-
+.rest2
     * delta_t_flt changed, update w0_delta_t
     muls.l   filter_w0_ceil_dt(a0),d0
     asr.l   #6,d0
@@ -3318,7 +3345,7 @@ sid_get_outputScale:
 * notes:
 *   clock cycles per one call with different sampling modes
 *   with the ~28 kHz base sampling rate:
-*   - fast: 36
+*   - fast: cycles=36, remaining=31
 *   - interpolate: 27 + 8
 *   - oversample x2: 17/18
 *   - oversample x3: 11/12
