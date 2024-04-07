@@ -8,6 +8,18 @@
     include devices/timer.i
     include dos/dos_lib.i
 
+DEBUG = 1
+SERIALDEBUG = 1
+
+* Macro to print to debug console
+DPRINT  macro
+        ifne     DEBUG
+        jsr      desmsgDebugAndPrint
+        dc.b     \1,10,0
+        even
+        endc
+        endm
+
 pushm  macro
        ifc        "\1","all"
        movem.l    d0-a6,-(sp)
@@ -31,21 +43,25 @@ push   macro
 pop    macro
        move.l     (sp)+,\1
        endm
-
+ 
 * Period should be divisible by 64 for bug free 14-bit output
 PAULA_PERIOD=128    
 PAL_CLOCK=3546895
 * Sampling frequency: PAL_CLOCK/PAULA_PERIOD=27710.1171875
 
-* reSID update frequency 100 Hz:
-* Samples per 1/100s = 277.10117
-* Samples per 1/100s as 22.10 FP = 283751.59808
-* SAMPLES_PER_FRAME = 283752
 
+* "4-speed"
 * reSID update frequency 200 Hz:
 * Samples per 1/200s = 138.550585
 * Samples per 1/200s as 22.10 FP = 141875.79904
-SAMPLES_PER_FRAME = 141876
+SAMPLES_PER_FRAME_200Hz = 141876
+
+* "single speed"
+* reSID update frequency 50 Hz:
+* Samples per 1/50s = 554.20234375
+* Samples per 1/50s as 22.10 FP = 567503.2
+SAMPLES_PER_FRAME_50Hz =  567503
+
 
 * Output buffer size 
 * 100 Hz
@@ -53,8 +69,10 @@ SAMPLES_PER_FRAME = 141876
 * 200 Hz
 SAMPLE_BUFFER_SIZE = 140     * 138.550585
 
+    
+
     * Launch and run a few cycles
-sid_main:     
+sid_main:       
     bsr     openTimer
     lea     Sid,a0
     jsr	    sid_constructor
@@ -172,7 +190,8 @@ measure:
 
 
     lea     Sid,a0
-    move.l  #SAMPLES_PER_FRAME,d0
+    move.l  #SAMPLES_PER_FRAME_50Hz,d0
+    move.l  #SAMPLES_PER_FRAME_200Hz,d0
     mulu.l  sid_cycles_per_sample(a0),d1:d0
     * Shift by 16 and 10 to get the FP to 
     * the correct position
@@ -195,6 +214,7 @@ loop
     lea     output2,a2
     move.l  cyclesPerFrame,d0
     muls.l  #20,d0  * 20 * 5ms = 100 ms
+    ;muls.l  #5,d0 * 5 * 20m = 100 ms
     move.l  #10000,d1 * buffer limit
     lea     Sid,a0
     movem.l a4/d7,-(sp)
@@ -202,7 +222,10 @@ loop
     movem.l (sp)+,d7/a4
     dbf     d7,loop
 
+;    pushm   d0/d1/d2
     bsr    stopMeasure
+;    popm    d0/d1/D2
+;    DPRINT  "samples=%ld cycles=%ld remaining=%ld"
     move    $dff006,$dff180
     move.l  d0,d7
 
@@ -632,6 +655,74 @@ timerRequest	        ds.b    IOTV_SIZE
 clockStart              ds.b    EV_SIZE
 clockEnd                ds.b    EV_SIZE
 
+
+
+
+desmsgDebugAndPrint
+	* sp contains the return address, which is
+	* the string to print
+	movem.l	d0-d7/a0-a3/a6,-(sp)
+	* get string
+	move.l	4*(8+4+1)(sp),a0
+	* find end of string
+	move.l	a0,a1
+.e	tst.b	(a1)+
+	bne.b	.e
+	move.l	a1,d7
+	btst	#0,d7
+	beq.b	.even
+	addq.l	#1,d7
+.even
+	* overwrite return address 
+	* for RTS to be just after the string
+	move.l	d7,4*(8+4+1)(sp)
+
+	lea	    _debugDesBuf(pc),a3
+	move.l	sp,a1	
+ ifne SERIALDEBUG
+    lea     .putCharSerial(pc),a2
+ else
+	lea	.putc(pc),a2	
+ endif
+	move.l	4.w,a6
+	jsr	    _LVORawDoFmt(a6)
+	movem.l	(sp)+,d0-d7/a0-a3/a6
+ ifeq SERIALDEBUG
+	bsr	PRINTOUT_DEBUGBUFFER
+ endif
+	rts	* teleport!
+.putc	
+	move.b	d0,(a3)+	
+	rts
+
+.putCharSerial
+    ;_LVORawPutChar
+    ; output char in d0 to serial
+    move.l  4.w,a6
+    jsr     -516(a6)
+    rts
+
+CloseDebug:
+    pushm   all
+    move.l  _DOSBase(pc),a6
+    cmp.w   #0,a6
+    beq     .2
+    move.l  _output(pc),d1
+    beq.b   .1
+ 	jsr     _LVOClose(a6)
+.1
+    move.l  a6,a1
+    move.l  4.w,a6
+    jsr     _LVOCloseLibrary(a6)
+.2
+    clr.l   _DOSBase
+    clr.l   _output
+    popm    all
+    rts
+
+_DOSBase        ds.l    1
+_output			ds.l 	1
+_debugDesBuf	ds.b	1024
 
     include     "resid-68k.s"
 
