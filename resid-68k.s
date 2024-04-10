@@ -159,6 +159,14 @@ C_EFLT1  dc.l    0,0
         dc.l    "EFL1"
 C_EFLT2  dc.l    0,0
         dc.l    "EFL2"
+C_EFLT3  dc.l    0,0
+        dc.l    "EFL3"
+C_EFLT4  dc.l    0,0
+        dc.l    "EFL4"
+C_EFLT5 dc.l    0,0
+        dc.l    "EFL5"
+C_EFLT6 dc.l    0,0
+        dc.l    "EFL6"
 C_FLT1   dc.l    0,0
         dc.l    "FLT1"
 C_FLT2   dc.l    0,0
@@ -2617,6 +2625,34 @@ extfilter_clock:
     move.l  extfilter_Vhp(a0),a3
     moveq   #20,d1  * shift
 
+    ; ---------------------------------
+    cmp.w   #36,d0
+    bne     .normal
+    COUNT   C_EFLT1
+
+    move.l  #(EXTFILTER_W0LP*8)>>8,d3 ; 3276
+    move.l  #(EXTFILTER_W0HP)<<3,d4   ; 840
+ rept 4
+    move.l  d6,d7
+    sub.l   a3,d7
+    move.l  d7,a2
+    muls.l  d4,d7 * 2 pOEP only
+    move.l  a1,d5 * 1 pOEP 
+    asr.l   d1,d7 * 0 sOEP
+    sub.l   d6,d5 * 1 pOEP
+    add.l   d7,a3 * 0 sOEP
+    muls.l  d3,d5 * 2 pOEP only
+    asr.l   d2,d5 * 1 pOEP
+    add.l   d5,d6 * 1 pOEP   
+ endr
+    * 32 cycles done, 4 left
+    asr.l   #1,d3 
+    asr.l   #1,d4 
+    bra     .rest2
+
+.normal
+    COUNT   C_EFLT2
+
     * Cycles to run more than 8?
     * It is always > 0 here.
     subq.l  #8,d0
@@ -2628,6 +2664,7 @@ extfilter_clock:
 ;    asl.l   #3,d4 * mul 8
     move.l  #(EXTFILTER_W0LP*8)>>8,d3 ; 3276
     move.l  #(EXTFILTER_W0HP)<<3,d4   ; 840
+
 
     * d2 = delta_t_flt
     * a1 = Vi
@@ -2708,8 +2745,9 @@ extfilter_clock:
 ;; EREM ;;; OPTION 1 END
 
     ;;; OPTION 2 START
+    COUNT   C_EFLT3
 .loop
-    COUNT   C_EFLT1
+    COUNT   C_EFLT4
     move.l  d6,d7
     sub.l   a3,d7
     move.l  d7,a2
@@ -2728,7 +2766,7 @@ extfilter_clock:
    * Rest of the 1-8 cycles
     addq.l  #8,d0
 
-    COUNT   C_EFLT2
+    COUNT   C_EFLT5
     ; ---------------------------------
     * delta_t_flt changed
     ;move.l  extfilter_w0lp(a0),d3
@@ -2741,6 +2779,8 @@ extfilter_clock:
     muls.l  d0,d3
     muls.l  d0,d4
     asr.l   #8,d3
+.rest2
+    COUNT   C_EFLT6
     ; ---------------------------------
     move.l  d6,d7
     sub.l   a3,d7
