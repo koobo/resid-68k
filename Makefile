@@ -1,6 +1,6 @@
 INCLUDE = -I$(HOME)/A/Asm/Include 
 VASM=~/Prj/vbcc/bin/vasmm68k_mot
-VASM_FLAGS := -Fhunkexe -kick1hunks -quiet -m68020 -nosym $(INCLUDE)
+VASM_FLAGS := -Fhunkexe -kick1hunks -quiet -m68060 -nosym $(INCLUDE)
 
 RESID    := resid-68k.i resid-68k.s
 

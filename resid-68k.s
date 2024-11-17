@@ -2286,20 +2286,42 @@ filter_clock:
     * Value for 8 cycles at a time
     move.l  filter_w0_ceil_dt(a0),d0
     asr.l   #3,d0 ; mul #8, asr #6
+    fmove.l d0,fp0
  rept 4
-    move.l  d4,d7 * 0 sOEP
-    muls.l  d0,d7 * 2 pOEP only
-    move.l  d3,d6 * 1 pOEP
-    asr.l   d5,d7 * 0 sOEP
-    move.l  a1,d3 * 1 pOEP
-    sub.l   d7,a3 * 0 sOEP
-    muls.l  d0,d6 * 2 pOEP only
-    muls.l  d4,d3 * 2 pOEP only
-    asr.l   d1,d3 * 1 pOEP
-    asr.l   d5,d6 * 0 sOEP
-    sub.l   a3,d3 * 1 pOEP
-    sub.l   d6,d4 * 0 sOEP
-    sub.l   a2,d3 * 1 pOEP
+;    move.l  d4,d7 * 0 sOEP
+;    muls.l  d0,d7 * 2 pOEP only
+;    move.l  d3,d6 * 1 pOEP
+;    asr.l   d5,d7 * 0 sOEP
+;    move.l  a1,d3 * 1 pOEP
+;    sub.l   d7,a3 * 0 sOEP
+;    muls.l  d0,d6 * 2 pOEP only
+;    muls.l  d4,d3 * 2 pOEP only
+;    asr.l   d1,d3 * 1 pOEP
+;    asr.l   d5,d6 * 0 sOEP
+;    sub.l   a3,d3 * 1 pOEP
+;    sub.l   d6,d4 * 0 sOEP
+;    sub.l   a2,d3 * 1 pOEP
+; = 11 cycles
+
+    ;move.l  d4,d7 * 0 sOEP
+    ;muls.l  d0,d7 * 2 pOEP only
+    fmove   fp0,fp1 * 1f pOEP allows sOEP
+    move.l  d3,d6   * 1 sOEP
+    fmul.l  d4,fp1  * 5f pOEP only
+
+    move.l  a1,d3   * 1 pOEP
+    muls.l  d0,d6   * 2 pOEP only
+    muls.l  d4,d3   * 2 pOEP only
+    fmove.l fp1,d7  * 3f pOEP allows sOEP
+    asr.l   d1,d3   * 1 sOEP
+    asr.l   d5,d6   * 1 pOEP
+    sub.l   a2,d3   * 0 sOEP
+    asr.l   d5,d7   * 1 pOEP
+    sub.l   d6,d4   * 0 sOEP
+   
+    sub.l   d7,a3   * 1 pOEP
+    sub.l   a3,d3   * 1 pOEP
+
  endr
     * 32 cycles done, 4 left
     * delta_t_flt changed, update w0_delta_t
@@ -2319,10 +2341,15 @@ filter_clock:
     move.l  filter_w0_ceil_dt(a0),d2
     asr.l   #3,d2 ; mul #8, asr #6
 
-    * d5 = shift
+    * d1 = shift right 10
+    * d5 = shift right 14
     * a2 = Vi
     * d0 = delta_t
     * d1 = delta_t_flt
+    * d2 = w0_delta_t
+    * d4 = Vbp
+    * d3 = Vhp
+
 
 ; REM ;;;;;;;;; OPTION 1
 ;;.loop
@@ -2339,29 +2366,28 @@ filter_clock:
 ;;    COUNT   C_FLT2
 ;;.4  
 
+
 ; Original:
-;    * dVlp
-;    move.l  d4,d7
-;    muls.l  d2,d7
-;    asr.l   d5,d7
-;    * Vlp -= dVlp
-;    sub.l   d7,a3
-; 
-;    * dVbp
-;    move.l  d3,d7
-;    muls.l  d2,d7
-;    asr.l   d5,d7
-;    * Vbp -= dVbp
-;    sub.l   d7,d4
+;    * dVlp -> d7, update Vlp -> a3
+;    move.l  d4,d7   * Vbp -> d7
+;    muls.l  d2,d7   * d7 = w0_delta_t * Vbp
+;    asr.l   d5,d7   * d7 >>= 14
+;    sub.l   d7,a3   * a3 = Vlp -= dVlp
 ;
-;    * Vhp  
-;    move.l  a1,d3
-;    muls.l  d4,d3
-;    asr.l   #8,d3
-;    asr.l   #2,d3
+;    * dVbp -> d7, update Vbp -> d4
+;    move.l  d3,d7   * Vhp -> d7
+;    muls.l  d2,d7   * d7 = w0_delta_t * Vhp
+;    asr.l   d5,d7   * d7 >>= 14
+;    sub.l   d7,d4   * d4 = Vbp -= dVbp
 ;
-;    sub.l   a3,d3
-;    sub.l   a2,d3
+;    * Vhp -> d3  
+;    move.l  a1,d3   * d3 = filter_1024_div_Q
+;    muls.l  d4,d3   * d3 = filter_1024_div_Q * Vbp
+;    asr.l   #8,d3  
+;    asr.l   #2,d3   * d3 >>= 10
+;
+;    sub.l   a3,d3   * d3 -= Vlp
+;    sub.l   a2,d3   * d3 -= Vi
 
 ;;    * The above interleaved:
 ;;    * OPTION 1
