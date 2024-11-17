@@ -20,7 +20,7 @@ DPRINT  macro
         endc
         endm
 
-pushm  macro
+bushm  macro
        ifc        "\1","all"
        movem.l    d0-a6,-(sp)
        else
@@ -28,7 +28,7 @@ pushm  macro
        endc
        endm
 
-popm   macro
+bopm   macro
        ifc        "\1","all"
        movem.l    (sp)+,d0-a6
        else
@@ -36,11 +36,11 @@ popm   macro
        endc
        endm
 
-push   macro
+bush   macro
        move.l     \1,-(sp)
        endm
 
-pop    macro
+bop    macro
        move.l     (sp)+,\1
        endm
  
@@ -160,17 +160,17 @@ sortArray
 
 
 measure:
-    push    a0
+    bush    a0
     bsr     .do
-    pop     a0
+    bop     a0
     move.l  d7,(a0)+
     rts
 .do
     lea     Sid,a0
-    push    d1
+    bush    d1
     jsr     sid_enable_external_filter
     lea     Sid,a0
-    pop     d0
+    bop     d0
     jsr     sid_enable_filter
 
     lea     Sid,a0
@@ -222,9 +222,9 @@ loop
     movem.l (sp)+,d7/a4
     dbf     d7,loop
 
-;    pushm   d0/d1/d2
+;    bushm   d0/d1/d2
     bsr    stopMeasure
-;    popm    d0/d1/D2
+;    bopm    d0/d1/D2
 ;    DPRINT  "samples=%ld cycles=%ld remaining=%ld"
     move    $dff006,$dff180
     move.l  d0,d7
@@ -541,7 +541,7 @@ print:
     bne     .f
     subq    #1,a0
     sub.l   a1,a0
-    push    a0
+    bush    a0
 
     lea	dosname(pc),a1
 	jsr     _LVOOldOpenLibrary(a6)
@@ -551,7 +551,7 @@ print:
     move.l  d0,d1
     move.l  #desbuf,d2
     ;move.l  #128,d3
-    pop     d3
+    bop     d3
     jsr     _LVOWrite(a6)
 
     move.l  a6,a1
@@ -703,7 +703,7 @@ desmsgDebugAndPrint
     rts
 
 CloseDebug:
-    pushm   all
+    bushm   all
     move.l  _DOSBase(pc),a6
     cmp.w   #0,a6
     beq     .2
@@ -717,7 +717,7 @@ CloseDebug:
 .2
     clr.l   _DOSBase
     clr.l   _output
-    popm    all
+    bopm    all
     rts
 
 _DOSBase        ds.l    1
