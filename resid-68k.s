@@ -3449,7 +3449,7 @@ sid_clock:
 
     ; It is only necessary to clock on the MSB of an oscillator that is
     ; a sync source and has freq != 0.
-    tst.w   wave_freq(a0)
+    move.w  wave_freq(a0),d3
     beq     .cx
     move.l  wave_sync_dest(a0),a1
     tst.b   wave_sync(a1)
@@ -3469,15 +3469,15 @@ sid_clock:
     * The lowest note C-0 freq value is around $115. Lowest divisor so the 
     * quotient fits into 16 bits is $81. We can likely use 16-bit division
     * as it's <=22(1/0) where the 32-bit is 38(1/0) on 68060.
-    divu.w  wave_freq(a0),d2
-    bvc.b   .shortDivOk     ; branch if overflow clear
+    * 27 and 44 on 68040.
+    cmp.w   #$81,d3
+    bhs     .shortDivOk
     
     COUNT   C_CLK4
 
-    ; This is very unlikely.
+    ; This is unlikely.
     ; Fallback to 32-bit div in case of an overflow
-    moveq   #0,d3
-    move    wave_freq(a0),d3
+    ext.l   d3          * d3 = 1..$80
     divul.l d3,d3:d2
     * d2 = delta_t_next = delta_accumulator / freq
     * d3 = remainder (ie. modulo)
@@ -3486,13 +3486,12 @@ sid_clock:
     addq.l  #1,d2
 .e
     cmp.l   a3,d2
-    ;bhs.b   .ee
     bhs.b   .cx
     move.l  d2,a3
-.ee
     bra.b   .cx
 
 .shortDivOk
+    divu.w  d3,d2
     * d2.w = delta_t_next = delta_accumulator / freq
     * Convert unsigned 16-bit quotient into unsigned 32-bit
     moveq   #0,d1
