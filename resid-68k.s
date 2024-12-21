@@ -1129,6 +1129,7 @@ envelope_constructor:
 * in:
 *    a0 = object
 envelope_reset:
+    clr.b   envelope_counter(a0)
     clr.b   envelope_attack(a0)
     clr.b   envelope_decay(a0)
     clr.b   envelope_sustain(a0)
