@@ -1008,6 +1008,17 @@ wave_outputNPST:
     moveq   #0,d0
     jmp     (a3)
 
+* in:
+*    a0 = object
+* Out:
+*    d0 = oscillator output, 8-bit
+wave_readOSC:
+    move.l  wave_get_output(a0),a1
+    lea     .return(pc),a3
+    jmp     (a1)
+.return
+    lsr.w   #4,d0
+    rts
 
 ******************************************************************************
 *
@@ -4376,6 +4387,24 @@ sid_clock_interpolate14:
     * bytes written
     move.l  d3,d0
     rts
+
+* in:
+*   a0 = object
+* out:
+*   d0 = Voice 3 envelope value
+sid_readENV3:
+    move.l  sid_voice3(a0),a0
+    move.l  voice_envelope(a0),a0
+    bra     envelope_readENV
+
+* in:
+*   a0 = object
+* out:
+*   d0 = Wave 3 oscillator value
+sid_readOSC3:
+    move.l  sid_voice3(a0),a0
+    move.l  voice_wave(a0),a0
+    bra     wave_readOSC
 
 
 	section	reSID_data,data
