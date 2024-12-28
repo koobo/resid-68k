@@ -3,6 +3,7 @@
     include exec/exec_lib.i
     include exec/tasks.i
     include dos/dos_lib.i
+    include graphics/graphics_lib.i
     include hardware/custom.i
     include hardware/cia.i
     include hardware/dmabits.i
@@ -15,7 +16,7 @@ PAL_CLOCK=3546895
 SAMPLING_FREQ=27500
 PAULA_PERIOD=(PAL_CLOCK+SAMPLING_FREQ/2)/SAMPLING_FREQ
 SAMPLES_PER_FRAME set (SAMPLING_FREQ+25)/50
-SAMPLES_PER_HALF_FRAME set (SAMPLING_FREQ+50)/100
+SAMPLES_PER_HALF_FRAME set (SAMPLING_FREQ+50)/400
 ; Must be even for Paula 
  ifne SAMPLES_PER_HALF_FRAME&1
 SAMPLES_PER_HALF_FRAME set SAMPLES_PER_HALF_FRAME+1
@@ -26,11 +27,16 @@ SAMPLES_PER_HALF_FRAME set SAMPLES_PER_HALF_FRAME+1
 * p=c/f
 
 main:
+    bset    #1,$bfe001
+
     bsr     openTimer
     move.l  4.w,a6
     lea     DOSName,a1
     jsr     _LVOOldOpenLibrary(a6)
     move.l  d0,DOSBase
+    lea     GFXName,a1
+    jsr     _LVOOldOpenLibrary(a6)
+    move.l  d0,GFXBase
 
     lea     Sid,a0
     jsr     sid_constructor
@@ -41,11 +47,11 @@ main:
     lea     Sid,a0
     jsr     sid_set_sampling_parameters
 
-    moveq   #0,d0
+    moveq   #1,d0
     lea     Sid,a0
     jsr     sid_enable_filter
 
-    moveq   #0,d0
+    moveq   #1,d0
     lea     Sid,a0
     jsr     sid_enable_external_filter
 
@@ -90,9 +96,8 @@ main:
 
 delay
     movem.l d0-a6,-(sp)
-    move.l  DOSBase,a6
-    moveq   #1,d1
-    jsr     _LVODelay(a6)
+    move.l  GFXBase,a6
+    jsr     _LVOWaitTOF(a6)
     movem.l (sp)+,d0-a6
     rts
 
@@ -695,6 +700,229 @@ pokeSound2:
 .w  lea Sid,a0
     jmp	sid_write
 
+katakisVoice2Start:
+    dc.w    $0000
+    dc.b    $18,$1F * filter low pass, main volume = f
+    dc.w    $0000
+    dc.b    $0B,$08 * 2 ctrl 
+    ; -------------
+    dc.w    $0001
+    dc.b    $0C,$06 * 2 ad
+    dc.w    $0001
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0001
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0001
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0001
+    dc.b    $0B,$41 * 2 ctrl
+    dc.w    $0001
+    dc.b    $07,$A2 * 2 fl
+    dc.w    $0001
+    dc.b    $08,$0E * 2 fh
+    ; -------------
+    dc.w    $0002
+    dc.b    $0C,$06 * 2 ad
+    dc.w    $0002
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0002
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0002
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0002
+    dc.b    $0B,$41 * 2 ctrl
+    dc.w    $0002
+    dc.b    $07,$45 * 2 fl
+    dc.w    $0002
+    dc.b    $08,$1D * 2 fh
+    ; -------------
+    dc.w    $0003
+    dc.b    $0C,$06 * 2 ad
+    dc.w    $0003
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0003
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0003
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0003
+    dc.b    $0B,$41 * 2 ctrl
+    dc.w    $0003
+    dc.b    $07,$a2 * 2 fl
+    dc.w    $0003
+    dc.b    $08,$0e * 2 fh
+    ; -------------
+    dc.w    $0004
+    dc.b    $0C,$06 * 2 ad
+    dc.w    $0004
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0004
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0004
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0004
+    dc.b    $0B,$81 * 2 ctrl
+    dc.w    $0004
+    dc.b    $07,$e1 * 2 fl
+    dc.w    $0004
+    dc.b    $08,$24 * 2 fh
+    ; -------------
+    dc.w    $0005
+    dc.b    $0C,$06 * 2 ad
+    dc.w    $0005
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0005
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0005
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0005
+    dc.b    $0B,$81 * 2 ctrl
+    dc.w    $0005
+    dc.b    $07,$e1 * 2 fl
+    dc.w    $0005
+    dc.b    $08,$24 * 2 fh
+    ; -------------
+    dc.w    $0006
+    dc.b    $0C,$06 * 2 ad
+    dc.w    $0006
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0006
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0006
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0006
+    dc.b    $0B,$81 * 2 ctrl
+    dc.w    $0006
+    dc.b    $07,$e1 * 2 fl
+    dc.w    $0006
+    dc.b    $08,$24 * 2 fh
+    ; -------------
+    dc.w    $0007
+    dc.b    $0C,$06 * 2 ad
+    dc.w    $0007
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0007
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0007
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0007
+    dc.b    $0B,$81 * 2 ctrl
+    dc.w    $0007
+    dc.b    $07,$e1 * 2 fl
+    dc.w    $0007
+    dc.b    $08,$24 * 2 fh
+    ; -------------
+    dc.w    $0008
+    dc.b    $0C,$06 * 2 ad
+    dc.w    $0008
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0008
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0008
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0008
+    dc.b    $0B,$81 * 2 ctrl
+    dc.w    $0008
+    dc.b    $07,$e1 * 2 fl
+    dc.w    $0008
+    dc.b    $08,$24 * 2 fh
+    ; -------------
+
+katakisVoice2End:
+    
+
+katakisVoice3Start:
+    dc.w    $0000
+    dc.b    $18,$1F * filter low pass, main volume = f
+    dc.w    $0000
+    dc.b    $0B,$08 * 2 ctrl 
+    ; -------------
+    dc.w    $0001
+    dc.b    $0C,$08 * 2 ad
+    dc.w    $0001
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0001
+    dc.b    $09,$40 * 2 pl
+    dc.w    $0001
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0001
+    dc.b    $0B,$41 * 2 ctrl
+    dc.w    $0001
+    dc.b    $07,$A2 * 2 fl
+    dc.w    $0001
+    dc.b    $08,$0E * 2 fh
+    ; -------------
+    dc.w    $0002
+    dc.b    $0C,$08 * 2 ad
+    dc.w    $0002
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0002
+    dc.b    $09,$80 * 2 pl
+    dc.w    $0002
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0002
+    dc.b    $0B,$41 * 2 ctrl
+    dc.w    $0002
+    dc.b    $07,$45 * 2 fl
+    dc.w    $0002
+    dc.b    $08,$1D * 2 fh
+    ; -------------
+    dc.w    $0003
+    dc.b    $0C,$08 * 2 ad
+    dc.w    $0003
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0003
+    dc.b    $09,$c0 * 2 pl
+    dc.w    $0003
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0003
+    dc.b    $0B,$41 * 2 ctrl
+    dc.w    $0003
+    dc.b    $07,$a2 * 2 fl
+    dc.w    $0003
+    dc.b    $08,$0e * 2 fh
+    ; -------------
+    dc.w    $0004
+    dc.b    $0C,$08 * 2 ad
+    dc.w    $0004
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0004
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0004
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0004
+    dc.b    $0B,$81 * 2 ctrl
+    dc.w    $0004
+    dc.b    $07,$e1 * 2 fl
+    dc.w    $0004
+    dc.b    $08,$24 * 2 fh
+    ; -------------
+    dc.w    $0005
+    dc.b    $0C,$08 * 2 ad
+    dc.w    $0005
+    dc.b    $0D,$08 * 2 sr
+    dc.w    $0005
+    dc.b    $09,$20 * 2 pl
+    dc.w    $0005
+    dc.b    $0A,$08 * 2 ph
+    dc.w    $0005
+    dc.b    $0B,$81 * 2 ctrl
+    dc.w    $0005
+    dc.b    $07,$e1 * 2 fl
+    dc.w    $0005
+    dc.b    $08,$24 * 2 fh
+    ; -------------
+    dc.w    $0006
+    dc.b    $0B,$81 * 2 ctrl
+    ; -------------
+    dc.w    $0007
+    dc.b    $0B,$00 * 2 ctrl
+    ; -------------
+katakisVoice3End:
+
+    
+
+
+
 ; one hihat hit, one snare hit, voice 3
 katakisStart:
 	DC.w	$0733
@@ -819,15 +1047,37 @@ katakisEnd:
 
 
 playDump
+    * volume
+    move.b  #$f,d0
+    move.b  #24,d1
+    lea     Sid,a0
+    jsr     sid_write
  
-    lea     regDump,a5
-    lea     regDumpEnd,a6
 
- REM
-    lea		katakisStart,a5
-    lea		katakisEnd,a6
- EREM
-    
+
+
+   lea     regDump,a5
+    lea     regDumpEnd,a6
+;
+;    lea		katakisStart,a5
+;    lea		katakisEnd,a6
+;
+;    lea     katakisVoice2Start,a5
+;    lea     katakisVoice2End,a6
+;
+;
+;    lea     katakisVoice3Start,a5
+;    lea     katakisVoice3End,a6
+;   
+
+    * first snare hit on v2
+    * OK on v2, v3
+    lea     katakisV2regDump,a5
+    lea     katakisV2regDumpEnd,a6
+
+;    lea     katakisV3regDump,a5
+;    lea     katakisV3regDumpEnd,a6
+
     * vblank timer, set start time
     ;moveq   #0,d7
     move     (a5),d7 
@@ -843,11 +1093,14 @@ playDump
     move.b  2(a5),d1 * addr
     move.b  3(a5),d0 * data
     
-    ;exg	    d0,d1    * swapped with katakis dump!
+;    sub.b   #7,d1       * move from voice 3 to 2
+
+   ; exg	    d0,d1    * swapped with katakis dump!
+;
 
     lea     Sid,a0
     jsr     sid_write
-    
+.1
     addq    #4,a5
     cmp.l   a6,a5
     bhs     .x
@@ -864,7 +1117,282 @@ playDump
 dumpPointer	dc.l	0
 
 DOSName     dc.b    "dos.library",0
+GFXName     dc.b    "graphics.library",0
     even
+
+
+;katakis v2 snare:
+;-1:    ct=08                                      
+;0:     ad=06,sr=08,pl=20,ph=08,ct=41,fl=A2,fh=0E         
+;1:     ad=06,sr=08,pl=20,ph=08,ct=41,fl=45,fh=1D    
+;2:     ad=06,sr=08,pl=20,ph=08,ct=41,fl=A2,fh=0E         
+;3:     ad=06,sr=08,pl=20,ph=08,ct=81,fl=E1,fh=24         
+;4:     ad=06,sr=08,pl=20,ph=08,ct=81,fl=E1,fh=24         
+;5:     ad=06,sr=08,pl=20,ph=08,ct=81,fl=E1,fh=24         
+;6:     ad=06,sr=08,pl=20,ph=08,ct=81,fl=E1,fh=24         
+;7:     ad=06,sr=08,pl=20,ph=08,ct=81,fl=E1,fh=24         
+
+;cl2=08 adsr2=0408 e2=00 cl3=08 adsr3=00A0 e3=00
+;cl2=41 adsr2=0408 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=41 adsr2=0408 e2=38 cl3=00 adsr3=00A0 e3=00
+;cl2=41 adsr2=0408 e2=17 cl3=81 adsr3=00A0 e3=2A
+;cl2=81 adsr2=0408 e2=0A cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0408 e2=04 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0408 e2=02 cl3=08 adsr3=00A0 e3=00
+;cl2=81 adsr2=0408 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0408 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0408 e2=00 cl3=81 adsr3=00A0 e3=2A
+;cl2=81 adsr2=0408 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0408 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=08 adsr2=0408 e2=00 cl3=08 adsr3=00A0 e3=00 * v2 test bit
+;cl2=41 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00 * v2 triangle, gate
+;cl2=41 adsr2=0608 e2=3B cl3=00 adsr3=00A0 e3=00 * v2 triangle, sound start
+;cl2=41 adsr2=0608 e2=29 cl3=81 adsr3=00A0 e3=2A * v2 triangle, v3 hihat
+;cl2=81 adsr2=0608 e2=17 cl3=00 adsr3=00A0 e3=00 * v2 noise
+;cl2=81 adsr2=0608 e2=0D cl3=00 adsr3=00A0 e3=00 * v2 noise
+;cl2=81 adsr2=0608 e2=09 cl3=08 adsr3=00A0 e3=00 * v2 noise
+;cl2=81 adsr2=0608 e2=05 cl3=00 adsr3=00A0 e3=00 * v2 noise
+;cl2=81 adsr2=0608 e2=03 cl3=00 adsr3=00A0 e3=00 * v2 noise
+;cl2=81 adsr2=0608 e2=02 cl3=81 adsr3=00A0 e3=2A * v2 noise
+;cl2=81 adsr2=0608 e2=01 cl3=00 adsr3=00A0 e3=00 * v2 noise
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00 * v2 noise
+;cl2=81 adsr2=0608 e2=00 cl3=08 adsr3=00A0 e3=00 * v2 sound end
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=81 adsr3=00A0 e3=2A
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;
+katakisV2regDump
+	DC.B	$02,$C0,$0B,$00 
+
+    * default state: RELEASE
+    DC.B    $02,$CE,$0C,$00	; 2ad=00
+	DC.B	$02,$CE,$0D,$08 ; 2sr=08    * RELEASE: sets envelope_rate_period
+    * two frames of release ramp down?
+ ;DC.B    $02,$CE,$09,$20 ; 2pl=20
+    ;DC.B	$02,$CE,$0A,$08 ; 2ph=08
+    ;DC.B    $02,$CE,$0B,$81 ; 2cl=81 noise,gate
+	;DC.B	$02,$CE,$07,$E1 ; 2fl=E1
+    ;DC.B    $02,$CE,$08,$24 ; 2fh=24
+    ; ---------------------
+;	DC.B	$02,$CF,$0B,$08 ; 2cl=08 test
+        ; ---------------------
+    DC.B    $02,$D0,$0C,$06	; 2ad=06   attack 0   decay 6
+    DC.B	$02,$D0,$0D,$08 ; 2sr=08  sustain 0 release 8
+    DC.B    $02,$D0,$09,$20 ; 2pl=20
+    DC.B	$02,$D0,$0A,$08 ; 2ph=08
+    DC.B    $02,$D0,$0B,$41 ; 2cl=41 triangle,gate
+	DC.B	$02,$D0,$07,$A2 ; 2fl=A2
+    DC.B    $02,$D0,$08,$0E ; 2fh=0E
+    ; ---------------------
+	DC.B	$02,$D1,$0C,$06 ; 2ad=06
+    DC.B    $02,$D1,$0D,$08 ; 2sr=08
+	DC.B	$02,$D1,$09,$20 ; 2pl=20
+    DC.B    $02,$D1,$0A,$08 ; 2ph=08
+	DC.B	$02,$D1,$0B,$41 ; 2cl=41 triangle,gate
+    DC.B    $02,$D1,$07,$45 ; 2fl=45
+	DC.B	$02,$D1,$08,$1D ; 2fh=1D
+    ; ---------------------
+    DC.B    $02,$D2,$0C,$06 ; 2ad=06
+	DC.B	$02,$D2,$0D,$08 ; 2sr=08
+    DC.B    $02,$D2,$09,$20 ; 2pl=20
+	DC.B	$02,$D2,$0A,$08 ; 2ph=08
+    DC.B    $02,$D2,$0B,$41 ; 2cl=41 triangle,gate
+	DC.B	$02,$D2,$07,$A2 ; 2fl=A2
+    DC.B    $02,$D2,$08,$0E ; 2fh=0E
+    ; ---------------------
+	DC.B	$02,$D3,$0C,$06 ; 2ad=06
+    DC.B    $02,$D3,$0D,$08 ; 2sr=08
+	DC.B	$02,$D3,$09,$20 ; 2pl=20
+    DC.B    $02,$D3,$0A,$08 ; 2ph=08
+	DC.B	$02,$D3,$0B,$81 ; 2cl=81 noise,gate
+    DC.B    $02,$D3,$07,$E1 ; 2fl=E1
+	DC.B	$02,$D3,$08,$24 ; 2fh=24
+    ; ---------------------
+    DC.B    $02,$D4,$0C,$06 ; 2ad=06
+	DC.B	$02,$D4,$0D,$08 ; 2sr=08
+    DC.B    $02,$D4,$09,$20 ; 2pl=20
+	DC.B	$02,$D4,$0A,$08 ; 2ph=08
+    DC.B    $02,$D4,$0B,$81 ; 2cl=81 noise,gate
+	DC.B	$02,$D4,$07,$E1 ; 2fl=E1
+    DC.B    $02,$D4,$08,$24 ; 2fh=24
+    ; ---------------------
+	DC.B	$02,$D5,$0C,$06 ; 2ad=06
+    DC.B    $02,$D5,$0D,$08 ; 2sr=08
+	DC.B	$02,$D5,$09,$20 ; 2pl=20
+    DC.B    $02,$D5,$0A,$08 ; 2ph=08
+	DC.B	$02,$D5,$0B,$81 ; 2cl=81 noise,gate
+    DC.B    $02,$D5,$07,$E1 ; 2fl=E1
+	DC.B	$02,$D5,$08,$24 ; 2fh=24
+    ; ---------------------
+    DC.B    $02,$D6,$0C,$06 ; 2ad=06
+	DC.B	$02,$D6,$0D,$08 ; 2sr=08
+    DC.B    $02,$D6,$09,$20 ; 2pl=20
+	DC.B	$02,$D6,$0A,$08 ; 2ph=08
+    DC.B    $02,$D6,$0B,$81 ; 2cl=81 noise,gate
+	DC.B	$02,$D6,$07,$E1 ; 2fl=E1
+    DC.B    $02,$D6,$08,$24 ; 2fh=24
+    ; ---------------------
+	DC.B	$02,$D7,$0C,$06 ; 2ad=06
+    DC.B    $02,$D7,$0D,$08 ; 2sr=08
+	DC.B	$02,$D7,$09,$20 ; 2pl=20
+    DC.B    $02,$D7,$0A,$08 ; 2ph=08
+	DC.B	$02,$D7,$0B,$81 ; 2cl=81 noise,gate
+    DC.B    $02,$D7,$07,$E1 ; 2fl=E1
+	DC.B	$02,$D7,$08,$24 ; 2fh=24
+    ; ---------------------
+katakisV2regDumpEnd
+
+;katakis v3 snare:
+;-1:    ct=08                                      
+;0:     ad=08,sr=08,pl=40,ph=08,ct=41,fl=A2,fh=0E         
+;1:     ad=08,sr=08,pl=80,ph=08,ct=41,fl=45,fh=1D         
+;2:     ad=08,sr=08,pl=c0,ph=08,ct=41,fl=A2,fh=0E         
+;3:     ad=08,sr=08,pl=00,ph=09,ct=81,fl=e1,fh=24         
+;4:     ad=08,sr=08,pl=40,ph=09,ct=81,fl=e1,fh=24         
+;5:     ct=81                                      
+;6:     ct=00
+
+;cl2=81 adsr2=0608 e2=00 cl3=81 adsr3=00A0 e3=2A
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=08 adsr3=00A0 e3=00 * v3 test, gate
+;cl2=81 adsr2=0608 e2=00 cl3=41 adsr3=0808 e3=34 * v3 triangle, gate, sound start
+;cl2=81 adsr2=0608 e2=00 cl3=41 adsr3=0808 e3=28 * v3 triangle, gate 
+;cl2=81 adsr2=0608 e2=00 cl3=41 adsr3=0808 e3=1B * v3 triangle, gate => 3 frames of triangle
+;cl2=81 adsr2=0608 e2=00 cl3=81 adsr3=0808 e3=13 * v3 noise, gate 
+;cl2=81 adsr2=0608 e2=00 cl3=81 adsr3=0808 e3=0D * v3 noise, gate 
+;cl2=81 adsr2=0608 e2=00 cl3=08 adsr3=0808 e3=0A * v3 test, sound stop
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=0A
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=81 adsr3=00A0 e3=2A
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=08 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=81 adsr3=00A0 e3=2A
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=08 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=81 adsr3=00A0 e3=2A
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=08 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=81 adsr3=00A0 e3=2A
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+;cl2=81 adsr2=0608 e2=00 cl3=00 adsr3=00A0 e3=00
+
+katakisV3regDump
+;    incbin  katakis_v3.regdump
+    DC.B    $07,$35,$13,$00
+	DC.B	$07,$35,$14,$A0
+    DC.B    $07,$35,$10,$00
+	DC.B	$07,$35,$11,$00
+    DC.B    $07,$35,$12,$00     * 3cl=clear gate
+	DC.B	$07,$35,$0E,$45
+    DC.B    $07,$35,$0F,$1D
+    ;----------------------
+;	DC.B	$07,$36,$13,$00 * 3ad=00
+;    DC.B    $07,$36,$14,$A0 * 3sr=A0
+	DC.B	$07,$36,$13,$00 * 3ad=00  *  attack 0   decay 0
+    DC.B    $07,$36,$14,$A0 * 3sr=A0  * sustain A release 0
+ 	DC.B	$07,$36,$10,$00 * 3pl=00
+    DC.B    $07,$36,$11,$00 * 3ph=00
+	DC.B	$07,$36,$12,$00 * 3cl=00  * 3cl=clear gate -> release 0 -> env3=0
+    DC.B    $07,$36,$0E,$ED * 3fl=ED
+	DC.B	$07,$36,$0F,$15 * 3hf=15
+    ;----------------------
+    DC.B    $07,$37,$12,$08 * 3cl=test, clear gate
+    ;----------------------
+	DC.B	$07,$38,$13,$08 * 3ad=08
+    DC.B    $07,$38,$14,$08 * 3sr=08
+	DC.B	$07,$38,$10,$40 * 3pl=40
+    DC.B    $07,$38,$11,$08 * 3ph=08
+	DC.B	$07,$38,$12,$41 * 3cl=triangle, gate
+    DC.B    $07,$38,$0E,$A2 * 3fl=A2
+	DC.B	$07,$38,$0F,$0E * 3fl=0E
+    ;----------------------
+    DC.B    $07,$39,$13,$08 * 3ad=08
+	DC.B	$07,$39,$14,$08 * 3sr=08
+    DC.B    $07,$39,$10,$80 * 3pl=80
+	DC.B	$07,$39,$11,$08 * 3ph=08
+    DC.B    $07,$39,$12,$41 * 3cl=triangle, gate
+	DC.B	$07,$39,$0E,$45 * 3fl=45
+    DC.B    $07,$39,$0F,$1D * 3fh=1D
+    ;----------------------
+	DC.B	$07,$3A,$13,$08 * 3ad=08
+    DC.B    $07,$3A,$14,$08 * 3sr=08
+	DC.B	$07,$3A,$10,$C0 * 3pl=C0
+    DC.B    $07,$3A,$11,$08 * 3ph=08
+	DC.B	$07,$3A,$12,$41 * 3cl=triangle, gate
+    DC.B    $07,$3A,$0E,$A2 * 3fl=A2
+	DC.B	$07,$3A,$0F,$0E * 3fh=0e
+    ;----------------------
+    DC.B    $07,$3B,$13,$08 * 3ad=08
+	DC.B	$07,$3B,$14,$08 * 3sr=08
+    DC.B    $07,$3B,$10,$00 * 3pl=00
+	DC.B	$07,$3B,$11,$09 * 3ph=09
+    DC.B    $07,$3B,$12,$81 * 3cl=noise, gate
+	DC.B	$07,$3B,$0E,$E1 * 3fl=E1
+    DC.B    $07,$3B,$0F,$24 * 3fh=24
+    ;----------------------
+	DC.B	$07,$3C,$13,$08 * 3ad=08
+    DC.B    $07,$3C,$14,$08 * 3sr=08
+	DC.B	$07,$3C,$10,$40 * 3pl=40
+    DC.B    $07,$3C,$11,$09 * 3ph=09
+	DC.B	$07,$3C,$12,$81 * 3cl=noise, gate
+    DC.B    $07,$3C,$0E,$E1 * 3fl=E1
+	DC.B	$07,$3C,$0F,$24 * 3fh=24
+    ;----------------------
+    DC.B    $07,$3D,$12,$08 * 3cl=test
+    ;----------------------
+	DC.B	$07,$3E,$13,$00 * 3ad=00
+    DC.B    $07,$3E,$14,$A0 * 3sr=A0
+	DC.B	$07,$3E,$10,$00 * 3pl=00
+    DC.B    $07,$3E,$11,$00 * 3ph=00
+	DC.B	$07,$3E,$12,$00 * 3cl=00
+    DC.B    $07,$3E,$0E,$A2 * 3fl=A2
+	DC.B	$07,$3E,$0F,$0E * 3fh=0E
+    ;----------------------
+    DC.B    $07,$3F,$13,$00 * 3ad=00
+	DC.B	$07,$3F,$14,$A0 * 3sr=A0
+    DC.B    $07,$3F,$10,$00 * 3pl=00
+	DC.B	$07,$3F,$11,$00 * 3ph=00
+    DC.B    $07,$3F,$12,$00 * 3cl=00
+	DC.B	$07,$3F,$0E,$A2 * 3fl=A2
+    DC.B    $07,$3F,$0F,$0E * 3fh=0E
+    ;----------------------
+;	DC.B	$07,$40,$13,$00 * 3ad=00
+;    DC.B    $07,$40,$14,$A0 * 3sr=A0
+;	DC.B	$07,$40,$10,$00 * 3pl=00
+;    DC.B    $07,$40,$11,$00 * 3ph=00
+;	DC.B	$07,$40,$12,$81 * 3cl=noise, gate
+;    DC.B    $07,$40,$0E,$14
+;	DC.B	$07,$40,$0F,$75
+    ;----------------------
+    DC.B    $07,$41,$13,$00 * 3ad=00
+	DC.B	$07,$41,$14,$A0 * 3sr=A0
+    DC.B    $07,$41,$10,$00 * 3pl=00
+	DC.B	$07,$41,$11,$00 * 3ph=00
+    DC.B    $07,$41,$12,$00 * 3cl=00
+	DC.B	$07,$41,$0E,$45
+    DC.B    $07,$41,$0F,$1D
+    ;----------------------
+	DC.B	$07,$42,$13,$00 * 3ad=00
+    DC.B    $07,$42,$14,$A0 * 3sr=A0
+	DC.B	$07,$42,$10,$00 * 3pl=00
+    DC.B    $07,$42,$11,$00 * 3ph=00
+	DC.B	$07,$42,$12,$00 * 3cl=00
+    DC.B    $07,$42,$0E,$ED
+	DC.B	$07,$42,$0F,$15
+    ;----------------------
+katakisV3regDumpEnd
 
 regDump
 ;    incbin  clubstyle.regdump2
@@ -878,6 +1406,7 @@ regDumpEnd
 
 Sid                 ds.b    resid_SIZEOF
 DOSBase             ds.l    1
+GFXBase             ds.l    1
 workerTaskStack     ds.b    4096
 workerTaskStruct    ds.b    TC_SIZE
 
