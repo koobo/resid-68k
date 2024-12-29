@@ -75,20 +75,27 @@ FIXP_MASK = $ffff
     LABEL wave_SIZEOF ; = 48
 
     STRUCTURE   envelope,0
-        ULONG   envelope_rate_counter
-        ULONG   envelope_rate_period
+        ULONG   envelope_rate
+        ULONG   envelope_lfsr
+        ULONG   envelope_exponential_counter
+        ULONG   envelope_exponential_counter_period
+        ULONG   envelope_new_exponential_counter_period
+        ULONG   envelope_state_pipeline
+        ULONG   envelope_pipeline
+        ULONG   envelope_exponential_pipeline
         UBYTE   envelope_counterHi
         UBYTE   envelope_counter
-        UBYTE   envelope_sustain_level
-        UBYTE   envelope_exponential_counter
-        UBYTE   envelope_exponential_counter_period
-        UBYTE   envelope_hold_zero
+        UBYTE   envelope_state
+        UBYTE   envelope_state_next
+        UBYTE   envelope_counter_enabled
+        UBYTE   envelope_gate
+        UBYTE   envelope_resetLfsr
+        UBYTE   envelope_envelope_counter
         UBYTE   envelope_attack
         UBYTE   envelope_decay
-        UBYTE   envelope_sustain    ; not used
+        UBYTE   envelope_sustain  
         UBYTE   envelope_release
-        UBYTE   envelope_gate
-        UBYTE   envelope_state
+;        UBYTE   envelope_pad1
     LABEL envelope_SIZEOF ; = 20
 
     STRUCTURE   filter,0
