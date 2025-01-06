@@ -1309,13 +1309,16 @@ ENVELOPE_CLOCK_ macro
 * in:
 *   a0 = object
 envelope_clock_single:
+    COUNT C_ENV1
     tst.l   envelope_new_exponential_counter_period(a0)
     beq     .1
+        COUNT C_ENV2
         move.l  envelope_new_exponential_counter_period(a0),envelope_exponential_counter_period(a0)
         clr.l   envelope_new_exponential_counter_period(a0)
 .1
     tst.l   envelope_state_pipeline(a0)
     beq     .2
+        COUNT C_ENV3
         bsr     envelope_state_change
 .2
 
@@ -1323,13 +1326,17 @@ envelope_clock_single:
     beq     .elseif1
     subq.l  #1,envelope_pipeline(a0)
     bne     .elseif1
+        COUNT C_ENV4
         tst.b   envelope_counter_enabled(a0)
         beq     .endif1
+            COUNT C_ENV5
             cmp.b   #envelope_state_ATTACK,envelope_state(a0)
             bne     .elseif2
+                COUNT C_ENV6
                 addq.b  #1,envelope_counter(a0)
                 cmp.b   #$ff,envelope_counter(a0)
                 bne     .endif2
+                    COUNT C_ENV7
                     move.b  #envelope_state_DECAY_SUSTAIN,envelope_state_next(a0)
                     move.l  #3,envelope_state_pipeline(a0)
                     bra .endif2
@@ -1339,50 +1346,63 @@ envelope_clock_single:
             cmp.b   #envelope_state_RELEASE,envelope_state(a0)
             bne     .endif2
 .if3
+                COUNT C_ENV8
                 subq.b  #1,envelope_counter(a0)
                 bne     .endif2
+                    COUNT C_ENV9
                     clr.b   envelope_counter_enabled(a0)
 .endif2
+        COUNT C_ENV10
         bsr     envelope_set_exponential_counter
         bra     .endif5
 .endif1
+        COUNT C_ENV11
         bra     .endif5
     ; -----------------------
 .elseif1
+    COUNT C_ENV12
     tst.l   envelope_exponential_pipeline(a0)
     beq     .elseif3
     subq.l  #1,envelope_exponential_pipeline(a0)
     bne     .elseif3
+        COUNT C_ENV13
         clr.l   envelope_exponential_counter(a0)
         cmp.b   #envelope_state_RELEASE,envelope_state(a0)
         beq     .if4
         cmp.b   #envelope_state_DECAY_SUSTAIN,envelope_state(a0)
         bne     .endif4
+        COUNT C_ENV14
         move.b  envelope_sustain(a0),d0
         cmp.b   envelope_counter(a0),d0
         beq     .endif4
 .if4
+            COUNT C_ENV15
             move.l  #1,envelope_pipeline(a0)
 .endif4
     bra     .endif5
     ; -----------------------
 .elseif3
+    COUNT C_ENV16
     tst.b   envelope_resetLfsr(a0)
     beq     .endif5
+            COUNT C_ENV17
         clr.b   envelope_resetLfsr(a0)
         move.l  #$7fff,envelope_lfsr(a0)
         cmp.b   #envelope_state_ATTACK,envelope_state(a0)
         bne     .elseif4
+            COUNT C_ENV18
             clr.l   envelope_exponential_counter(a0)
             move.l  #2,envelope_pipeline(a0)
             bra     .endif5
 .elseif4
         tst.b   envelope_counter_enabled(a0)
         beq     .endif5
+        COUNT C_ENV19
         addq.l  #1,envelope_exponential_counter(a0)
         move.l  envelope_exponential_counter_period(a0),d0
         cmp.l   envelope_exponential_counter(a0),d0
         bne     .endif5 
+            COUNT C_ENV20
             moveq   #1,d0
             cmp.l   #1,envelope_exponential_counter_period(a0)
             beq     .11
@@ -1392,9 +1412,11 @@ envelope_clock_single:
 .endif5
     ; -----------------------
 
+    COUNT C_ENV21
     move.l  envelope_lfsr(a0),d0
     cmp.l   envelope_rate(a0),d0
     beq     .endif6
+       COUNT C_ENV22
         move.l  d0,d1
         lsl.l   #8,d1
         lsl.l   #5,d1
